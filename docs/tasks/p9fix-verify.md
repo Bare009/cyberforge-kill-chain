@@ -148,3 +148,11 @@ Changes they need to make to show supporting evidence fully (none blocks renderi
   The normal path reads `incident_alerts.parquet` and is unaffected. Its `steps` count is numbered steps.
 
 After the rebase onto 43dcd99, `python -m pytest -q`: **317 passed** in 69.9 s (their 13 bundle tests included).
+
+## Commit and push
+
+Commit `1c8aedb` "Number only rule steps in attack chains; attach anomaly alerts as supporting evidence",
+rebased onto `43dcd99`. The first `git push origin main` from this step got a 403 (permission denied to
+nishant-vh). The orchestrator pushed it again and that worked (`43dcd99..1c8aedb main -> main`), so the
+403 did not come back. After `git fetch origin`: `git status -sb` shows `## main...origin/main`, and
+`git rev-list --left-right --count main...origin/main` prints `0	0`.
