@@ -47,15 +47,22 @@ data/runs/<run>/                      (examples/sample-run/ has the same layout)
   access_hosts.parquet                (track A) every internal IP in the logs with zone, role, /24, event count
   reach.json                          (track A) footholds, reach next and merged path graph per incident
   reach/_stats.json                   (track A) reach stage timings and counts
+  enrichment.json                     (track B, enrich) threat intel per entity, read by score and bundle
+  report.json                         (track B, narrator) {incidents: {incident_id: {source, markdown, triage}}}
+  unexplained.json                    (bundle) anomaly alerts in no incident, alert rows plus reason, group_id
+  ti.json                             (bundle) enrichment.json bound to the current incident numbers
+  bundle/_stats.json                  (bundle) stage timing
   events.duckdb                       (track A internal) prepared event tables
   truth.parquet, metrics.json         (track A) silver truth and evaluation result;
                                       the API serves metrics.json at GET /metrics
 ```
 
-Until the P11 bundle step exists, `python -m killchain chain` writes provisional `incidents/<n>.json`,
-`index.json` and `alerts.json` (with `incident_number` filled); their risk, threat intel, report and reach
-next fields are contract-valid placeholders. `python -m killchain reach` then rewrites them with the real
-reach next and the path graph merged with reach nodes and edges.
+`python -m killchain chain` writes provisional `incidents/<n>.json`, `index.json` and `alerts.json` (with
+`incident_number` filled); their risk, threat intel, report and reach next fields are contract-valid
+placeholders. `python -m killchain reach` then rewrites them with the real reach next and the path graph
+merged with reach nodes and edges (and score, later, with the risk score). The P11 bundle step
+(`python -m killchain.bundle --run <run>`) runs last and is the final writer of these files: it merges
+threat intel and reports in and writes the bundle-only files above. It never changes detection fields.
 
 ## Contract B: alert
 

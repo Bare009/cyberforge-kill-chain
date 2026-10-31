@@ -5,7 +5,7 @@ export type IndicatorKind = 'ip' | 'domain' | 'url' | 'hash'
 
 /** GET /ti/status */
 export interface TiStatus {
-  source: 'enrichment.json' | 'incident data'
+  source: 'ti.json' | 'enrichment.json' | 'incident data'
   generated_at: string | null
   offline: boolean
   /** provider -> ok | no key | disabled | offline */

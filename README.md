@@ -36,6 +36,7 @@ killchain/          Python package, one sub-package per pipeline stage
   report/           template reports when no LLM is reachable
   enrich/           local context and threat intel
   agents/           LLM narrator with triage opinion, Q&A, rule writer
+  bundle/           last stage: merges every stage's output into the files the API serves
   api/              FastAPI app
   eval/             scoring against the silver truth or a manifest
   live/             live mode
@@ -231,6 +232,30 @@ python -m killchain eval score --run data\runs\firex-10G --api http://localhost:
   confirmed real or false by hand), and alerts per rule split into truth hits
   and background. Everything is also in `metrics.json`.
 
+## Bundle
+
+The last pipeline stage. It merges every stage's output in a run folder into
+the files the API serves, checks them against the contracts, and writes them
+all or nothing (about 1 s on the 6.5 GB run).
+
+```powershell
+python -m killchain.bundle --run data\runs\firex-10G            # after chain (and reach, enrich, score, report)
+python -m killchain.bundle --run data\runs\firex-10G --check    # check only, write nothing
+```
+
+| Writes | From |
+|---|---|
+| `incidents/<n>.json`, `index.json` | the stage files, with threat intel (`enrichment.json`) and narrator reports (`report.json`) merged in; `ti_verdict` and `triage_verdict` filled |
+| `alerts.json` | `incident_number` from `incident_alerts.parquet` |
+| `unexplained.json` | `unexplained.parquet` joined with the alerts |
+| `ti.json` | `enrichment.json` matched to the incidents by value, so a renumbering by the risk score cannot misplace it |
+| `incident_lines.parquet` | incident numbers checked against `incident_id` |
+| `run_summary.json` | every `_stats.json` (parse stats from `--parsed`, default `data/parsed/<run>`), counts, data quality, threat intel and LLM status |
+
+Detection fields (chain, graph, reach next, risk score, numbering) are copied
+unchanged. Rerunning it gives the same files. Stage order:
+chain → reach → enrich → score → report → bundle.
+
 ## API
 
 Serves one run bundle (`docs/contracts.md`) over HTTP, no login. Every file
@@ -270,9 +295,11 @@ read from the log named in each row, inside `--raw-dir` (default
 are opened. Without the log the lines are listed with line numbers and byte
 offsets and `raw_available` is false.
 
-Threat intel comes from `<run>/enrichment.json`, written by the enrich step
-below, and is merged into the incidents at start-up (entity verdicts, step
-flags, `ti_verdict` in the list). It never changes the risk score.
+Threat intel comes from `<run>/ti.json` (bundle step), or from
+`<run>/enrichment.json` when enrich ran after the last bundle, and is merged
+into the incidents at start-up (entity verdicts, step flags, `ti_verdict` in
+the list). It never changes the risk score. `GET /path` on the real run
+(25 incidents): p50 1.4 ms, p95 17.5 ms.
 
 ### Threat intel (enrich)
 

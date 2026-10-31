@@ -26,7 +26,8 @@ const PROVIDER_STATE: Record<string, { text: string; tone: string }> = {
 }
 
 function StatusCard() {
-  const { data } = useTiStatus()
+  const { data, isError } = useTiStatus()
+  if (isError) return null // the indicator table below says why
   if (!data) return <Skeleton className="h-20 w-full rounded-xl" />
   return (
     <Card>
@@ -43,7 +44,7 @@ function StatusCard() {
         <div className="space-y-1 text-sm">
           <p className="text-[11px] uppercase tracking-wider text-slate-500">Results</p>
           <p className="text-slate-700">
-            {data.indicators} indicators from {data.source === 'enrichment.json' ? 'the last engine run' : 'the incident files'}
+            {data.indicators} indicators from {data.source === 'incident data' ? 'the incident files' : 'the last engine run'}
           </p>
           {data.generated_at && <p className="text-xs text-slate-500">Looked up {formatFullTime(data.generated_at)}</p>}
           {data.last_run && (

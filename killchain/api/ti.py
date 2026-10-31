@@ -5,7 +5,7 @@ GET  /ti/indicators           every indicator in the run's incidents, worst firs
 GET  /ti/indicators/{value}   one indicator with each provider's full result
 POST /ti/lookup               look up a value now (same never-send rules; rate limited)
 
-Results come from <run>/enrichment.json when the engine has run
+Results come from <run>/ti.json (the bundle step) or <run>/enrichment.json
 (python -m killchain.enrich), else from the incidents' own `enrichment`.
 """
 
@@ -45,7 +45,7 @@ class TiStore:
         self.doc = bundle.enrichment
         self.entities: Dict[str, Dict[str, Any]] = (
             dict(self.doc["entities"]) if self.doc else self._from_incidents())
-        self.source = "enrichment.json" if self.doc else "incident data"
+        self.source = (bundle.enrichment_source or "enrichment.json") if self.doc else "incident data"
         self._calls: Deque[float] = deque()
         self._calls_lock = threading.Lock()
         self.per_minute = int((ti_config().get("on_demand") or {}).get("per_minute") or 20)

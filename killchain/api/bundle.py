@@ -12,10 +12,11 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import orjson
 
+from killchain.bundle.merge import apply_enrichment
 from killchain.contracts import validate_alert, validate_incident
 
 log = logging.getLogger(__name__)
@@ -43,8 +44,9 @@ class RunBundle:
     path_bytes: Dict[int, bytes] = field(default_factory=dict)
     # contract problems found while loading; the API still serves the run
     errors: List[str] = field(default_factory=list)
-    # <run>/enrichment.json from the threat-intel engine, merged into the incidents; None when absent
+    # threat intel merged into the incidents (ti.json from the bundle step, else enrichment.json); None when absent
     enrichment: Optional[Dict[str, Any]] = None
+    enrichment_source: Optional[str] = None
 
     def resolve(self, ident: str) -> Optional[int]:
         """An incident's number from its number ("12") or its stable hash."""
@@ -114,27 +116,30 @@ def path_view(inc: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-_VERDICT_RANK = {"known-malicious": 3, "suspicious": 2, "no-reports": 1, "unknown": 0}
-_CONTRACT_ENRICHMENT_KEYS = ("kind", "zone", "verdict", "reputation", "providers", "tags", "flags", "sendable")
+def load_threat_intel(run_dir: Path) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    """(document, file name) of the run's threat intel, or (None, None).
 
-
-def apply_enrichment(inc: Dict[str, Any], n: int, doc: Dict[str, Any]) -> Optional[str]:
-    """Merge the engine's results into one incident (in place); returns the incident's worst verdict.
-
-    The incident's `enrichment` becomes the engine's result for every entity
-    of the incident, and each step gets the flags of its source and target.
-    Detection fields (chain, risk score, ...) are not touched.
+    ti.json (written by the bundle step, bound to the current incident numbers)
+    wins while it was made from the current enrichment.json; when enrich ran
+    again after the last bundle, enrichment.json is used and a rebundle is due.
     """
-    ents = {v: e for v, e in doc["entities"].items() if n in (e.get("incidents") or [])}
-    if not ents:
-        return None
-    inc["enrichment"] = {v: {k: e[k] for k in _CONTRACT_ENRICHMENT_KEYS if k in e} for v, e in ents.items()}
-    flags = (doc.get("steps") or {}).get(str(n)) or {}
-    for s in inc.get("chain") or []:
-        extra = flags.get(str(s.get("n"))) or []
-        if extra:
-            s["enrichment_flags"] = list(dict.fromkeys([*(s.get("enrichment_flags") or []), *extra]))
-    return max((e["verdict"] for e in ents.values()), key=lambda v: _VERDICT_RANK.get(v, 0))
+    docs = {}
+    for name in ("ti.json", "enrichment.json"):
+        p = run_dir / name
+        if p.exists():
+            doc = _read_json(p)
+            if isinstance(doc, dict) and isinstance(doc.get("entities"), dict):
+                docs[name] = doc
+            else:
+                log.warning("%s has no 'entities' object; ignored", p)
+    ti, raw = docs.get("ti.json"), docs.get("enrichment.json")
+    if ti and (raw is None or ti.get("generated_at") == raw.get("generated_at")):
+        return ti, "ti.json"
+    if raw:
+        if ti:
+            log.warning("enrichment.json is newer than ti.json; run python -m killchain.bundle --run %s", run_dir)
+        return raw, "enrichment.json"
+    return None, None
 
 
 def load_bundle(run_dir: Path) -> RunBundle:
@@ -152,11 +157,7 @@ def load_bundle(run_dir: Path) -> RunBundle:
     if not isinstance(alerts, list):
         raise BundleError(f"{run_dir / 'alerts.json'}: needs a list")
 
-    enrich_path = run_dir / "enrichment.json"
-    enrichment = _read_json(enrich_path) if enrich_path.exists() else None
-    if enrichment is not None and not isinstance(enrichment.get("entities"), dict):
-        log.warning("%s has no 'entities' object; ignored", enrich_path)
-        enrichment = None
+    enrichment, enrichment_source = load_threat_intel(run_dir)
 
     errors: List[str] = []
     incidents: Dict[int, Dict[str, Any]] = {}
@@ -183,6 +184,7 @@ def load_bundle(run_dir: Path) -> RunBundle:
         run_summary=summary,
         errors=errors,
         enrichment=enrichment,
+        enrichment_source=enrichment_source,
     )
     for n, inc in incidents.items():
         if isinstance(inc.get("incident_id"), str):
