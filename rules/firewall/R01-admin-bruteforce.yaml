@@ -1,0 +1,17 @@
+id: R01-admin-bruteforce
+title: Brute force on the firewall admin login
+status: stable
+tuning: "planted 2,000 failed logins from one source in 10 min (1,997 inside one window); busiest other source 25 per 10 min"
+attack:
+  technique: T1110.001
+  alt_techniques: [T1110]
+  tactic: credential-access
+severity: 4
+confidence: 0.9
+kind: count
+where: "log_desc = 'Admin login failed' AND NOT src_internal"
+group_by: [src_ip]
+window: 10m
+having: {gte: 100}
+entities: {src_ip: src_ip, dst_ip: dst_ip, user: user}
+action_text: "{src_ip} tried {event_count} admin passwords against the firewall in {minutes} minutes"

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 PLANNED = {
-    "detect": "P3", "correlate": "P6", "chain": "P7", "reach": "P8", "enrich": "P9",
+    "correlate": "P6", "chain": "P7", "reach": "P8", "enrich": "P9",
     "score": "P10", "report": "P10", "agents": "P10b", "bundle": "P11", "serve": "P11",
     "run": "P13", "live": "P15",
 }
@@ -64,7 +64,14 @@ def cmd_eval(rest: List[str]) -> int:
     return eval_main(rest)
 
 
-COMMANDS: Dict[str, Callable[[List[str]], int]] = {"parse": cmd_parse, "db": cmd_db, "eval": cmd_eval}
+def cmd_detect(rest: List[str]) -> int:
+    from .detect.cli import main as detect_main
+
+    return detect_main(rest)
+
+
+COMMANDS: Dict[str, Callable[[List[str]], int]] = {"parse": cmd_parse, "db": cmd_db, "eval": cmd_eval,
+                                                   "detect": cmd_detect}
 
 
 def main(argv: Optional[List[str]] = None) -> int:

@@ -1,0 +1,17 @@
+id: R05-admin-login-odd-hour
+title: Successful admin login at night from abroad
+status: stable
+tuning: "planted 3 logins 03:17-04:17 IST from Russia; only 5 successful admin logins in 7 days"
+attack:
+  technique: T1078.001
+  alt_techniques: [T1078]
+  tactic: initial-access
+severity: 4
+confidence: 0.8
+promote: true
+kind: match
+where: "log_desc = 'Admin login successful' AND NOT src_internal AND ist_hour < 6 AND coalesce(src_country, '') NOT IN ('India', 'Reserved')"
+group_by: [user, src_ip]
+split_gap: 6h
+entities: {src_ip: src_ip, dst_ip: dst_ip, user: user}
+action_text: "{user} logged in to the firewall as administrator {event_count} times between midnight and 06:00 IST from {src_ip}"
