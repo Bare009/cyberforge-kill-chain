@@ -40,10 +40,17 @@ data/runs/<run>/                      (examples/sample-run/ has the same layout)
   incidents.parquet                   (track A) correlation output, read by the bundle step
   incident_alerts.parquet             (track A) correlation output, read by the bundle step
   unexplained.parquet                 (track A) correlation output, read by the bundle step
+  chains.json                         (track A) chain, gaps and path graph per incident, read by the bundle step
+  incident_lines.parquet              (track A) every evidence line of every chain step
+  chain/_stats.json                   (track A) chain stage timings and counts
   events.duckdb                       (track A internal) prepared event tables
   truth.parquet, metrics.json         (track A) silver truth and evaluation result;
                                       the API serves metrics.json at GET /metrics
 ```
+
+Until the P11 bundle step exists, `python -m killchain chain` writes provisional `incidents/<n>.json`,
+`index.json` and `alerts.json` (with `incident_number` filled); their risk, threat intel, report and reach
+next fields are contract-valid placeholders.
 
 ## Contract B: alert
 

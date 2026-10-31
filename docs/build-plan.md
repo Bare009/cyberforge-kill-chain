@@ -1074,7 +1074,7 @@ Our aim: all "great". Measured so far: parsing 55 s at 4.5 GB.
 - [x] P4b anomaly layer
 - [ ] P5 labels, 7-phase stage, per-line overrides
 - [x] P6 incidents: both chains whole, no giant merge
-- [ ] P7 numbered chains and path graphs
+- [x] P7 numbered chains and path graphs
 - [ ] P8 access graph and reach next for every incident
 - [ ] P9 threat-intel engine (7 providers) online, offline and cached; Threat Intel page
 - [ ] P10 risk score and template report

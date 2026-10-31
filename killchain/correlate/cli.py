@@ -49,6 +49,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     st = res["stats"]
     stats = {"stage": "correlate", "wall_secs": round(wall, 2), "peak_rss_mb": round(peak.peak / 2**20), **st}
     errors = engine.contract_errors(res, set(alerts["alert_id"].to_list()))
+    if errors:  # check before writing, so a failing run leaves the earlier outputs untouched
+        print("contract errors (nothing written):\n  " + "\n  ".join(errors[:20]), file=sys.stderr)
+        return 1
     engine.write_outputs(run, res, stats)
 
     steps = res["incident_alerts"]
@@ -62,7 +65,4 @@ def main(argv: Optional[List[str]] = None) -> int:
           f"unexplained {st['unexplained']}, below bar {st['below_bar']}, largest incident "
           f"{st['largest_incident_alerts']} alerts; {wall:.2f} s -> {run}")
     print(f"hubs: {', '.join(st['hubs'])}")
-    if errors:
-        print("contract errors:\n  " + "\n  ".join(errors[:20]), file=sys.stderr)
-        return 1
     return 0

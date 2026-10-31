@@ -286,6 +286,28 @@ def test_cli_missing_inputs(tmp_path):
     assert correlate_main(["--run", str(tmp_path)]) == 1
 
 
+def test_cli_contract_error_writes_nothing(tmp_path, capsys, monkeypatch):
+    a, ev = make_alerts(CHAIN_A)
+    a.write_parquet(tmp_path / "alerts.parquet")
+    ev.write_parquet(tmp_path / "alert_evidence.parquet")
+    assert correlate_main(["--run", str(tmp_path)]) == 0
+    before = (tmp_path / "incidents.parquet").read_bytes()
+    monkeypatch.setattr(ce, "contract_errors", lambda *a, **k: ["boom"])
+    a2, ev2 = make_alerts(CHAIN_A[:2])
+    a2.write_parquet(tmp_path / "alerts.parquet")
+    ev2.write_parquet(tmp_path / "alert_evidence.parquet")
+    capsys.readouterr()
+    assert correlate_main(["--run", str(tmp_path)]) == 1
+    assert "boom" in capsys.readouterr().err
+    assert (tmp_path / "incidents.parquet").read_bytes() == before
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    a.write_parquet(fresh / "alerts.parquet")
+    ev.write_parquet(fresh / "alert_evidence.parquet")
+    assert correlate_main(["--run", str(fresh)]) == 1
+    assert not (fresh / "incidents.parquet").exists() and not (fresh / "correlate").exists()
+
+
 # ── real run ─────────────────────────────────────────────────────────────────
 
 @pytest.mark.skipif(not (REAL_RUN / "alerts.parquet").exists(), reason="real run not built")

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 PLANNED = {
-    "chain": "P7", "reach": "P8", "enrich": "P9",
+    "reach": "P8", "enrich": "P9",
     "score": "P10", "report": "P10", "agents": "P10b", "bundle": "P11", "serve": "P11",
     "run": "P13", "live": "P15",
 }
@@ -76,8 +76,15 @@ def cmd_correlate(rest: List[str]) -> int:
     return correlate_main(rest)
 
 
+def cmd_chain(rest: List[str]) -> int:
+    from .graph.cli import main as chain_main
+
+    return chain_main(rest)
+
+
 COMMANDS: Dict[str, Callable[[List[str]], int]] = {"parse": cmd_parse, "db": cmd_db, "eval": cmd_eval,
-                                                   "detect": cmd_detect, "correlate": cmd_correlate}
+                                                   "detect": cmd_detect, "correlate": cmd_correlate,
+                                                   "chain": cmd_chain}
 
 
 def main(argv: Optional[List[str]] = None) -> int:

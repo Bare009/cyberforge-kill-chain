@@ -1,0 +1,143 @@
+# P7 chains on firex-10G: #n chain_text | gaps count
+
+#1 1. Initial Access → 2. Discovery → 3. Exfiltration → 4. Initial Access → 5. Persistence → 6. Command and Control → 7. Exfiltration | gaps 6
+#2 1. Execution → 2. Command and Control → 3-4. Exfiltration → 5. Discovery → 6. Exfiltration → 7. Discovery → 8. Exfiltration | gaps 6
+#3 1-2. Persistence → 3-5. Initial Access | gaps 1
+#4 1-2. Defense Evasion | gaps 0
+#5 1-2. Exfiltration | gaps 0
+#6 1. Credential Access | gaps 0
+#7 1. Persistence | gaps 0
+#8 1. Initial Access → 2-5. Lateral Movement | gaps 6
+#9 1. Discovery → 2-3. Lateral Movement | gaps 0
+#10 1-4. Initial Access | gaps 0
+#11 1-3. Initial Access | gaps 0
+#12 1-2. Command and Control | gaps 0
+#13 1. Initial Access | gaps 0
+#14 1. Command and Control | gaps 0
+#15 1. Command and Control | gaps 0
+#16 1. Impact | gaps 0
+#17 1. Command and Control | gaps 0
+#18 1. Impact | gaps 0
+#19 1. Impact | gaps 0
+#20 1. Initial Access | gaps 0
+#21 1. Initial Access | gaps 0
+#22 1. Credential Access | gaps 0
+#23 1. Credential Access | gaps 0
+#24 1. Discovery | gaps 0
+#25 1. Initial Access | gaps 0
+
+# Text form of incidents 1-5 (python -m killchain chain --run data\runs\firex-10G N)
+
+#1 764b1cb6e85f6a63 sev 5 | Discovery to Exfiltration by 32.127.48.11
+2026-10-29 01:51:23 to 2026-10-29 12:38:54 IST, 7 alerts, 940 events
+1. Initial Access → 2. Discovery → 3. Exfiltration → 4. Initial Access → 5. Persistence → 6. Command and Control → 7. Exfiltration
+
+ 1. 2026-10-29 01:51:23 IST (ongoing until 2026-10-29 10:09:09) T1190 initial-access 32.127.48.11 -> 10.10.20.20 x241: 32.127.48.11 was denied 240 times by the firewall, then got through to 10.10.20.20
+ 2. 2026-10-29 01:51:23 IST T1046 discovery 32.127.48.11 -> 10.10.20.20 x240: 32.127.48.11 probed 240 ports on 10.10.20.20 in 1.1 minutes; 240 attempts were blocked
+ 3. 2026-10-29 01:51:23 IST (ongoing until 2026-10-29 12:38:54) T1048 exfiltration 32.127.48.11 -> 10.10.20.20 x840: 32.127.48.11 sent at least 10 times more to 10.10.20.20 than it received, in 840 sessions over 0.4 days
+ 4. 2026-10-29 02:07:10 IST T1190 initial-access 32.127.48.11 -> 10.10.20.20 x60: 32.127.48.11 sent 60 SQL injection attempts to 10.10.20.20 in 3.9 minutes; 6 were not blocked
+ 5. 2026-10-29 02:41:36 IST T1505.003 persistence 32.127.48.11 -> 10.10.20.20 x40: 32.127.48.11 made 40 requests to 10.10.20.20 for server paths that almost no other source requests
+ 6. 2026-10-29 10:09:09 IST T1071 command-and-control 32.127.48.11 -> 10.10.20.20 x600: 32.127.48.11 talked to 10.10.20.20 600 times at near-fixed intervals over 0.1 days
+ 7. 2026-10-29 10:09:09 IST T1048.002 exfiltration 32.127.48.11 -> 10.10.20.20 x600: 32.127.48.11 sent data to 10.10.20.20 in 600 sessions over 0.1 days, far more than it received
+
+gap: No Execution evidence in the logs
+gap: No Privilege Escalation evidence in the logs
+gap: No Defense Evasion evidence in the logs
+gap: No Credential Access evidence in the logs
+gap: No Lateral Movement evidence in the logs
+gap: No Collection evidence in the logs
+reach next: Reach next has not been computed for this run yet.
+
+graph: 32.127.48.11 (external_ip, internet), 10.10.20.20 (server, dmz)
+  32.127.48.11 -> 10.10.20.20: 1. denied then allowed x241
+  32.127.48.11 -> 10.10.20.20: 2. port scan x240
+  32.127.48.11 -> 10.10.20.20: 3. lopsided pair x840
+  32.127.48.11 -> 10.10.20.20: 4. web sql injection x60
+  32.127.48.11 -> 10.10.20.20: 5. web shell x40
+  32.127.48.11 -> 10.10.20.20: 6. too regular x600
+  32.127.48.11 -> 10.10.20.20: 7. large lopsided transfer x600
+
+#2 3e4ff877d0712aa4 sev 5 | Execution to Exfiltration by 7.154.5.35
+2026-10-26 08:22:00 to 2026-10-28 01:37:40 IST, 8 alerts, 810 events
+1. Execution → 2. Command and Control → 3-4. Exfiltration → 5. Discovery → 6. Exfiltration → 7. Discovery → 8. Exfiltration
+
+ 1. 2026-10-26 08:22:00 IST T1204.002 execution 10.10.10.118 -> 7.154.5.35 x3: antivirus detected {virus} on 10.10.10.118 from kjhsdf.duckdns.org 3 times but did not block it
+ 2. 2026-10-26 09:15:00 IST T1071.001 command-and-control 10.10.10.118 -> 7.154.5.35 x400: 10.10.10.118 contacted 7.154.5.35 400 times at a fixed interval over 1.4 days, with nearly identical sizes
+ 3. 2026-10-27 23:24:40 IST (ongoing until 2026-10-28 01:37:40) T1048 exfiltration 10.10.10.118 -> 7.154.5.35 x400: 10.10.10.118 sent at least 10 times more to 7.154.5.35 than it received, in 400 sessions over 0.1 days
+ 4. 2026-10-27 23:24:40 IST (ongoing until 2026-10-28 01:37:40) T1048.002 exfiltration 10.10.10.118 -> 7.154.5.35 x400: 10.10.10.118 sent data to 7.154.5.35 in 400 sessions over 0.1 days, far more than it received
+ 5. 2026-10-27 23:30:00 IST unknown discovery 10.10.10.118 -> 7.154.5.35 x185: 10.10.10.118 opened 185 sessions in hours far busier than its own normal
+ 6. 2026-10-27 23:30:00 IST T1048 exfiltration 10.10.10.118 -> 7.154.5.35 x180: 10.10.10.118 sent data out in 180 sessions, far more per hour than its own normal
+ 7. 2026-10-28 00:30:00 IST unknown discovery 10.10.10.118 -> 7.154.5.35 x182: 10.10.10.118 opened 182 sessions in hours far busier than its own normal
+ 8. 2026-10-28 00:30:00 IST T1048 exfiltration 10.10.10.118 -> 7.154.5.35 x180: 10.10.10.118 sent data out in 180 sessions, far more per hour than its own normal
+
+gap: No Persistence evidence in the logs
+gap: No Privilege Escalation evidence in the logs
+gap: No Defense Evasion evidence in the logs
+gap: No Credential Access evidence in the logs
+gap: No Lateral Movement evidence in the logs
+gap: No Collection evidence in the logs
+reach next: Reach next has not been computed for this run yet.
+
+graph: 10.10.10.118 (internal_host, desktop), 7.154.5.35 (external_ip, internet), kjhsdf.duckdns.org (domain, internet)
+  10.10.10.118 -> 7.154.5.35: 1. malware detected not blocked x3
+  10.10.10.118 -> kjhsdf.duckdns.org: 1. kjhsdf.duckdns.org
+  10.10.10.118 -> 7.154.5.35: 2. beaconing x400
+  10.10.10.118 -> 7.154.5.35: 3. lopsided pair x400
+  10.10.10.118 -> 7.154.5.35: 4. large lopsided transfer x400
+  10.10.10.118 -> 7.154.5.35: 5. outlier sessions x185
+  10.10.10.118 -> 7.154.5.35: 6. outlier bytes out x180
+  10.10.10.118 -> 7.154.5.35: 7. outlier sessions x182
+  10.10.10.118 -> 7.154.5.35: 8. outlier bytes out x180
+
+#3 c121719f17113811 sev 5 | Persistence to Initial Access by 203.228.177.117
+2026-10-29 03:55:43 to 2026-10-29 04:07:25 IST, 5 alerts, 3 events
+1-2. Persistence → 3-5. Initial Access
+
+ 1. 2026-10-29 03:55:43 IST (ongoing until 2026-10-29 04:07:25) T1098 persistence 203.228.177.117 -> 10.10.99.1 x2: 203.228.177.117 caused 2 lines of an event type seen fewer than 20 times in the whole log
+ 2. 2026-10-29 03:55:43 IST (ongoing until 2026-10-29 04:07:25) T1136.001 persistence 203.228.177.117 -> - x3: administrator account svc_backup30 was created, used to log in and deleted within 12 minutes
+ 3. 2026-10-29 04:02:01 IST T1078 initial-access 203.228.177.117 -> 10.10.99.1 x1: 203.228.177.117 caused 1 lines of an event type seen fewer than 20 times in the whole log
+ 4. 2026-10-29 04:02:01 IST T1078 initial-access 203.228.177.117 -> 10.10.99.1 x1: svc_backup30 logged in from a country not seen for them before (203.228.177.117)
+ 5. 2026-10-29 04:02:01 IST T1078.001 initial-access 203.228.177.117 -> 10.10.99.1 x1: svc_backup30 logged in to the firewall as administrator 1 times between midnight and 06:00 IST from 203.228.177.117
+
+gap: No Execution evidence in the logs
+reach next: Reach next has not been computed for this run yet.
+
+graph: 203.228.177.117 (external_ip, internet), 10.10.99.1 (firewall, mgmt), Rakes (account, unknown), svc_backup30 (account, unknown)
+  203.228.177.117 -> Rakes: 1. signs in as Rakes
+  Rakes -> 10.10.99.1: 1. rare event x2
+  203.228.177.117 -> Rakes: 2. rogue admin x3
+  203.228.177.117 -> svc_backup30: 3. signs in as svc_backup30
+  svc_backup30 -> 10.10.99.1: 3. rare event x1
+  203.228.177.117 -> svc_backup30: 4. signs in as svc_backup30
+  svc_backup30 -> 10.10.99.1: 4. first seen user country x1
+  203.228.177.117 -> svc_backup30: 5. signs in as svc_backup30
+  svc_backup30 -> 10.10.99.1: 5. admin login odd hour x1
+
+#4 f0534bad69b98e08 sev 5 | Logging switched off around a configuration change from 78.120.139.0
+2026-10-23 16:31:43 to 2026-10-23 20:36:18 IST, 2 alerts, 3 events
+1-2. Defense Evasion
+
+ 1. 2026-10-23 16:31:43 IST T1562 defense-evasion 78.120.139.0 -> 10.10.99.1 x3: 78.120.139.0 caused 3 lines of an event type seen fewer than 20 times in the whole log
+ 2. 2026-10-23 16:31:43 IST T1562.002 defense-evasion 78.120.139.0 -> - x3: Tejas.Roy turned disk logging off, purged policies and turned logging back on within 4.1 hours
+
+gaps: none
+reach next: Reach next has not been computed for this run yet.
+
+graph: 78.120.139.0 (external_ip, internet), 10.10.99.1 (firewall, mgmt), Tejas.Roy (account, unknown)
+  78.120.139.0 -> Tejas.Roy: 1. signs in as Tejas.Roy
+  Tejas.Roy -> 10.10.99.1: 1. rare event x3
+  78.120.139.0 -> Tejas.Roy: 2. logging disabled x3
+
+#5 17db6d5f82d8be0e sev 5 | Large one-way transfer between an internal and an outside host to 7.93.184.183
+2026-10-26 10:08:34 to 2026-10-29 10:25:20 IST, 2 alerts, 2,000 events
+1-2. Exfiltration
+
+ 1. 2026-10-26 10:08:34 IST T1048 exfiltration 10.10.20.31 -> 7.93.184.183 x2000: 10.10.20.31 sent at least 10 times more to 7.93.184.183 than it received, in 2,000 sessions over 3.0 days
+ 2. 2026-10-26 10:08:34 IST T1048.002 exfiltration 10.10.20.31 -> 7.93.184.183 x2000: 10.10.20.31 sent data to 7.93.184.183 in 2,000 sessions over 3.0 days, far more than it received
+
+gaps: none
+reach next: Reach next has not been computed for this run yet.
+
+graph: 10.10.20.31 (server, server), 7.93.184.183 (external_ip, internet)
+  10.10.20.31 -> 7.93.184.183: 1. lopsided pair x2000
+  10.10.20.31 -> 7.93.184.183: 2. large lopsided transfer x2000
