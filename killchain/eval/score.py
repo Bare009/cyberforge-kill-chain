@@ -4,6 +4,7 @@ Inputs, all from the run folder (contracts B and C, docs/contracts.md):
   alerts.parquet            one row per alert
   alert_evidence.parquet    every evidence line (alert_id, source, line, technique, ...)
   incidents/<n>.json        incidents; an alert belongs to the incident whose chain lists it
+                            (when absent: incidents.parquet + incident_alerts.parquet from correlate)
   **/_stats.json            stage timings and memory
 
 Any missing input counts as empty, so the harness runs before the pipeline exists.
@@ -48,6 +49,8 @@ def load_run(run: Union[str, Path]) -> Dict[str, Any]:
     incidents: List[Dict[str, Any]] = []
     for p in sorted((run / "incidents").glob("*.json")) if (run / "incidents").exists() else []:
         incidents.append(json.loads(p.read_text(encoding="utf-8")))
+    if not incidents and (run / "incidents.parquet").exists() and (run / "incident_alerts.parquet").exists():
+        incidents = incidents_from_parquet(run)
     stats = []
     for p in run.rglob("_stats.json"):
         try:
@@ -55,6 +58,17 @@ def load_run(run: Union[str, Path]) -> Dict[str, Any]:
         except (OSError, ValueError):
             pass
     return {"alerts": alerts, "evidence": ev, "incidents": incidents, "stats": stats}
+
+
+def incidents_from_parquet(run: Path) -> List[Dict[str, Any]]:
+    """Incident dicts from the correlation output, used until the P11 bundle writes incidents/<n>.json."""
+    inc = pl.read_parquet(run / "incidents.parquet", columns=["incident_number", "incident_id", "title"])
+    mem = pl.read_parquet(run / "incident_alerts.parquet", columns=["incident_id", "alert_id", "step_n"])
+    chains: Dict[str, List[Dict[str, Any]]] = {}
+    for iid, aid, n in mem.sort("incident_id", "step_n").iter_rows():
+        chains.setdefault(iid, []).append({"n": int(n), "alert_id": aid})
+    return [{"incident_number": int(num), "incident_id": iid, "title": title, "chain": chains.get(iid, [])}
+            for num, iid, title in inc.sort("incident_number").iter_rows()]
 
 
 def membership(incidents: List[Dict[str, Any]]) -> pl.DataFrame:
@@ -116,8 +130,16 @@ def score(truth: pl.DataFrame, run: Dict[str, Any], reviewed: Optional[Dict[str,
         rebuilt, reason = False, "no incident covers it"
         if best is not None:
             t = tl.filter((pl.col("incident_id") == iid) & (pl.col("incident_number") == best))
-            per_step = (t.select("step_n", "source", "line", "our_step").unique()
-                        .group_by("step_n").agg(pl.col("line").n_unique().alias("found"), pl.col("our_step").min().alias("first_our")))
+            found = t.select("step_n", "source", "line").unique().group_by("step_n").agg(pl.len().alias("found"))
+            # the step's place in our chain is that of its dominant alert: the member covering most of its
+            # lines, ties to the rule layer, then the lowest our_step
+            dom = (t.select("step_n", "source", "line", "alert_id", "our_step", "layer").unique()
+                   .group_by("step_n", "alert_id", "our_step", "layer").agg(pl.len().alias("c"))
+                   .with_columns((pl.col("layer") != "rule").alias("_not_rule"))
+                   .sort(["step_n", "c", "_not_rule", "our_step"], descending=[False, True, False, False])
+                   .unique("step_n", keep="first", maintain_order=True)
+                   .select("step_n", pl.col("our_step").alias("first_our")))
+            per_step = found.join(dom, on="step_n", how="left")
             st = steps.join(per_step, on="step_n", how="left").with_columns(pl.col("found").fill_null(0))
             present = (st["found"] / st["lines"] >= STEP_COVERED).all()
             order_ok = True
@@ -130,6 +152,11 @@ def score(truth: pl.DataFrame, run: Dict[str, Any], reviewed: Optional[Dict[str,
                       "our_incident": best, "rebuilt": rebuilt, "reason": reason})
     paths.sort(key=lambda p: p["incident_id"])
     n_paths = len(paths)
+    # wrong merges: our incidents whose alerts cover lines of two or more truth incidents
+    spanning = []
+    if tl is not None and tl.height:
+        spanning = sorted(tl.group_by("incident_number").agg(pl.col("incident_id").n_unique().alias("n"))
+                          .filter(pl.col("n") >= 2)["incident_number"].to_list())
 
     # false alarms: our incidents that overlap no truth line
     truth_alerts = set(hit["alert_id"].unique().to_list())
@@ -199,6 +226,7 @@ def score(truth: pl.DataFrame, run: Dict[str, Any], reviewed: Optional[Dict[str,
             "confirmed_false": sum(r["reviewed"] == "false" for r in fa_rows),
             "unreviewed": [r for r in fa_rows if r["reviewed"] == "unreviewed"],
             "multi_step_rebuilt": f"{sum(p['rebuilt'] for p in paths if p['steps'] > 1)}/{sum(p['steps'] > 1 for p in paths)}",
+            "incidents_spanning_truth": spanning,
             "open_time_p50_ms": statistics.median(open_times_ms) if open_times_ms else None,
         },
         "per_incident": per_inc.to_dicts(),
@@ -283,6 +311,9 @@ def render(result: Dict[str, Any]) -> str:
     if d["anomaly_only_by_incident"]:
         lines.append("found only by the anomaly layer: " + ", ".join(
             f"#{r['incident_id']} {r['incident_name']} ({r['lines']} lines)" for r in d["anomaly_only_by_incident"]))
+    if d.get("incidents_spanning_truth"):
+        lines.append("our incidents covering two or more truth incidents (wrong merges?): "
+                     + ", ".join(f"#{n}" for n in d["incidents_spanning_truth"]))
     missed = [r for r in result["per_incident"] if r["recall"] < INCIDENT_COVERED]
     if missed:
         lines.append("not found: " + ", ".join(f"#{r['incident_id']} {r['incident_name']} ({r['recall']:.0%})" for r in missed))

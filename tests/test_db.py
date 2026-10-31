@@ -75,9 +75,10 @@ def test_session_is_utc(con):
 
 def test_cli_lists_stages():
     out = subprocess.run([sys.executable, "-m", "killchain"], cwd=ROOT, capture_output=True, text=True, check=True)
-    assert "parse      ready" in out.stdout and "correlate  planned (P6)" in out.stdout
-    bad = subprocess.run([sys.executable, "-m", "killchain", "correlate"], cwd=ROOT, capture_output=True, text=True)
-    assert bad.returncode == 2 and "P6" in bad.stderr
+    assert "parse      ready" in out.stdout and "correlate  ready" in out.stdout
+    assert "chain      planned (P7)" in out.stdout
+    bad = subprocess.run([sys.executable, "-m", "killchain", "chain"], cwd=ROOT, capture_output=True, text=True)
+    assert bad.returncode == 2 and "P7" in bad.stderr
 
 
 @pytest.mark.skipif(not (REAL / "_stats.json").exists(), reason="real parsed run not present")

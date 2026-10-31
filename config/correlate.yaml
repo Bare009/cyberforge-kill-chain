@@ -1,0 +1,8 @@
+# Correlation settings (docs/build-plan.md P6). Fixed hubs are in config/network.yaml.
+hubs: {share: 0.10, min_sources: 5}
+weights: {external_ip: 1.0, internal_source: 1.0, host: 1.0, user: 0.8, domain: 0.7, internal_target: 0.5}
+link_min: 1.0
+join_min: 0.5
+time: {gap: 2h, widened_gap: 72h}
+promotion: {min_rules: 2, min_tactics: 2, single_severity: 4, single_confidence: 0.7}
+anomaly: {min_detectors: 2, within: 1h}

@@ -21,6 +21,7 @@ zones:
 hubs:
   ips: [10.10.20.20, 10.10.99.1, 203.0.113.5]
   users: [admin]
+  domains: [portal.corp.local]
 
 # Never sent to outside threat-intel services (docs/build-plan.md P9).
 private_ranges:

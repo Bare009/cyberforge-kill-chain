@@ -1,0 +1,31 @@
+# P6 incidents on firex-10G: #number incident_id | rules in chain order | entities | time span (IST) | truth match
+# rules: R* = rule layer, A* = anomaly alerts joined as extra steps; entities include hubs
+
+#1 764b1cb6e85f6a63 | A09-denied-then-allowed > R02-port-scan > A10-lopsided-pair > R16-web-sql-injection > R20-web-shell > A11-too-regular > R12-large-lopsided-transfer | ips 32.127.48.11, 10.10.20.20; domains portal.corp.local | 2026-10-29 01:51 to 2026-10-29 12:38 | truth #28 chain-web-to-domain-admin
+#2 3e4ff877d0712aa4 | R24-malware-detected-not-blocked > R11-beaconing > A10-lopsided-pair > R12-large-lopsided-transfer > A04-outlier-sessions > A08-outlier-bytes-out > A04-outlier-sessions > A08-outlier-bytes-out | ips 10.10.10.118, 7.154.5.35; domains kjhsdf.duckdns.org | 2026-10-26 08:22 to 2026-10-28 01:37 | truth #29 chain-ransomware-precursor
+#3 c121719f17113811 | A01-rare-event > R15-rogue-admin > A01-rare-event > A03-first-seen-user-country > R05-admin-login-odd-hour | ips 203.228.177.117, 10.10.99.1; users Rakes, svc_backup30 | 2026-10-29 03:55 to 2026-10-29 04:07 | truth #15 rogue-admin-account
+#4 f0534bad69b98e08 | A01-rare-event > R14-logging-disabled | ips 78.120.139.0, 10.10.99.1; users Tejas.Roy | 2026-10-23 16:31 to 2026-10-23 20:36 | truth #14 logging-disabled-around-a-change
+#5 17db6d5f82d8be0e | A10-lopsided-pair > R12-large-lopsided-transfer | ips 10.10.20.31, 7.93.184.183 | 2026-10-26 10:08 to 2026-10-29 10:25 | truth #12 staged-exfiltration
+#6 771a41c47778da47 | R07-success-after-failures | ips 8.42.69.154, 10.10.99.1; users admin | 2026-10-24 19:49 to 2026-10-24 19:59 | truth #7 successful-login-after-failures
+#7 5d553cd2bf55f8b0 | R20-web-shell | ips 202.36.226.247, 10.10.20.20 | 2026-10-27 06:47 to 2026-10-27 09:43 | truth #20 web-shell-in-use
+#8 4c34fdafc7fd6afa | R13-insider-drift > A02-first-seen-admin-pair > R09-lateral-movement > A05-outlier-destinations > A05-outlier-destinations | ips 10.10.10.44, 10.10.20.10, 10.10.20.13, 10.10.20.28, 10.10.20.58 | 2026-10-27 09:48 to 2026-10-29 08:37 | truth #13 insider-drift
+#9 9c0e1a5ca96e0263 | A04-outlier-sessions > A05-outlier-destinations > R09-lateral-movement | ips 10.10.10.63, 10.10.20.24, 10.10.20.23 | 2026-10-25 01:53 to 2026-10-25 02:30 | truth #9 lateral-movement
+#10 82b84581eae2fdcc | A01-rare-event > A03-first-seen-user-country > R08-impossible-travel > A03-first-seen-user-country | ips 102.8.77.227, 203.0.113.5, 9.222.114.167; users keerat.ghughal | 2026-10-28 02:15 to 2026-10-28 02:37 | truth #8 impossible-travel
+#11 ccc3617e1d8ff33a | A01-rare-event > A03-first-seen-user-country > R05-admin-login-odd-hour | ips 171.104.84.193, 10.10.99.1; users Deepika.Khan | 2026-10-28 03:17 to 2026-10-28 04:17 | truth #5 admin-login-odd-hour
+#12 585646bad97af70d | A11-too-regular > R11-beaconing | ips 10.10.10.112, 198.79.124.52 | 2026-10-23 23:22 to 2026-10-29 13:39 | truth #11 c2-beaconing
+#13 6023371d2d607dbd | R17-web-xss | ips 178.50.251.250, 10.10.20.20; domains portal.corp.local | 2026-10-23 16:22 to 2026-10-23 16:31 | truth #17 cross-site-scripting
+#14 717f44b680b27ef0 | R03-telnet-to-botnet | ips 10.10.40.72, 154.35.54.115 | 2026-10-23 20:36 to 2026-10-23 21:16 | truth #3 known-bad-destination
+#15 cddf220128cb963b | R04-malware-double-extension | ips 10.10.10.51, 111.253.167.34; domains hoguyusebavox.info | 2026-10-24 06:31 to 2026-10-24 06:46 | truth #4 malware-download
+#16 eacd383b174ba8ee | R22-http-flood | ips 10.10.20.20 | 2026-10-24 07:21 to 2026-10-24 07:36 | truth #22 http-flood
+#17 fc2885868d74a8b6 | R10-dns-tunnel | ips 10.10.10.88; domains doqotobitum.com | 2026-10-24 19:58 to 2026-10-24 21:12 | truth #10 dns-tunnel
+#18 b70464605b1bab07 | R21-syn-flood | ips 10.10.20.20 | 2026-10-25 09:36 to 2026-10-25 10:23 | truth #21 syn-flood
+#19 46db588af9b30e2d | R23-dns-amplification | ips 203.0.113.5 | 2026-10-25 19:46 to 2026-10-25 19:56 | truth #23 dns-amplification
+#20 6967414dcfef1360 | R16-web-sql-injection | ips 131.228.119.59, 10.10.20.20; domains portal.corp.local | 2026-10-25 20:04 to 2026-10-25 20:13 | truth #16 sql-injection
+#21 5b253ac49fc240ee | R19-web-command-injection | ips 72.7.116.239, 10.10.20.20; domains portal.corp.local | 2026-10-26 16:59 to 2026-10-26 17:08 | truth #19 command-injection
+#22 60460cfbeedca0fa | R06-slow-credential-stuffing | ips 71.54.76.0/24, 10.10.99.1; users admin | 2026-10-27 09:40 to 2026-10-27 15:28 | truth #6 slow-credential-stuffing
+#23 882d40db850fce01 | R01-admin-bruteforce | ips 15.199.16.197, 10.10.99.1; users admin | 2026-10-27 12:58 to 2026-10-27 13:08 | truth #1 brute-force-burst
+#24 9bb20f961eb03a88 | R02-port-scan | ips 194.102.163.167, 10.10.20.20 | 2026-10-27 21:07 to 2026-10-27 21:09 | truth #2 port-scan
+#25 393c4f8c6e72a737 | R18-web-path-traversal | ips 72.90.113.105, 10.10.20.20; domains portal.corp.local | 2026-10-28 11:15 to 2026-10-28 11:24 | truth #18 path-traversal
+
+# unexplained (anomaly alerts that neither joined an incident nor became one)
+fa51332436bc5a41 A01-rare-event | src 8.42.69.77 dst 10.10.99.1 user parul.sinha | 2026-10-24 19:59 | single anomaly detector

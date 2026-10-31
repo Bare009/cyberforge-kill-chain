@@ -1,12 +1,12 @@
 id: R02-port-scan
 title: Port scan of one host
 status: stable
-tuning: "planted 1,024 ports in 108 s and 240 ports in 63 s (chain A); background: 0 alerts on firex-10G"
+tuning: "planted 1,024 ports in 108 s and 240 ports in 63 s (chain A); background: 0 alerts on firex-10G; severity 4 so a lone sweep passes the P6 promotion bar"
 attack:
   technique: T1046
   alt_techniques: [T1595.001, T1595.002, T1595]
   tactic: discovery
-severity: 3
+severity: 4
 confidence: 0.85
 kind: distinct
 where: "log_type = 'traffic' AND NOT src_internal"

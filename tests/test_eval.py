@@ -144,6 +144,42 @@ def test_anomaly_labels_do_not_lower_rule_metrics(tmp_path):
     assert d["anomaly_only_incidents"] == 1 and d["anomaly_only_false"] == 0
 
 
+def test_incidents_from_correlate_parquet(tmp_path):
+    alerts = [("a1", "R01", "rule", "T1110.001", list(range(1, 11))),
+              ("a2", "R02", "rule", "T1595.002", list(range(100, 105))),
+              ("a3", "R16", "rule", "T1190", list(range(200, 205)))]
+    run = write_run(tmp_path, alerts, [])                     # no incidents/*.json
+    pl.DataFrame({"incident_number": [1, 2], "incident_id": ["i1", "i2"], "title": ["one", "two"]}
+                 ).write_parquet(run / "incidents.parquet")
+    pl.DataFrame({"incident_id": ["i2", "i1", "i2"], "alert_id": ["a3", "a1", "a2"], "step_n": [2, 1, 1]}
+                 ).write_parquet(run / "incident_alerts.parquet")
+    loaded = sc.load_run(run)
+    assert [i["incident_id"] for i in loaded["incidents"]] == ["i1", "i2"]
+    assert loaded["incidents"][1]["chain"] == [{"n": 1, "alert_id": "a2"}, {"n": 2, "alert_id": "a3"}]
+    r = sc.score(make_truth(), loaded)
+    assert r["metrics"]["attack_path_rebuilt"] == 1 and r["detail"]["our_incidents"] == 2
+    assert r["detail"]["incidents_spanning_truth"] == []
+
+
+def test_dominant_alert_sets_step_order(tmp_path):
+    # an anomaly alert covers all of step 1 and one line of step 2 and comes first in the chain;
+    # the step-2 rule alert is the dominant alert of step 2, so the order still holds
+    alerts = [("x1", "A10", "anomaly", "unknown", list(range(100, 105)) + [200]),
+              ("a2", "R02", "rule", "T1595.002", list(range(100, 105))),
+              ("a3", "R16", "rule", "T1190", list(range(200, 205)))]
+    r = run_score(tmp_path, alerts, [(1, ["x1", "a2", "a3"])])
+    p = {x["incident_id"]: x for x in r["paths"]}
+    assert p[2]["rebuilt"] is True
+
+
+def test_incident_spanning_two_truth_incidents(tmp_path):
+    alerts = [("a1", "R01", "rule", "T1110.001", list(range(1, 11))),
+              ("a2", "R02", "rule", "T1595.002", list(range(100, 105)))]
+    r = run_score(tmp_path, alerts, [(7, ["a1", "a2"])])
+    assert r["detail"]["incidents_spanning_truth"] == [7]
+    assert "wrong merges" in sc.render(r)
+
+
 def test_manifest_for_another_file_is_refused(tmp_path):
     log = tmp_path / "x.log"
     log.write_bytes(b"line one\nline two\nline three\n")
