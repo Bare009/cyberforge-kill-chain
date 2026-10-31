@@ -16,7 +16,7 @@ each one.
 | 3b. Attack chains, path graphs, reach-next (FR-5, FR-6) | chains and path graphs done (P7): `killchain.graph`, `python -m killchain chain --run <run> [N]`; only rule alerts are numbered, each anomaly alert is `supporting` evidence on the nearest rule step (shared entity, then time overlap, then same tactic, then nearest start) and is still drawn in the path graph; an anomaly-only incident numbers its anomaly alerts; on firex-10G 25 incidents, 32 numbered steps (2 ongoing), 24 supporting, 19 gaps, 44,622 evidence lines, 0 contract errors in 0.28 s; chain A reads `1. Discovery → 2. Initial Access → 3. Persistence → 4. Exfiltration` (R02 > R16 > R20 > R12), chain B `1. Execution → 2. Command and Control → 3. Exfiltration` (R24 > R11 > R12); writes provisional `incidents/<n>.json`, `index.json`, `alerts.json` (risk, threat intel and report are placeholders); recall 100%, labels 100%, attack paths 25/25 (multi-step 4/4), false alarms 0%. Access graph and reach next done (P8): `python -m killchain reach --run <run> [N] [--parsed DIR] [--force]`, settings in `config/reach.yaml`; on firex-10G the access graph has 3 `controls` edges (svc_backup30, parul.sinha, Deepika.Khan to the firewall 10.10.99.1) and 90 `admin_port` edges from 10.10.10.44 and 10.10.10.63 (2,580 sessions), 1,387 internal hosts, built in 0.7 s; 11 incidents get a reach list (83 hosts), 14 a stated reason; incidents #3, #6, #11 say the account controls the firewall; chain A (#1) lists inferred 10.10.20.x servers, chain B (#2) is empty with its reason; 0 contract errors, stage 1.2 s; metrics unchanged. Desktop reach (Track A item 2): `neighbour_zones` now includes `desktop`, so a desktop foothold gets its subnet neighbours (inferred, 0 reach points) and the servers they reach at hop 2 (inferred, half points); on firex-10G 15 incidents get a reach list, 10 a stated reason; chain B and the other desktop footholds (10.10.10.112, 10.10.10.88, 10.10.10.51) each list 10 inferred 10.10.20.x servers |
 | 3c. Risk score and template report (B-1, B-2) | done (P10): `killchain.score`, `killchain.report`; `python -m killchain score --run <run> [N]` (fixed weights severity 0.25, stage 0.20, breadth 0.10, success 0.15, asset 0.15, reach 0.10, threat intel 0.05; each part stored with a `detail`; incidents renumbered 1..N by risk) and `python -m killchain report --run <run> [N]` (Markdown: summary, risk table, numbered chain with IST times, gaps, reach next, entities, threat intel, 5 evidence lines per step, actions per tactic); breadth is full at 3 or more distinct tactics, else tactics / 6 (Track A item 2); on firex-10G 25 incidents: critical 3, high 17, medium 5; chain A #1 89.8, chain B #2 82.3, large one-way transfer #3 81.5, lone port scan #24 45.8; R24 step text names the malware (`JS/Nemucod.A!tr.dldr`); threat intel 0 for every incident (offline enrich: 58 indicators, all `unknown`); 25 template reports (73,066 characters); 0 contract errors; score 0.05 s, report 0.04 s; recall 100%, labels 100%, attack paths 25/25 (multi-step 4/4), false alarms 0% |
 | 4. API and UI (FR-7) | in progress: `killchain.api` (health, incidents, path), `web/` scaffold |
-| 5. Scoring harness against the ground-truth manifest | planned |
+| 5. Scoring harness against the ground-truth manifest | done: `eval score --manifest` on firex-30G (37.2 M events, 29 planted incidents): recall 99.0%, labels 94.9%, attack paths 79.3% (23/29), false alarms 0%, 10 min 1 s, 2.4 GB, open p95 3 ms. Not found: the 4 Windows-only incidents (#24-27), and the 2 chains miss their Windows steps, because the Windows log (`firex-30G.win.jsonl`, 10.4 GB) was not supplied |
 | 6. One-command run (P13) | done: `python -m killchain run --input <log> [--name N] [--offline] [--no-llm] [--reuse-parsed] [--from STAGE]` (see [Full run](#full-run)); exit codes 0 done, 1 a required stage failed, 2 usage or input error, 3 no events in the input; on firex-10G with `--offline --no-llm`: 187 s end to end with a cold file cache (parse 88.6 s, prepare 58.7 s, detect 16.4 s, the other stages 1.6-4.6 s each), peak 6.2 GB (during prepare); 25 incidents, recall 100%, labels 100%, attack paths 25/25 (multi-step 4/4), false alarms 0%; the 50 GB tier run is still to do |
 
 Requirements and targets: `docs/requirements.md`. Pipeline and stage
@@ -251,9 +251,22 @@ python -m killchain eval score --run data\runs\firex-10G --api http://localhost:
 - **Silver truth** (`eval/silver_truth.yaml`): the 25 planted incidents found by
   hand in `firex-10G.log`, each step a SQL condition with its exact line count.
   `eval silver` checks every count (32,200 lines, all 32 steps match) and writes
-  `truth.parquet` into the run folder.
+  `truth.parquet` into the run folder. It names the 10G file's addresses, so it
+  does not fit another file (on firex-30G it matches 5 incidents and reads the
+  other 21 as false alarms); score other files with their manifest.
 - **Manifest:** an organisers' manifest is used as is; one whose byte offsets do
   not point at line starts of the given log is refused rather than scored as zero.
+  An incident the manifest lists only as a line range (the 30G manifest's
+  syn and HTTP floods, 9,000 and 6,000 events) is resolved from the run's
+  `events.duckdb`: the lines in that range between its `src` and `peer`,
+  narrowed to the largest group with one traffic signature, and used only
+  when the count equals the manifest's. Planted lines in a log that was not
+  given (the 30G Windows log, `--raw windows=<file>`) count as not found.
+  Each such decision is printed as a note and shown on the Evaluation page.
+
+  ```powershell
+  python -m killchain eval score --run data\runs\firex-30G --manifest logs\firex-30G.log.manifest.json --raw firewall=logs\firex-30G.log --api http://127.0.0.1:8010
+  ```
 - **Output:** a table with each metric's value and grade against the PRD's Good
   and Great targets, label accuracy three ways (exact, parent technique, any
   accepted alternate), the incidents not found, attack paths and whether they
@@ -323,7 +336,6 @@ python -m killchain.bundle --run data\runs\firex-10G --check    # check only, wr
 | `alerts.json` | `incident_number` from `incident_alerts.parquet` |
 | `unexplained.json` | `unexplained.parquet` joined with the alerts |
 | `ti.json` | `enrichment.json` matched to the incidents by value, so a renumbering by the risk score cannot misplace it |
-| `incident_lines.parquet` | incident numbers checked against `incident_id` |
 | `run_summary.json` | every `_stats.json` (parse stats from `--parsed`, default `data/parsed/<run>`), counts, data quality, threat intel and LLM status |
 
 Detection fields (chain, graph, reach next, risk score, numbering) are copied

@@ -22,6 +22,8 @@ export interface MetricsResponse {
   hint?: string
   generated_at?: string | null
   truth?: string
+  /** What the scorer had to do or could not do with the truth (e.g. a log not given). */
+  truth_notes?: string[]
   targets?: Record<MetricName, MetricTarget>
   metrics?: Record<MetricName, number | null>
   grades?: Record<MetricName, Grade>

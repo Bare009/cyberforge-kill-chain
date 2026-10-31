@@ -7,7 +7,6 @@ Reads what the pipeline stages left in the run folder and writes, all or nothing
   alerts.json             contract B list rows, incident_number from the incident membership
   unexplained.json        anomaly alerts that did not become or join an incident
   ti.json                 enrichment.json bound to this run's incident numbers (only when enrich ran)
-  incident_lines.parquet  every evidence line of every step, incident numbers checked
   run_summary.json        stage timings and memory, counts, data quality, threat intel and LLM status
   bundle/_stats.json      this stage's own timing
 
@@ -338,23 +337,20 @@ def build(run_dir: Path, parsed_dir: Optional[Path] = None) -> BundleResult:
     elif (run_dir / "ti.json").exists():
         remove.append("ti.json")       # an earlier bundle's; enrichment.json is gone
 
-    # 7. Evidence lines: incident numbers follow incident_id.
+    # 7. Evidence lines: counted and checked only. incident_lines.parquet is an intermediate that keeps
+    #    correlate's incident numbers (docs/contracts.md); reach joins it to incidents.parquet by number,
+    #    so it must never be renumbered here. Consumers map numbers through incident_id.
     evidence_lines = None
     lines_path = run_dir / "incident_lines.parquet"
     if lines_path.exists():
         lines = pl.read_parquet(lines_path)
         evidence_lines = lines.height
-        if "incident_id" in lines.columns and "incident_number" in lines.columns:
-            fixed = lines.with_columns(
-                pl.col("incident_id").replace_strict(number_of, default=None, return_dtype=pl.Int64)
-                .alias("incident_number"))
-            lost = fixed.filter(pl.col("incident_number").is_null()).height
+        if "incident_id" in lines.columns:
+            lost = lines.filter(~pl.col("incident_id").is_in(list(number_of))).height
             if lost:
-                warnings.append(f"{lost} evidence line(s) belong to incidents no longer in the run; left out")
-                fixed = fixed.filter(pl.col("incident_number").is_not_null())
-                evidence_lines = fixed.height
-            if lost or not fixed["incident_number"].equals(lines["incident_number"]):
-                extra["incident_lines.parquet"] = fixed
+                warnings.append(f"{lost} evidence line(s) in incident_lines.parquet belong to incidents no longer "
+                                "in the run; rerun chain")
+                evidence_lines = lines.height - lost
 
     # 8. run_summary.json.
     old = _opt_json(run_dir / "run_summary.json") or {}

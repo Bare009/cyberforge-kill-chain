@@ -238,3 +238,50 @@ def test_real_truth_perfect_run(tmp_path):
     r = sc.score(truth, sc.load_run(run))
     assert r["metrics"]["detection_recall"] == 1 and r["metrics"]["label_accuracy"] == 1
     assert r["metrics"]["attack_path_rebuilt"] == 1 and r["metrics"]["false_alarm_share"] == 0
+
+
+def _range_con(rows):
+    import duckdb
+
+    con = duckdb.connect(":memory:")
+    con.execute("CREATE TABLE events (source VARCHAR, line BIGINT, byte_offset BIGINT, src_ip VARCHAR, dst_ip VARCHAR, "
+                "log_type VARCHAR, log_subtype VARCHAR, action VARCHAR, dst_port INT, service VARCHAR, app VARCHAR, "
+                "policy_id INT)")
+    con.executemany("INSERT INTO events VALUES (?, ?, ?, ?, ?, 'traffic', 'forward', ?, 443, 'HTTPS', ?, 11)", rows)
+    return con
+
+
+def test_manifest_incident_without_lines_is_resolved_from_its_range(tmp_path):
+    """Large floods come as a line range, a source /16 and a target; the lines are looked up in the events."""
+    log = tmp_path / "x.log"
+    log.write_bytes(b"a\n" * 50)
+    rows = [("x.log", n, 2 * (n - 1), f"115.180.0.{n}", "10.10.20.20", "deny", "x") for n in range(10, 20)]
+    rows += [("x.log", 15, 28, "9.9.9.9", "10.10.20.20", "deny", "x")]           # other source in the range
+    rows += [("x.log", 25, 48, "115.180.1.1", "10.10.20.20", "deny", "x")]       # outside the range
+    rows += [("x.log", n, 2 * (n - 1), f"7.7.7.{n}", "10.10.20.20", "accept", "HTTP.BROWSER") for n in range(30, 36)]
+    rows += [("x.log", 33, 64, "8.8.8.8", "10.10.20.20", "accept", "TikTok")]     # background with another app
+    con = _range_con(rows)
+    man = tmp_path / "m.json"
+    man.write_text(json.dumps({"streams": {"0": "firewall", "1": "windows"}, "incidents": [
+        {"id": 21, "name": "syn-flood", "class": "easy", "attack": "T1498.001", "tactic": "Impact", "events": 10,
+         "src": "115.180.0.0", "peer": "10.10.20.20",
+         "ranges": {"firewall": {"events": 10, "first_line": 10, "last_line": 19}}},
+        {"id": 22, "name": "http-flood", "class": "medium", "attack": "T1498.001", "tactic": "Impact", "events": 6,
+         "peer": "10.10.20.20", "ranges": {"firewall": {"events": 6, "first_line": 30, "last_line": 35}}},
+        {"id": 23, "name": "wrong-count", "class": "easy", "attack": "T1498.002", "tactic": "Impact", "events": 99,
+         "peer": "10.10.20.20", "ranges": {"firewall": {"events": 99, "first_line": 30, "last_line": 35}}},
+        {"id": 24, "name": "win", "class": "medium", "attack": "T1135", "tactic": "Discovery", "events": 1,
+         "at": [[5, 8, 1]]}]}), encoding="utf-8")
+    notes = []
+    t = tr.load_manifest(man, {"firewall": log}, con=con, notes=notes)
+    syn = t.filter(pl.col("incident_id") == 21)
+    assert syn["line"].to_list() == list(range(10, 20)) and syn["byte_offset"][0] == 18
+    assert sorted(t.filter(pl.col("incident_id") == 22)["line"].to_list()) == list(range(30, 36))
+    assert t.filter(pl.col("incident_id") == 23).height == 0
+    assert any("#23 wrong-count" in n and "not used" in n for n in notes)
+    assert any("windows log, which was not given" in n for n in notes)
+    assert t.filter(pl.col("incident_id") == 24)["source"].to_list() == ["windows"]
+    # without a connection the range incidents are only noted
+    notes2 = []
+    t2 = tr.load_manifest(man, {"firewall": log}, notes=notes2)
+    assert t2["incident_id"].unique().to_list() == [24] and any("give --run" in n for n in notes2)

@@ -78,10 +78,11 @@ def test_cli_lists_stages():
     assert "parse      ready" in out.stdout and "correlate  ready" in out.stdout
     assert "chain      ready" in out.stdout and "reach      ready" in out.stdout
     assert "score      ready" in out.stdout and "report     ready" in out.stdout
-    assert "bundle     ready" in out.stdout and "run        ready" in out.stdout
-    assert "serve      planned (P11)" in out.stdout
-    bad = subprocess.run([sys.executable, "-m", "killchain", "serve"], cwd=ROOT, capture_output=True, text=True)
-    assert bad.returncode == 2 and "P11" in bad.stderr
+    for stage in ("enrich", "agents", "bundle", "run", "serve"):
+        assert f"{stage:10s} ready" in out.stdout
+    assert "live       planned (P15)" in out.stdout
+    bad = subprocess.run([sys.executable, "-m", "killchain", "live"], cwd=ROOT, capture_output=True, text=True)
+    assert bad.returncode == 2 and "P15" in bad.stderr
 
 
 @pytest.mark.skipif(not (REAL / "_stats.json").exists(), reason="real parsed run not present")

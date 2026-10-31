@@ -76,6 +76,16 @@ function Body({ m }: { m: MetricsResponse }) {
         <span>{d.incidents_found} of {d.truth_incidents} planted incidents found</span>
         {d.multi_step_rebuilt && <span>multi-step chains in order: {d.multi_step_rebuilt}</span>}
       </div>
+      {(m.truth_notes ?? []).length > 0 && (
+        <ul aria-label="Truth notes" className="space-y-0.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+          {m.truth_notes!.map((n) => (
+            <li key={n} className="flex items-start gap-1.5">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+              {n}
+            </li>
+          ))}
+        </ul>
+      )}
       {m.truth?.startsWith('silver') && (
         <p className="flex items-start gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />

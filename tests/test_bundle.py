@@ -191,13 +191,14 @@ def test_alert_membership_and_unexplained(run):
     assert [(a["alert_id"], a["reason"], a["group_id"]) for a in un] == [(alerts[1]["alert_id"], "single anomaly detector", "g1")]
 
 
-def test_incident_lines_follow_incident_id(run):
+def test_incident_lines_are_never_renumbered(run):
+    """incident_lines.parquet keeps correlate's numbers (reach joins it to incidents.parquet by number)."""
     inc = rd(run / "incidents" / "1.json")
     pl.DataFrame({"incident_id": [inc["incident_id"], "gone"], "incident_number": [5, 6], "step": [1, 1],
                   "line": [10, 11]}).write_parquet(run / "incident_lines.parquet")
+    before = (run / "incident_lines.parquet").read_bytes()
     res = run_bundle(run)
-    lines = pl.read_parquet(run / "incident_lines.parquet")
-    assert lines["incident_number"].to_list() == [1]
+    assert (run / "incident_lines.parquet").read_bytes() == before
     assert any("no longer in the run" in w for w in res.warnings)
     assert rd(run / "run_summary.json")["counts"]["evidence_lines"] == 1
 

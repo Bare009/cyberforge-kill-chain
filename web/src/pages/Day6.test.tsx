@@ -84,6 +84,17 @@ describe('Evaluation page', () => {
       'href', '/rules?rule=R12-large-lopsided-transfer')
   })
 
+  it('shows the scorer notes for a manifest', async () => {
+    get.mockImplementation((url: string) => url === '/metrics'
+      ? Promise.resolve({ data: { ...metrics, truth: 'firex-30G.log.manifest.json',
+          truth_notes: ['331 planted lines in 6 incident(s) are in the windows log, which was not given'] } })
+      : fakeGet(url))
+    renderPage(<Evaluation />, { url: '/evaluation' })
+    const notes = await screen.findByRole('list', { name: 'Truth notes' })
+    expect(notes).toHaveTextContent('windows log, which was not given')
+    expect(screen.queryByText(/Scored against our silver truth/)).not.toBeInTheDocument()
+  })
+
   it('explains how to score a run that has no metrics', async () => {
     get.mockImplementation((url: string) => url === '/metrics'
       ? Promise.resolve({ data: { available: false, run: 'x', hint: 'Run `python -m killchain eval score --run x`' } })

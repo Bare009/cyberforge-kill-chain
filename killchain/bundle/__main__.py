@@ -1,8 +1,8 @@
 """python -m killchain.bundle --run <run folder or name> [--parsed DIR] [--check]
 
 Merges every stage's output in a run folder into the files the API serves:
-incidents/<n>.json, index.json, alerts.json, unexplained.json, ti.json,
-incident_lines.parquet and run_summary.json (docs/build-plan.md P11). Threat
+incidents/<n>.json, index.json, alerts.json, unexplained.json, ti.json and
+run_summary.json (docs/build-plan.md P11). Threat
 intel (enrichment.json) and narrator reports (report.json) are merged in when
 present. Nothing is written when any file fails the contract check.
 

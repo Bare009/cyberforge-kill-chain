@@ -59,7 +59,8 @@ def cmd_silver(argv: List[str]) -> int:
 def cmd_score(argv: List[str]) -> int:
     ap = argparse.ArgumentParser(prog="python -m killchain eval score")
     ap.add_argument("--run", required=True, help="run folder with alerts.parquet, alert_evidence.parquet, incidents/")
-    ap.add_argument("--parsed", help="parsed run, used to build the silver truth if truth.parquet is absent")
+    ap.add_argument("--parsed", help="parsed run, used to build the silver truth if truth.parquet is absent "
+                                     "and for the parse stage's time (default data/parsed/<run name>)")
     ap.add_argument("--manifest", help="score against an organisers' manifest instead of the silver truth")
     ap.add_argument("--raw", action="append", default=[], help="stream=path of a raw log for --manifest, e.g. firewall=data/raw/x.log")
     ap.add_argument("--api", help="API base URL, to measure GET /incidents/{n}/path times")
@@ -68,16 +69,25 @@ def cmd_score(argv: List[str]) -> int:
     a = ap.parse_args(argv)
     run = Path(a.run)
     run.mkdir(parents=True, exist_ok=True)
+    truth_notes: List[str] = []
 
     if a.manifest:
         sources = dict(r.split("=", 1) for r in a.raw)
         if not sources:
             sys.exit("--manifest needs --raw firewall=<log> (and windows=<log> if present)")
+        from .. import db
+
+        con = None
+        if (run / db.PREPARED_NAME).exists() or a.parsed:
+            con = db.connect(a.parsed, run)        # resolves incidents listed only as a line range
         try:
-            truth = tr.load_manifest(a.manifest, sources)
+            truth = tr.load_manifest(a.manifest, sources, con=con, notes=truth_notes)
         except tr.TruthError as e:
             print(str(e), file=sys.stderr)
             return 3
+        finally:
+            if con is not None:
+                con.close()
         truth_name = Path(a.manifest).name
     elif (run / "truth.parquet").exists():
         import polars as pl
@@ -92,18 +102,23 @@ def cmd_score(argv: List[str]) -> int:
 
     data = sc.load_run(run)
     extra = []
-    if a.parsed and (Path(a.parsed) / "_stats.json").exists():
-        extra.append(json.loads((Path(a.parsed) / "_stats.json").read_text(encoding="utf-8")))
+    parsed = Path(a.parsed) if a.parsed else run.parent.parent / "parsed" / run.name   # data/parsed/<run>
+    if (parsed / "_stats.json").exists():
+        extra.append(json.loads((parsed / "_stats.json").read_text(encoding="utf-8")))
     opens = None
     if a.api and data["incidents"]:
         opens = sc.measure_open_times(a.api, [i["incident_number"] for i in data["incidents"]])
     result = sc.score(truth, data, sc.load_reviewed(a.reviewed), extra, opens)
     result["truth"] = truth_name
+    result["truth_notes"] = truth_notes
     (run / "metrics.json").write_text(json.dumps(result, indent=1, default=str), encoding="utf-8")
     if a.json:
         print(json.dumps(result["metrics"], indent=1))
     else:
-        print(f"truth: {truth_name}\n")
+        print(f"truth: {truth_name}")
+        for n in truth_notes:
+            print(f"  note: {n}")
+        print()
         print(sc.render(result))
         print(f"\nwrote {run / 'metrics.json'}")
     return 0
