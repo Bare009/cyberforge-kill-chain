@@ -170,4 +170,11 @@ No mismatch found. What the UI reads, and what reach writes:
 
 ## Commit
 
-Commit hash: recorded below after the push.
+Commit `5627bc04ea04a5480b28028b1ffc41ecd9f90c5d` ("Add the access graph and reach next"), parent
+ae53594. `git fetch` brought in the teammate's threat-intel commit ae53594 (enrich step, /ti API, Threat
+Intel page; it overlaps this commit only in `README.md`, different rows). `git rebase origin/main` applied
+cleanly; `python -m pytest -q` after the rebase: **293 passed** (213 ours + the teammate's new tests);
+`data\tmp\p8_api_check.py` and `p7_api_check.py` still pass on the rebased code. Pushed
+`ae53594..5627bc0 main -> main`; `git rev-list --left-right --count main...origin/main` = `0 0`.
+The commit also carries the P7 hash line in `docs/tasks/p7-verify.md`, which was a working-copy edit.
+(This hash line was added after the commit, so it is a working-copy edit to this file.)
