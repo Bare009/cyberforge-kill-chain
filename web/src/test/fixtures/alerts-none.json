@@ -1,0 +1,49 @@
+{
+ "run": "firex-10G",
+ "total": 1,
+ "limit": 50,
+ "offset": 0,
+ "counts": {
+  "all": 57,
+  "not_in_incident": 1,
+  "unexplained": 1
+ },
+ "alerts": [
+  {
+   "alert_id": "fa51332436bc5a41",
+   "rule_id": "A01-rare-event",
+   "layer": "anomaly",
+   "title": "Rare event type seen fewer than 20 times in the run",
+   "technique": "T1078",
+   "technique_name": "Valid Accounts",
+   "tactic": "initial-access",
+   "stage_no": 3,
+   "kill_chain_stage": "Delivery",
+   "alt_techniques": [],
+   "severity": 2,
+   "confidence": 0.4,
+   "ts_start": "2026-10-24T14:29:30.559031Z",
+   "ts_end": "2026-10-24T14:29:30.559031Z",
+   "src_ip": "8.42.69.77",
+   "dst_ip": "10.10.99.1",
+   "host": null,
+   "user": "parul.sinha",
+   "domain": null,
+   "url": null,
+   "event_count": 1,
+   "blocked_share": 0.0,
+   "success": true,
+   "summary": "8.42.69.77 caused 1 lines of an event type seen fewer than 20 times in the whole log",
+   "action_text": "8.42.69.77 caused 1 lines of an event type seen fewer than 20 times in the whole log",
+   "incident_number": null,
+   "promote": false,
+   "kind": "sql",
+   "group_key": "{}",
+   "src_count": 1,
+   "dst_count": 1,
+   "distinct_count": null,
+   "passed": 1,
+   "status": "experimental"
+  }
+ ]
+}

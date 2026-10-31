@@ -47,6 +47,10 @@ class RunBundle:
     # threat intel merged into the incidents (ti.json from the bundle step, else enrichment.json); None when absent
     enrichment: Optional[Dict[str, Any]] = None
     enrichment_source: Optional[str] = None
+    # unexplained.json from the bundle step, else anomaly alerts in no incident
+    unexplained: List[Dict[str, Any]] = field(default_factory=list)
+    # metrics.json from `eval score`; None until it has run
+    metrics: Optional[Dict[str, Any]] = None
 
     def resolve(self, ident: str) -> Optional[int]:
         """An incident's number from its number ("12") or its stable hash."""
@@ -142,6 +146,18 @@ def load_threat_intel(run_dir: Path) -> Tuple[Optional[Dict[str, Any]], Optional
     return None, None
 
 
+def _load_unexplained(run_dir: Path, alerts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    p = run_dir / "unexplained.json"
+    if p.exists():
+        doc = _read_json(p)
+        if isinstance(doc, dict) and isinstance(doc.get("alerts"), list):
+            return doc["alerts"]
+        log.warning("%s has no 'alerts' list; ignored", p)
+    rows = [{**a, "reason": "not in an incident", "group_id": None} for a in alerts
+            if a.get("layer") == "anomaly" and a.get("incident_number") is None]
+    return sorted(rows, key=lambda a: a.get("ts_start") or "")
+
+
 def load_bundle(run_dir: Path) -> RunBundle:
     run_dir = Path(run_dir)
     if not run_dir.is_dir():
@@ -185,6 +201,8 @@ def load_bundle(run_dir: Path) -> RunBundle:
         errors=errors,
         enrichment=enrichment,
         enrichment_source=enrichment_source,
+        unexplained=_load_unexplained(run_dir, alerts),
+        metrics=_read_json(run_dir / "metrics.json") if (run_dir / "metrics.json").exists() else None,
     )
     for n, inc in incidents.items():
         if isinstance(inc.get("incident_id"), str):

@@ -244,8 +244,9 @@ def build(run_dir: Path, parsed_dir: Optional[Path] = None) -> BundleResult:
             warnings.append(f"incident_alerts.parquet names {len(stale)} incident(s) missing from index.json, "
                             f"e.g. {stale[0]}; rerun chain")
     else:
-        member_of = {s["alert_id"]: inc["incident_id"] for inc in incidents.values()
-                     for s in inc.get("chain") or [] if s.get("alert_id")}
+        member_of = {a["alert_id"]: inc["incident_id"] for inc in incidents.values()
+                     for s in inc.get("chain") or [] for a in [s, *(s.get("supporting") or [])]
+                     if a.get("alert_id")}
     alerts_out = [{**a, "incident_number": number_of.get(member_of.get(a.get("alert_id"), ""))} for a in alerts]
     changed = sum(a.get("incident_number") != b["incident_number"] for a, b in zip(alerts, alerts_out))
     if changed:
@@ -291,6 +292,14 @@ def build(run_dir: Path, parsed_dir: Optional[Path] = None) -> BundleResult:
             except ValueError as exc:
                 warnings.append(str(exc))
     for n, inc in incidents.items():
+        rep = inc.get("report") or {}
+        if n not in triage and rep.get("source") == "ai":
+            # an earlier bundle's AI report that report.json no longer has: back to the template
+            if rep.get("template_markdown"):
+                inc["report"] = {"source": "template", "markdown": rep["template_markdown"], "triage": None}
+                inc["report_source"] = "template"
+            else:
+                warnings.append(f"incident {n} has an AI report with no template to go back to; kept")
         if n not in triage:
             t = (inc.get("report") or {}).get("triage")
             triage[n] = t.get("verdict") if isinstance(t, dict) else None

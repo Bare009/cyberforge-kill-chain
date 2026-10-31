@@ -4,8 +4,9 @@ Built so far (P11): /health, /incidents, /incidents/{id}, /incidents/{id}/path
 (day 1); /mitre/catalogue, /mitre/matrix, /mitre/techniques/{id} (day 2, in
 mitre.py); /incidents/{id}/events (evidence.py) and /entities/{value}
 (entities.py) (day 3); /ti/status, /ti/indicators, /ti/indicators/{value},
-POST /ti/lookup (ti.py) (day 4). The other endpoints of docs/build-plan.md P11
-are added page by page.
+POST /ti/lookup (ti.py) (day 4); /dashboard/summary, /alerts, /unexplained,
+/rules, /rules/{id} (views.py) and /incidents/{id}/report (day 5). The other
+endpoints of docs/build-plan.md P11 are added page by page.
 """
 
 from __future__ import annotations
@@ -25,6 +26,8 @@ from .mitre import MitreStore
 from .mitre import router as mitre_router
 from .ti import TiStore
 from .ti import router as ti_router
+from .views import RuleStore
+from .views import router as views_router
 from killchain.enrich.settings import CACHE_PATH
 
 # The Vite dev server and the Docker web container (P14).
@@ -60,9 +63,33 @@ def _entity_values(inc: Dict[str, Any]) -> List[str]:
     return [v for k in ("ips", "hosts", "users", "domains") for v in (ents.get(k) or [])]
 
 
+def llm_status(b: RunBundle, cache: Path) -> Dict[str, Any]:
+    """LLM agents for /health: on or off, the configured models (no keys), reports in this run and
+    today's budget per model from the agents' SQLite file."""
+    from killchain.agents.settings import endpoints, llm_enabled
+
+    chain = endpoints("large")
+    out: Dict[str, Any] = {"enabled": llm_enabled(), "configured": [e.name for e in chain],
+                           "reports": (b.run_summary.get("llm") or {}).get("reports", 0)}
+    ai = sum(1 for i in b.incidents.values() if i.get("report_source") == "ai")
+    out["ai_reports"] = ai
+    out["template_reports"] = len(b.incidents) - ai
+    budget: List[Dict[str, Any]] = []
+    if chain and Path(cache).exists():
+        from killchain.agents.llm import LLMClient, LLMStore
+
+        store = LLMStore(Path(cache))
+        try:
+            budget = LLMClient(chain, store).budget()
+        finally:
+            store.close()
+    out["budget"] = budget
+    return out
+
+
 def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[str, Path]] = None, *,
                ti_cache: Optional[Union[str, Path]] = None, ti_offline: Optional[bool] = None,
-               ti_client: Any = None) -> FastAPI:
+               ti_client: Any = None, llm_cache: Optional[Union[str, Path]] = None) -> FastAPI:
     """Build the app for one run: a folder path or a run name (see resolve_run_dir).
 
     `raw_dir` is where the raw logs named in the evidence are (default
@@ -84,8 +111,14 @@ def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[s
     app.state.evidence = EvidenceStore(run_dir, bundle.incidents, Path(raw_dir) if raw_dir else default_raw_dir())
     app.state.ti = TiStore(bundle, Path(ti_cache) if ti_cache else CACHE_PATH, offline=ti_offline,
                            otx_client=ti_client)
+    app.state.rules = RuleStore(bundle)
+    from killchain.agents.settings import CACHE_PATH as LLM_CACHE
+
+    app.state.llm_cache = Path(llm_cache) if llm_cache else LLM_CACHE
+    app.state.dashboard = None              # built on first request (needs the TI status)
     app.include_router(mitre_router)
     app.include_router(ti_router)
+    app.include_router(views_router)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(
         CORSMiddleware,
@@ -111,7 +144,27 @@ def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[s
             "data_quality": b.run_summary.get("data_quality"),
             "threat_intel": {k: v for k, v in request.app.state.ti.status().items()
                              if k in ("source", "offline", "providers", "indicators", "generated_at")},
+            "llm": llm_status(b, request.app.state.llm_cache),
         }
+
+    @app.get("/incidents/{ident}/report", tags=["incidents"])
+    def get_report(ident: str, request: Request,
+                   source: Optional[str] = Query(None, pattern="^(ai|template)$",
+                                                 description="ai | template; default: the one the incident shows")
+                   ) -> Dict[str, Any]:
+        """The incident's report Markdown: the AI narrator's (when it passed the fact check) or the template."""
+        b = _bundle(request)
+        inc = b.incidents[_incident_number(b, ident)]
+        rep = inc.get("report") or {}
+        cur = rep.get("source") or inc.get("report_source") or "template"
+        available = [cur] + (["template"] if cur == "ai" and rep.get("template_markdown") else [])
+        want = source or cur
+        if want not in available:
+            raise HTTPException(status_code=404, detail=f"incident {inc['incident_number']} has no {want} report")
+        md = rep.get("markdown") if want == cur else rep.get("template_markdown")
+        return {"incident_number": inc["incident_number"], "source": want, "available": available,
+                "markdown": md, "model": rep.get("model") if want == "ai" else None,
+                "triage": rep.get("triage") if want == "ai" else None}
 
     @app.get("/incidents", tags=["incidents"])
     def list_incidents(

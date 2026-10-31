@@ -288,6 +288,16 @@ Swagger UI: `http://localhost:<port>/docs`.
 | `GET /ti/indicators` | every indicator in the run with its verdict; filters `q`, `verdict`, `kind`, `sendable`, `limit` |
 | `GET /ti/indicators/{value}` | one indicator: local context and the OTX answer |
 | `POST /ti/lookup` | look up any IP, domain, URL or hash (`{"value": ...}`); private and internal values are kept local; 20 per minute, then 429 with `Retry-After` |
+| `GET /dashboard/summary` | KPI tiles, incidents by risk band and by severity, kill chain coverage (14 tactics), alerts per hour, top attackers and targets, worst incidents, data quality, stage timings, TI and LLM status |
+| `GET /alerts` | every alert, newest first; filters `incident` (a number, `none` or `any`), `technique`, `tactic`, `rule`, `layer`, `severity`, `entity`, `q`, `sort` (`newest`, `oldest`, `severity`), `limit`, `offset`; counts for the tabs |
+| `GET /unexplained` | anomaly alerts that did not become or join an incident, with the reason |
+| `GET /rules` | every rule in `rules/` with its alerts, incidents, run time and (after `eval score`) background alerts; filters `layer`, `q` |
+| `GET /rules/{id}` | one rule: settings, YAML text and its 20 most recent alerts |
+| `GET /incidents/{id}/report` | the report Markdown; `source=ai` or `template` (the template is kept beside an AI report) |
+
+`GET /health` also has an `llm` block: whether the agents are on, the
+configured models (never the keys), AI and template report counts, and today's
+budget per model (requests and tokens used against the daily limit).
 
 Evidence comes from `alert_evidence.parquet` in the run (every member line),
 else `evidence_sample.json`, else each step's `line_sample`. The raw text is
@@ -301,6 +311,32 @@ Threat intel comes from `<run>/ti.json` (bundle step), or from
 into the incidents at start-up (entity verdicts, step flags, `ti_verdict` in
 the list). It never changes the risk score. `GET /path` on the real run
 (25 incidents): p50 1.4 ms, p95 17.5 ms.
+
+### AI narrator and triage opinion (agents)
+
+```powershell
+python -m killchain.agents narrate --run data\runs\firex-10G --facts   # prompt size per incident, no call
+python -m killchain.agents narrate --run data\runs\firex-10G --llm     # write report.json
+python -m killchain.bundle --run data\runs\firex-10G                   # merge it into the incidents
+```
+
+One LLM call per incident returns a two-sentence summary, one sentence per
+numbered step with the evidence lines it rests on, what may happen next, and a
+triage opinion (`looks_real` or `likely_noise`, shown only). The model sees a
+fact sheet (chain, entities, counts, TI verdicts, reach next, risk parts,
+gaps; no raw log lines; 600 to 1,200 tokens on the real run). A guard rejects
+an answer that drops or adds a step, leaves out a chain IP or account, names an
+IP, account, domain or technique that is not in the facts, or cites a line that
+is not the step's evidence. A rejected answer gets one retry with the problems
+listed, then the incident keeps its template report.
+
+Models come from `.env` (`LLM_PRIMARY_*` for Groq, `LLM_FALLBACK_*` for
+NeevCloud) and are tried in order: primary large, primary small, fallback
+large, fallback small. Limits per model are in `config/llm.yaml` (used to 90%).
+Every answer is cached in `data/cache/llm.sqlite`; a rerun keeps reports whose
+facts did not change and makes no call for them. A 429 waits for `Retry-After`
+when it is under 20 s, else the next model; a refused key pauses that provider
+for 10 minutes. The LLM is off unless `LLM_ENABLED=true` or `--llm` is given.
 
 ### Threat intel (enrich)
 

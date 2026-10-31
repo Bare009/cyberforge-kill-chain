@@ -143,14 +143,42 @@ function worstTiVerdict(inc: Incident) {
 
 function ReportTab({ inc }: { inc: Incident }) {
   const triage = inc.report.triage
+  const isAi = inc.report_source === 'ai'
+  const template = inc.report.template_markdown
+  const [show, setShow] = useState<'ai' | 'template'>('ai')
+  const showingAi = isAi && (show === 'ai' || !template)
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <Card>
         <CardContent className="p-5">
-          <p className="mb-2 text-[11px] uppercase tracking-wider text-slate-500">
-            {inc.report_source === 'ai' ? 'Written by the narrator agent and checked against the facts' : 'Template report built from the facts'}
-          </p>
-          <MarkdownReport markdown={inc.report.markdown} />
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] uppercase tracking-wider text-slate-500">
+              {showingAi
+                ? `Written by the AI narrator${inc.report.model ? ` (${inc.report.model})` : ''} and checked against the facts`
+                : 'Template report built from the facts'}
+            </p>
+            {isAi && template && (
+              <div role="group" aria-label="Report version" className="flex rounded-lg border border-slate-200 p-0.5 text-xs">
+                {(['ai', 'template'] as const).map((v) => (
+                  <button
+                    key={v}
+                    aria-pressed={show === v}
+                    onClick={() => setShow(v)}
+                    className={`rounded-md px-2 py-0.5 ${show === v ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    {v === 'ai' ? 'AI report' : 'Template'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <MarkdownReport markdown={showingAi || !template ? inc.report.markdown : template} />
+          {!isAi && (
+            <p className="mt-4 text-xs text-slate-400">
+              No AI report for this incident: the narrator has not run, no LLM key is set, or its answer did not pass the
+              fact check.
+            </p>
+          )}
         </CardContent>
       </Card>
       {triage && (

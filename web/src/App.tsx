@@ -8,6 +8,9 @@ import { Mitre } from '@/pages/Mitre'
 import { Incidents } from '@/pages/Incidents'
 import { IncidentPage } from '@/pages/IncidentPage'
 import { ThreatIntel } from '@/pages/ThreatIntel'
+import { Dashboard } from '@/pages/Dashboard'
+import { Alerts } from '@/pages/Alerts'
+import { Rules } from '@/pages/Rules'
 import { NotFound, Placeholder } from '@/pages/Placeholder'
 
 const queryClient = new QueryClient({
@@ -26,40 +29,13 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<MainLayout />}>
-              <Route
-                index
-                element={
-                  <Placeholder
-                    title="Dashboard"
-                    planned="day 5"
-                    description="KPI tiles, incidents by risk band, kill chain coverage, alerts per hour, top attackers and targets, data quality."
-                  />
-                }
-              />
+              <Route index element={<Dashboard />} />
               <Route path="incidents" element={<Incidents />} />
               <Route path="incidents/:id" element={<IncidentPage />} />
               <Route path="mitre" element={<Mitre />} />
-              <Route
-                path="alerts"
-                element={
-                  <Placeholder
-                    title="Alerts"
-                    planned="day 5"
-                    description="Every alert with rule, technique, entities and incident link; not-in-an-incident and unexplained tabs."
-                  />
-                }
-              />
+              <Route path="alerts" element={<Alerts />} />
               <Route path="threat-intel" element={<ThreatIntel />} />
-              <Route
-                path="rules"
-                element={
-                  <Placeholder
-                    title="Rules"
-                    planned="day 5"
-                    description="Detection rules with hit counts, the YAML, and the rule-writer agent."
-                  />
-                }
-              />
+              <Route path="rules" element={<Rules />} />
               <Route
                 path="live"
                 element={

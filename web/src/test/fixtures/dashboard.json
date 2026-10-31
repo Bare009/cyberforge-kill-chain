@@ -1,0 +1,1333 @@
+{
+ "run": "firex-10G",
+ "sample": false,
+ "kpis": {
+  "events_parsed": 9125383,
+  "log_lines": 15848040,
+  "alerts": 57,
+  "incidents": 25,
+  "critical_incidents": 0,
+  "critical_severity_incidents": 7,
+  "unexplained": 1,
+  "log_start": "2026-10-23T03:18:26+00:00",
+  "log_end": "2026-10-30T03:18:25.959831+00:00",
+  "incident_start": "2026-10-23T10:52:40.250512Z",
+  "incident_end": "2026-10-29T08:09:56.684253Z",
+  "processing_secs": 156.7,
+  "peak_rss_mb": 1596,
+  "evidence_lines": 44622
+ },
+ "risk_scored": false,
+ "incidents_by_band": [
+  {
+   "band": "critical",
+   "incidents": 0
+  },
+  {
+   "band": "high",
+   "incidents": 0
+  },
+  {
+   "band": "medium",
+   "incidents": 0
+  },
+  {
+   "band": "low",
+   "incidents": 25
+  }
+ ],
+ "incidents_by_severity": [
+  {
+   "severity": 5,
+   "incidents": 7
+  },
+  {
+   "severity": 4,
+   "incidents": 18
+  },
+  {
+   "severity": 3,
+   "incidents": 0
+  },
+  {
+   "severity": 2,
+   "incidents": 0
+  },
+  {
+   "severity": 1,
+   "incidents": 0
+  }
+ ],
+ "coverage": [
+  {
+   "tactic": "reconnaissance",
+   "name": "Reconnaissance",
+   "stage_no": 1,
+   "incidents": 0,
+   "alerts": 0
+  },
+  {
+   "tactic": "resource-development",
+   "name": "Resource Development",
+   "stage_no": 2,
+   "incidents": 0,
+   "alerts": 0
+  },
+  {
+   "tactic": "initial-access",
+   "name": "Initial Access",
+   "stage_no": 3,
+   "incidents": 9,
+   "alerts": 18
+  },
+  {
+   "tactic": "execution",
+   "name": "Execution",
+   "stage_no": 4,
+   "incidents": 1,
+   "alerts": 1
+  },
+  {
+   "tactic": "persistence",
+   "name": "Persistence",
+   "stage_no": 5,
+   "incidents": 3,
+   "alerts": 4
+  },
+  {
+   "tactic": "privilege-escalation",
+   "name": "Privilege Escalation",
+   "stage_no": 6,
+   "incidents": 0,
+   "alerts": 0
+  },
+  {
+   "tactic": "defense-evasion",
+   "name": "Defense Evasion",
+   "stage_no": 7,
+   "incidents": 1,
+   "alerts": 2
+  },
+  {
+   "tactic": "credential-access",
+   "name": "Credential Access",
+   "stage_no": 8,
+   "incidents": 3,
+   "alerts": 3
+  },
+  {
+   "tactic": "discovery",
+   "name": "Discovery",
+   "stage_no": 9,
+   "incidents": 4,
+   "alerts": 5
+  },
+  {
+   "tactic": "lateral-movement",
+   "name": "Lateral Movement",
+   "stage_no": 10,
+   "incidents": 2,
+   "alerts": 6
+  },
+  {
+   "tactic": "collection",
+   "name": "Collection",
+   "stage_no": 11,
+   "incidents": 0,
+   "alerts": 0
+  },
+  {
+   "tactic": "command-and-control",
+   "name": "Command and Control",
+   "stage_no": 12,
+   "incidents": 6,
+   "alerts": 7
+  },
+  {
+   "tactic": "exfiltration",
+   "name": "Exfiltration",
+   "stage_no": 13,
+   "incidents": 3,
+   "alerts": 8
+  },
+  {
+   "tactic": "impact",
+   "name": "Impact",
+   "stage_no": 14,
+   "incidents": 3,
+   "alerts": 3
+  }
+ ],
+ "alerts_per_hour": [
+  {
+   "hour": "2026-10-23T10:00:00Z",
+   "alerts": 1,
+   "rule": 1,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-23T11:00:00Z",
+   "alerts": 2,
+   "rule": 1,
+   "anomaly": 1
+  },
+  {
+   "hour": "2026-10-23T12:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-23T13:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-23T14:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-23T15:00:00Z",
+   "alerts": 1,
+   "rule": 1,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-23T16:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-23T17:00:00Z",
+   "alerts": 2,
+   "rule": 1,
+   "anomaly": 1
+  },
+  {
+   "hour": "2026-10-23T18:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-23T19:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-23T20:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-23T21:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-23T22:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-23T23:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T00:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T01:00:00Z",
+   "alerts": 2,
+   "rule": 2,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T02:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T03:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T04:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T05:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T06:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T07:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T08:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T09:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T10:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T11:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T12:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T13:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T14:00:00Z",
+   "alerts": 3,
+   "rule": 2,
+   "anomaly": 1
+  },
+  {
+   "hour": "2026-10-24T15:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T16:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T17:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T18:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T19:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T20:00:00Z",
+   "alerts": 3,
+   "rule": 1,
+   "anomaly": 2
+  },
+  {
+   "hour": "2026-10-24T21:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T22:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-24T23:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T00:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T01:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T02:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T03:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T04:00:00Z",
+   "alerts": 1,
+   "rule": 1,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T05:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T06:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T07:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T08:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T09:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T10:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T11:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T12:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T13:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T14:00:00Z",
+   "alerts": 2,
+   "rule": 2,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T15:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T16:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T17:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T18:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T19:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T20:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T21:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T22:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-25T23:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T00:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T01:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T02:00:00Z",
+   "alerts": 1,
+   "rule": 1,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T03:00:00Z",
+   "alerts": 1,
+   "rule": 1,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T04:00:00Z",
+   "alerts": 2,
+   "rule": 1,
+   "anomaly": 1
+  },
+  {
+   "hour": "2026-10-26T05:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T06:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T07:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T08:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T09:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T10:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T11:00:00Z",
+   "alerts": 1,
+   "rule": 1,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T12:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T13:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T14:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T15:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T16:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T17:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T18:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T19:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T20:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T21:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T22:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-26T23:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T00:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T01:00:00Z",
+   "alerts": 1,
+   "rule": 1,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T02:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T03:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T04:00:00Z",
+   "alerts": 3,
+   "rule": 2,
+   "anomaly": 1
+  },
+  {
+   "hour": "2026-10-27T05:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T06:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T07:00:00Z",
+   "alerts": 1,
+   "rule": 1,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T08:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T09:00:00Z",
+   "alerts": 1,
+   "rule": 1,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T10:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T11:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T12:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T13:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T14:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T15:00:00Z",
+   "alerts": 1,
+   "rule": 1,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T16:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T17:00:00Z",
+   "alerts": 2,
+   "rule": 1,
+   "anomaly": 1
+  },
+  {
+   "hour": "2026-10-27T18:00:00Z",
+   "alerts": 2,
+   "rule": 0,
+   "anomaly": 2
+  },
+  {
+   "hour": "2026-10-27T19:00:00Z",
+   "alerts": 2,
+   "rule": 0,
+   "anomaly": 2
+  },
+  {
+   "hour": "2026-10-27T20:00:00Z",
+   "alerts": 5,
+   "rule": 1,
+   "anomaly": 4
+  },
+  {
+   "hour": "2026-10-27T21:00:00Z",
+   "alerts": 3,
+   "rule": 1,
+   "anomaly": 2
+  },
+  {
+   "hour": "2026-10-27T22:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-27T23:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T00:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T01:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T02:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T03:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T04:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T05:00:00Z",
+   "alerts": 1,
+   "rule": 1,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T06:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T07:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T08:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T09:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T10:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T11:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T12:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T13:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T14:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T15:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T16:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T17:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T18:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T19:00:00Z",
+   "alerts": 1,
+   "rule": 0,
+   "anomaly": 1
+  },
+  {
+   "hour": "2026-10-28T20:00:00Z",
+   "alerts": 4,
+   "rule": 2,
+   "anomaly": 2
+  },
+  {
+   "hour": "2026-10-28T21:00:00Z",
+   "alerts": 1,
+   "rule": 1,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-28T22:00:00Z",
+   "alerts": 5,
+   "rule": 2,
+   "anomaly": 3
+  },
+  {
+   "hour": "2026-10-28T23:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-29T00:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-29T01:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-29T02:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-29T03:00:00Z",
+   "alerts": 0,
+   "rule": 0,
+   "anomaly": 0
+  },
+  {
+   "hour": "2026-10-29T04:00:00Z",
+   "alerts": 2,
+   "rule": 1,
+   "anomaly": 1
+  }
+ ],
+ "alerts_by_layer": {
+  "rule": 32,
+  "anomaly": 25
+ },
+ "top_attackers": [
+  {
+   "value": "32.127.48.11",
+   "alerts": 7,
+   "incidents": [
+    1
+   ],
+   "max_severity": 5
+  },
+  {
+   "value": "203.228.177.117",
+   "alerts": 5,
+   "incidents": [
+    3
+   ],
+   "max_severity": 5
+  },
+  {
+   "value": "102.8.77.227",
+   "alerts": 3,
+   "incidents": [
+    10
+   ],
+   "max_severity": 4
+  },
+  {
+   "value": "171.104.84.193",
+   "alerts": 3,
+   "incidents": [
+    11
+   ],
+   "max_severity": 4
+  },
+  {
+   "value": "78.120.139.0",
+   "alerts": 2,
+   "incidents": [
+    4
+   ],
+   "max_severity": 5
+  },
+  {
+   "value": "202.36.226.247",
+   "alerts": 1,
+   "incidents": [
+    7
+   ],
+   "max_severity": 5
+  },
+  {
+   "value": "8.42.69.154",
+   "alerts": 1,
+   "incidents": [
+    6
+   ],
+   "max_severity": 5
+  },
+  {
+   "value": "131.228.119.59",
+   "alerts": 1,
+   "incidents": [
+    20
+   ],
+   "max_severity": 4
+  }
+ ],
+ "top_targets": [
+  {
+   "value": "10.10.20.20",
+   "alerts": 15,
+   "incidents": [
+    1,
+    7,
+    13,
+    16,
+    18,
+    20,
+    21,
+    24,
+    25
+   ],
+   "max_severity": 5
+  },
+  {
+   "value": "10.10.99.1",
+   "alerts": 12,
+   "incidents": [
+    3,
+    4,
+    6,
+    11,
+    22,
+    23
+   ],
+   "max_severity": 5
+  },
+  {
+   "value": "203.0.113.5",
+   "alerts": 4,
+   "incidents": [
+    10,
+    19
+   ],
+   "max_severity": 4
+  },
+  {
+   "value": "10.10.20.10",
+   "alerts": 2,
+   "incidents": [
+    8
+   ],
+   "max_severity": 4
+  },
+  {
+   "value": "10.10.20.24",
+   "alerts": 2,
+   "incidents": [
+    9
+   ],
+   "max_severity": 2
+  },
+  {
+   "value": "10.10.20.13",
+   "alerts": 1,
+   "incidents": [
+    8
+   ],
+   "max_severity": 4
+  },
+  {
+   "value": "10.10.20.19",
+   "alerts": 1,
+   "incidents": [
+    9
+   ],
+   "max_severity": 4
+  },
+  {
+   "value": "10.10.20.28",
+   "alerts": 1,
+   "incidents": [
+    8
+   ],
+   "max_severity": 2
+  }
+ ],
+ "worst_incidents": [
+  {
+   "incident_number": 1,
+   "title": "Discovery to Exfiltration by 32.127.48.11",
+   "risk_score": 0.0,
+   "risk_band": "low",
+   "severity": 5,
+   "ts_start": "2026-10-28T20:21:23.449932Z",
+   "tactics": [
+    "discovery",
+    "initial-access",
+    "persistence",
+    "exfiltration",
+    "command-and-control"
+   ],
+   "ti_verdict": "no-reports",
+   "triage_verdict": null
+  },
+  {
+   "incident_number": 2,
+   "title": "Execution to Exfiltration by 7.154.5.35",
+   "risk_score": 0.0,
+   "risk_band": "low",
+   "severity": 5,
+   "ts_start": "2026-10-26T02:52:00.642422Z",
+   "tactics": [
+    "execution",
+    "command-and-control",
+    "exfiltration",
+    "discovery"
+   ],
+   "ti_verdict": "no-reports",
+   "triage_verdict": null
+  },
+  {
+   "incident_number": 3,
+   "title": "Persistence to Initial Access by 203.228.177.117",
+   "risk_score": 0.0,
+   "risk_band": "low",
+   "severity": 5,
+   "ts_start": "2026-10-28T22:25:43.452976Z",
+   "tactics": [
+    "persistence",
+    "initial-access"
+   ],
+   "ti_verdict": "no-reports",
+   "triage_verdict": null
+  },
+  {
+   "incident_number": 4,
+   "title": "Logging switched off around a configuration change from 78.120.139.0",
+   "risk_score": 0.0,
+   "risk_band": "low",
+   "severity": 5,
+   "ts_start": "2026-10-23T11:01:43.224622Z",
+   "tactics": [
+    "defense-evasion"
+   ],
+   "ti_verdict": "no-reports",
+   "triage_verdict": null
+  },
+  {
+   "incident_number": 5,
+   "title": "Large one-way transfer between an internal and an outside host to 7.93.184.183",
+   "risk_score": 0.0,
+   "risk_band": "low",
+   "severity": 5,
+   "ts_start": "2026-10-26T04:38:34.615546Z",
+   "tactics": [
+    "exfiltration"
+   ],
+   "ti_verdict": "no-reports",
+   "triage_verdict": null
+  }
+ ],
+ "data_quality": {
+  "lines": 15848040,
+  "bytes": 6543120032,
+  "events": 9125383,
+  "events_good_time": 3848247,
+  "events_frozen_clock": 5277136,
+  "ts_quality": {
+   "stuck": 5277136,
+   "ok": 3848247
+  },
+  "exact_duplicate_rows": 812235,
+  "rejected_lines": 6695042,
+  "lines_by_class": {
+   "firewall": 9125383,
+   "rejected:binary": 6666048,
+   "rejected:unknown_format": 28801,
+   "blank": 27615,
+   "rejected:bad_json": 193
+  },
+  "junk_bytes": 1727444613,
+  "junk_ranges": [
+   {
+    "source": "firex-10G.log",
+    "start": 4815675419,
+    "end": 6543120032,
+    "bytes": 1727444613,
+    "lines": 6695042
+   }
+  ],
+  "parse_issues": {
+   "truncated_binary_tail": 1
+  },
+  "first_good_ts": "2026-10-23T03:18:26+00:00",
+  "last_good_ts": "2026-10-30T03:18:25.959831+00:00",
+  "note": "Frozen-clock rows keep their line numbers but are left out of time-window rules; junk ranges are binary data appended to the log and are not parsed."
+ },
+ "stages": {
+  "parse": {
+   "wall_secs": 141.21,
+   "peak_rss_mb": 1596,
+   "workers": 4,
+   "bytes": 6543120032,
+   "lines": 15848040
+  },
+  "chain": {
+   "wall_secs": 0.18,
+   "peak_rss_mb": 61,
+   "incidents": 25,
+   "steps": 32,
+   "contract_errors": 0
+  },
+  "correlate": {
+   "wall_secs": 0.3,
+   "peak_rss_mb": 81,
+   "alerts": 57,
+   "incidents": 25,
+   "unexplained": 1
+  },
+  "detect": {
+   "wall_secs": 13.36,
+   "peak_rss_mb": 1016,
+   "rules": 35,
+   "alerts": 57,
+   "evidence_lines": 44623,
+   "layers": {
+    "rule": 32,
+    "anomaly": 25
+   }
+  },
+  "reach": {
+   "wall_secs": 0.7,
+   "peak_rss_mb": 221,
+   "incidents": 25,
+   "contract_errors": 0
+  },
+  "enrich": {
+   "wall_secs": 0.01,
+   "indicators": 57,
+   "lookups": 0,
+   "cache_hits": 22,
+   "failures": 0
+  },
+  "bundle": {
+   "wall_secs": 0.94,
+   "peak_rss_mb": 139,
+   "alerts": 57,
+   "incidents": 25,
+   "unexplained": 1,
+   "contract_errors": 0,
+   "indicators": 57
+  }
+ },
+ "threat_intel": {
+  "source": "ti.json",
+  "generated_at": "2026-10-31T17:57:10Z",
+  "offline": true,
+  "providers": {
+   "local": "ok",
+   "otx": "offline"
+  },
+  "indicators": 57,
+  "verdicts": {
+   "unknown": 35,
+   "no-reports": 22
+  }
+ },
+ "llm": {
+  "reports": 0,
+  "source": "template",
+  "note": "No narrator output; every incident has its template report."
+ }
+}

@@ -35,13 +35,13 @@ saying when they are planned.
 
 | Route | Page | State |
 |---|---|---|
-| `/` | Dashboard | placeholder (day 5) |
+| `/` | Dashboard | built: KPI tiles (events, alerts, incidents, critical, log span, run time, peak memory), kill chain coverage over the 14 tactics, incidents by risk band (by severity until the run has risk scores), worst incidents, alerts per hour (rule and anomaly, IST), top attackers and targets, data quality, stage timings, TI and report status |
 | `/incidents` | Incident list | built: worst first, risk bar, tactic chips in kill chain order, merged alerts and events, IST times, filters in the URL (`q`, `tactic`, `technique`, `entity`, `severity`) |
-| `/incidents/:id` | Incident page | header (summary, risk parts, merged counts, clickable entities) and tabs: Timeline (numbered chain and gaps), Attack path (graph below), Reach next (ranked hosts, observed vs inferred, how each is reached, likely next tactics), Evidence (raw log lines per step with line numbers, paged; `?tab=evidence&step=2&page=3`), Report, Threat intel (each entity's local context and OTX answer, or why it was kept local), ATT&CK. Ask (day 6) says when it arrives. Clicking an entity opens the entity drawer (its incidents, alerts, threat intel) |
+| `/incidents/:id` | Incident page | header (summary, risk parts, merged counts, clickable entities) and tabs: Timeline (numbered chain and gaps), Attack path (graph below), Reach next (ranked hosts, observed vs inferred, how each is reached, likely next tactics), Evidence (raw log lines per step with line numbers, paged; `?tab=evidence&step=2&page=3`), Report (the AI narrator's report with its model and triage opinion, with a toggle to the template; the template alone when there is no AI report), Threat intel (each entity's local context and OTX answer, or why it was kept local), ATT&CK. Ask (day 6) says when it arrives. Clicking an entity opens the entity drawer (its incidents, alerts, threat intel) |
 | `/mitre` | ATT&CK matrix | ported from AI-SOC; `?technique=T1190` opens a technique; links go to `/incidents?...` and `/alerts?...` |
-| `/alerts` | Alerts | placeholder (day 5) |
+| `/alerts` | Alerts | built: tabs All, Not in an incident, Unexplained (with the reason); filters in the URL (`q`, `tactic`, `technique`, `layer`, `severity`, `rule`, `entity`, `incident`, `sort`, `page`), 50 a page, links to the incident and the rule |
 | `/threat-intel` | Threat Intel | built: provider status, last enrich run, on-demand lookup box, indicator table with verdict, kind and "checked outside" filters |
-| `/rules` | Rules | placeholder (day 5) |
+| `/rules` | Rules | built: every rule and anomaly detector with alerts, incidents, run time and last alert; `?rule=ID` opens its settings, YAML and recent alerts. The rule writer arrives on day 6 |
 | `/live` | Live | placeholder (day 6) |
 | `/evaluation` | Evaluation | placeholder (day 6) |
 | `/system` | System | placeholder (day 6) |

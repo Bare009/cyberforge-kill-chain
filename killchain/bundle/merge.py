@@ -93,6 +93,13 @@ def apply_report(inc: Dict[str, Any], entry: Dict[str, Any]) -> Optional[str]:
     if src not in REPORT_SOURCES or not isinstance(md, str) or not md.strip():
         raise ValueError(f"report for {inc.get('incident_id')}: needs source ai|template and non-empty markdown")
     triage = entry.get("triage")
+    old = inc.get("report") or {}
+    # keep the template beside the AI report (optional key `template_markdown`), so the UI can toggle
+    template = old.get("template_markdown") or (old.get("markdown") if old.get("source") == "template" else None)
     inc["report"] = {"source": src, "markdown": md, "triage": triage}
+    if src == "ai" and template:
+        inc["report"]["template_markdown"] = template
+        if entry.get("model"):
+            inc["report"]["model"] = entry["model"]
     inc["report_source"] = src
     return triage.get("verdict") if isinstance(triage, dict) else None

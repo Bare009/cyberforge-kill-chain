@@ -163,6 +163,10 @@ export interface Report {
   source: ReportSource
   markdown: string
   triage: Triage | null
+  /** The template report, kept beside an AI report by the bundle step (optional). */
+  template_markdown?: string
+  /** provider:model that wrote an AI report (optional). */
+  model?: string
 }
 
 /** Contract C. */

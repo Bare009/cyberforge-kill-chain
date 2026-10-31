@@ -70,6 +70,28 @@ describe('Incident page', () => {
     expect(screen.getByText('Chain')).toBeInTheDocument()            // **Chain** heading line from the markdown
   })
 
+  it('shows an AI report with its model, and toggles to the template kept beside it', async () => {
+    const ai = {
+      ...sampleIncident,
+      report_source: 'ai',
+      report: {
+        source: 'ai', model: 'primary:llama-3.3-70b-versatile',
+        markdown: '### Summary\n\nThe AI summary of the attack.\n\n### Attack chain\n\n**1. Reconnaissance**: a scan.',
+        template_markdown: '**Chain**\n1. The template line.',
+        triage: { verdict: 'looks_real', confidence: 0.9, reasons: ['four linked steps'] },
+      },
+    }
+    get.mockResolvedValue({ data: ai })
+    open('/incidents/1?tab=report')
+    expect(await screen.findByText(/Written by the AI narrator \(primary:llama-3.3-70b-versatile\)/)).toBeInTheDocument()
+    expect(screen.getAllByText('The AI summary of the attack.').length).toBe(2)       // header and report
+    expect(screen.getByText('four linked steps')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Template' }))
+    expect(screen.getByText('Template report built from the facts')).toBeInTheDocument()
+    expect(screen.getByText('The template line.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Template' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('opens a tab from the URL: the ATT&CK view groups techniques by tactic', async () => {
     open('/incidents/1?tab=attack')
     expect(await screen.findByText('Exploit Public-Facing Application')).toBeInTheDocument()
@@ -112,5 +134,7 @@ describe('report rendering', () => {
     expect(reportSummary('**Summary.** One line.\n**Chain**\n1. x')).toBe('One line.')
     expect(reportSummary('Plain first line\nmore')).toBe('Plain first line')
     expect(reportSummary('')).toBeNull()
+    expect(reportSummary('### Summary\n\nThe AI summary.\n\n### Attack chain')).toBe('The AI summary.')
+    expect(reportSummary('**Chain**\n1. 2026-10-29 01:51:23 IST: x\n**Gaps**\n- none')).toBeNull()
   })
 })
