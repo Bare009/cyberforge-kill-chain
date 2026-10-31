@@ -279,6 +279,5 @@ def test_help_lists_run_ready(capsys):
     assert main([]) == 0
     rows = dict(l.split(None, 1) for l in capsys.readouterr().out.splitlines() if l.startswith("  "))
     assert rows["run"].strip() == "ready"
-    for n in ("enrich", "agents", "bundle", "serve"):
+    for n in ("enrich", "agents", "bundle", "serve", "live"):
         assert rows[n].strip() == "ready"
-    assert rows["live"].startswith("planned")

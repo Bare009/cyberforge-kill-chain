@@ -1084,5 +1084,5 @@ Our aim: all "great". Measured so far: parsing 55 s at 4.5 GB.
 - [ ] P12 React UI: Dashboard, Incidents, Incident page with attack path graph, MITRE (as in AI-SOC), Alerts, Threat Intel, Rules, Live, Evaluation, System
 - [ ] P13 full run within targets, failure modes tested
 - [ ] P14 Docker Compose (pipeline, api, web, live); README tested on a clean clone; demo rehearsed; `v1.0`
-- [ ] P15 live mode: new attack visible within 5 s
+- [x] P15 live mode: new attack visible within 5 s (chain A replay: API-visible max 4.1 s after a step's last line, 12 of 12 steps)
 - [ ] P10b LLM budget: one call per incident, cache, rate limiter, fallback chain, budget meter

@@ -87,7 +87,7 @@ docker compose down
 | `web` | `web/Dockerfile` (node build, nginx) | the UI on 8080; proxies `/api/` to `api`, the live stream unbuffered |
 | `pipeline` | `docker/Dockerfile` target `pipeline` | one stage: `docker compose run --rm pipeline detect --run data/runs/firex-10G` |
 | `pipeline-all` | same | every stage for one log: `docker compose run --rm pipeline-all firex-10G.log` (parse → db → detect → correlate → chain → reach → enrich → score → report → [narrate] → bundle) |
-| `live` | same, profile `live` | `python -m killchain live` (P15, not built yet) |
+| `live` | same, profile `live` | `python -m killchain live` (P15); needs `--input <log>` or `KILLCHAIN_LIVE_INPUT`, and a run folder of its own (see [Live mode](#live-mode)) |
 
 Mounts: `./data` (the api reads it read-only, except `data/cache`), `./rules`
 (rules saved from the rule writer land here), and the logs folder at
@@ -318,6 +318,91 @@ added after bundle so every bundle field stays as bundle wrote it, and to
 later `python -m killchain.bundle` drops the `pipeline` key; `pipeline.json`
 keeps it. Peak memory per stage is the summed RSS of the run process and the
 stage's processes, so it includes the orchestrator itself.
+
+## Live mode
+
+`python -m killchain live` tails one growing log file and keeps a run folder's
+bundle current, so the API (which reloads changed bundle files) and every page
+show new attacks while the log is written.
+
+```powershell
+python -m killchain live --input data\raw\live-demo.log --run data\runs\live-demo
+```
+
+| Option | Does |
+|---|---|
+| `--input FILE` | log file to tail (default `KILLCHAIN_LIVE_INPUT`) |
+| `--run DIR` | run folder the bundle is written to |
+| `--interval S`, `--window-hours H` | tick length (2 s) and the event-time window kept in memory (72 h); defaults in `config/live.yaml` |
+| `--config`, `--rules`, `--assume-tz` | live settings file, rule folders, zone for timestamps without one |
+| `--from-start` | ignore the checkpoint and read the file from the top |
+| `--overwrite` | take over a run folder that holds a batch bundle |
+| `--once` | start, one tick, stop |
+
+Exit codes: 0 clean stop (Ctrl+C, SIGTERM or Ctrl+Break), 1 rule errors or a
+fatal error, 2 usage error or a refused run folder.
+
+Demo recipe (the chain A replay; needs the firex-10G batch run):
+
+```powershell
+python tools\replay.py slice --raw data\raw\firex-10G.log --run data\runs\firex-10G --ip 32.127.48.11 --out data\live\chainA.log
+New-Item -ItemType File -Force data\raw\live-demo.log
+python -m killchain live --input data\raw\live-demo.log --run data\runs\live-demo     # terminal 1
+python -m killchain.api --run data\runs\live-demo --port 8000                         # terminal 2, after live's first publish
+python tools\replay.py play --slice data\live\chainA.log --to data\raw\live-demo.log --rate 500 --step-pause 6
+```
+
+The slice holds chain A's 940 evidence lines plus 2,000 background lines from
+the same span; the incident appears with the port scan and then grows to
+R02 > R16 > R20 > R12. `tools\live_latency.py` plays the slice and measures how
+long each step takes to show up.
+
+How it works:
+
+- **One process, in-process stages.** Each tick (2 s) reads the new complete
+  lines, then runs detect, correlate, chain, reach, score, report and bundle
+  in-process, about 0.5 to 0.8 s per tick on the demo. Enrich and the narrator
+  are not run: threat intel adds 0 to the risk score and every report is the
+  template.
+- **The window is a table, by event time.** An in-memory DuckDB holds the last
+  72 h of event time (replayed logs carry old timestamps) with the derived
+  columns computed once per row on insert; a cap of 2,000,000 rows drops the
+  oldest lines.
+- **Rules that fit the window.** Count, distinct and sequence rules whose
+  window is at most 72 h, and every match and sql rule, rerun over the whole
+  window when it changed. R13 (growth over several days), A01 (rarity across
+  the whole run) and A02 and A03 (a 2-day baseline) are skipped
+  (`config/live.yaml: skip_rules`). The same lines give the same alert ids as
+  the batch run.
+- **Whole-window correlation.** When any alert is new or changed (alert id,
+  event count, end time, success), correlation reruns over every alert in the
+  window, not only those of the affected entities: hub detection and the
+  incident boundaries are global, and this keeps live incidents identical to
+  batch ones. The affected entities are recorded and decide which incidents
+  count as changed.
+- **Staged, then published.** Stages write to `<run>/live/work/<run>/`; the
+  files are then copied into the run folder by rename, the files the API
+  watches last and `index.json` last of all, so the API never loads a
+  half-built bundle. A rename blocked by a reader is retried (Windows).
+- **Run folder guard.** A folder with `index.json` and no
+  `live/checkpoint.json` (a batch run) is refused without `--overwrite`.
+- **Rotation and truncation** (new inode, a changed first line, or a shorter
+  file) clear the window and the parser's clock state, and the file is read
+  from line 1, so evidence always points into the current file. Incidents from
+  the old file disappear at the next publish.
+
+Files in `<run>/live/`: `status.json` (rewritten every tick), `events.jsonl`
+(one record per publish that changed something, append-only; see
+`docs/contracts.md`, "Live mode"), `checkpoint.json` (resume point, saved after
+each successful publish; a restart backfills the window from it) and
+`published.json`. The API reads raw evidence text from `data/raw` by file name,
+so keep the live input there (or pass `--raw-dir`).
+
+Measured on the chain A replay (3 runs, 12 steps, Core Ultra 7 255H): from a
+step's last line written to its rule showing in `GET /alerts` with an incident
+number, median 3.7 s, max 4.1 s; to the live publish, median 1.8 s, max 2.1 s. The
+API side includes the API's own wait for the files to stay unchanged for one
+1 s poll.
 
 ## Bundle
 

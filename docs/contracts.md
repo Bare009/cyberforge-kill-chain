@@ -60,7 +60,10 @@ data/runs/<run>/                      (examples/sample-run/ has the same layout)
   unexplained.json                    (bundle) anomaly alerts in no incident, alert rows plus reason, group_id
   ti.json                             (bundle) enrichment.json bound to the current incident numbers
   bundle/_stats.json                  (bundle) stage timing
-  live/status.json                    (track A, P15; proposed) the live process's state, read by the API
+  live/status.json                    (track A, P15) the live process's state, read by the API
+  live/events.jsonl                   (track A, P15) append-only log of what each live publish changed
+  live/checkpoint.json, live/published.json, live/work/   (track A internal) live resume point, last
+                                      published incidents, staging folder
   events.duckdb                       (track A internal) prepared event tables
   truth.parquet, metrics.json         (track A) silver truth and evaluation result;
                                       the API serves metrics.json at GET /metrics
@@ -252,13 +255,14 @@ risk score, threat intel, reach next and report are placeholders in the right
 shape, and every file carries `"sample": true` where it applies.
 Rebuild with `python tools/make_sample_run.py`.
 
-## Live mode: `live/status.json` (proposed by track B, to agree with track A)
+## Live mode (track A, P15; status table agreed)
 
 The live process (`python -m killchain live`, P15) rewrites the run's bundle files as new
 alerts and incidents appear, the same way the bundle step does (whole files, replaced by
-rename). The API watches those files and reloads them; it needs nothing else for the UI to
-update. For the Live page the process also keeps `<run>/live/status.json` current, rewriting
-it (by rename) at least every 5 s while it runs:
+rename; the watched files last, `index.json` last of all). The API watches those files and
+reloads them; it needs nothing else for the UI to update. For the Live page the process also
+keeps `<run>/live/status.json` current, rewriting it (by rename) every tick (2 s) while it
+runs:
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -271,3 +275,86 @@ it (by rename) at least every 5 s while it runs:
 | `last_line_ts` | UTC time, nullable | event time of the newest parsed line |
 
 Extra fields are shown as they are; every field but `state` and `updated_at` may be missing.
+Track A also writes these (optional for readers):
+
+| Field | Type | Meaning |
+|---|---|---|
+| `path` | string | full path of the tailed file |
+| `input_state` | `ok` \| `waiting` | `waiting`: the file does not exist (yet) |
+| `pid` | int | live process id |
+| `started_at` | UTC time | when the process started |
+| `interval_s`, `window_hours` | number | tick length and the event-time window kept in memory |
+| `window` | `{rows, first_ts, last_ts}` | rows in the window and their valid event-time range |
+| `rules` | `{active: [rule id], skipped: [{id, reason}]}` | rules run each tick; rules whose span does not fit the window |
+| `last_tick` | `{at, new_lines, rows_added, rows_dropped, rebuilt, published, timing_ms}` | the last tick |
+| `last_publish_at` | UTC time, nullable | when bundle files were last replaced |
+| `events_seq` | int | `seq` of the last `live/events.jsonl` record |
+| `resets` | int | rotations and truncations seen since start |
+| `error` | string, nullable | the last tick's failure (it is retried next tick); null when the last tick was fine |
+
+UTC times here and in `events.jsonl` carry milliseconds: `2026-10-31T20:53:19.663Z`.
+
+### `live/events.jsonl`
+
+Append-only, one JSON object per line, each written with one `write()` and a flush. A
+`publish` record is appended only after every bundle file has been replaced, so the files
+already match it. A reader keeps the last `seq` it handled and skips a last line without a
+newline (still being written). Python: `from killchain.live.feed import read_events, read_status`;
+`read_events(run_dir, after_seq=0, limit=None)` returns the records with `seq > after_seq`.
+
+Every record has:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `seq` | int | from 1, strictly increasing, never reused across restarts |
+| `kind` | `start` \| `reset` \| `publish` \| `stop` | |
+| `at` | UTC time (ms) | when the record was written |
+| `at_epoch` | number | the same, epoch seconds |
+
+Per kind:
+
+- `start`: `source` (file name), `path`, `mode` (`start` from the top, `resume` from the
+  checkpoint, `tail` from the last 256 MB of a bigger file), `from_line`, `from_offset`, `pid`.
+- `reset`: `reason` (`rotated` | `truncated`), `source`. The window was cleared; the next
+  `publish` lists the old file's incidents under `removed`.
+- `stop`: `source`, `lines_total`.
+- `publish`, appended when an incident is new, changed or removed, or an alert is new:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `tick` | int | tick number since start |
+| `new` | list of incident summaries | incident ids not published before |
+| `changed` | list of incident summaries | same id, file bytes differ, and it involves an affected entity |
+| `removed` | list of `{incident_id, replaced_by}` | ids gone; `replaced_by` is the new id that grew from it, or null |
+| `new_alerts` | up to 50 `{alert_id, rule_id, incident_number}` | alert ids not published before |
+| `affected_entities` | up to 50 strings | src, dst, user, host and domain of alerts new, changed or gone this tick |
+| `counts` | `{incidents, alerts, rows, lines_total}` | after this publish |
+| `lines` | `{first_line, last_line}`, nullable | lines read this tick |
+| `timing_ms` | `{parse, insert, detect, correlate, chain, reach, score, report, bundle, publish, total}` | |
+| `latency_ms` | `{read_to_publish}` | from reading the tick's lines to the publish done; null when the tick read no lines |
+
+An incident summary: `{incident_id, incident_number, title, risk_score, risk_band, severity,
+steps, rule_ids, tactics, ips (up to 10), grew_from}`. `rule_ids` are the chain steps' rules in
+step order. An incident gets a new `incident_id` whenever it gains an alert (the id hashes its
+alert ids), so a grown incident appears under `new` with `grew_from` = the removed ids whose
+alerts it contains, and those appear under `removed` with `replaced_by` = its id.
+
+There is no size cap: one record per changed publish is small for a demo, and rotating the
+file would break "append-only, seq never reused".
+
+### What `GET /live/stream` should send (teammate action)
+
+The current `hello`, `bundle` and `status` events stay as they are. Add an event `live`:
+
+- **When:** on each watcher poll, read the new records with
+  `read_events(run_dir, after_seq=<last seq handled>)`. Emit a `publish` record only after
+  the bundle reload that includes it (after the next `bundle` event; the files are already
+  replaced when the record is written); emit `start`, `reset` and `stop` right away.
+- **Format:** `id:` the watcher's own version counter, as now; `event: live`; `data:`
+  `{"id": <version>, "type": "live", "at": <now>, "record": <the events.jsonl record verbatim>}`.
+- **UI use:** with `grew_from` / `replaced_by` the UI can keep the "changed" badge on an
+  incident whose id changed as it grew (instead of showing it as new plus removed), and show
+  `latency_ms.read_to_publish`.
+
+Until this is added the UI still updates through `bundle` events; the only loss is the
+lineage of grown incidents.

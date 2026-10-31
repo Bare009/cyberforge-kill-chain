@@ -16,7 +16,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 INPUTS = {"incidents.parquet": "correlate", "incident_alerts.parquet": "correlate",
           "alerts.parquet": "detect", "alert_evidence.parquet": "detect", "alerts.json": "detect"}
@@ -208,20 +208,44 @@ def reach_main(argv: Optional[List[str]] = None) -> int:
         print(f"reach: no {db.PREPARED_NAME} in {run}; give --parsed <folder> or run "
               f"`python -m killchain db --prepare --parsed <folder> --run {run}`", file=sys.stderr)
         return 1
-    import polars as pl
-
     from ..detect.cli import _Peak
-    from . import access
-    from . import incident_files as files
 
     peak = _Peak()
     peak.start()
+    con = db.connect(a.parsed, run)
+    code, stats, errors, reach_rows = run_reach(run, con, a.force, peak)
+    con.close()
+    if errors:
+        print(f"reach: {len(errors)} contract error(s), nothing written:\n  " + "\n  ".join(errors[:20]),
+              file=sys.stderr)
+        return code
+    for x in reach_rows:
+        n = x["next"]
+        top = n["reachable"][0]["host"] if n["reachable"] else "-"
+        print(f"#{x['incident_number']} reach {len(n['reachable'])} top {top} | {n['sentence']}")
+    print(f"\naccess graph {stats['edges_by_kind']} ({'built' if stats['access_rebuilt'] else 'reused'} in "
+          f"{stats['access_secs']:.2f} s), {stats['hosts']:,} internal hosts; {stats['incidents_with_reach']} incidents "
+          f"with reach, {stats['incidents_empty']} with a stated reason, 0 contract errors; "
+          f"{stats['wall_secs']:.2f} s -> {run}")
+    return 0
+
+
+def run_reach(run: Path, con: Any, force: bool, peak: Any = None
+              ) -> Tuple[int, Optional[Dict[str, Any]], List[str], List[Dict[str, Any]]]:
+    """Reach over an open events connection: (exit code, stats, contract errors, reach rows).
+    Builds the access graph when forced or missing, computes reach next and writes the bundle files;
+    nothing is written when there are contract errors. `peak` is a started detect.cli._Peak (optional)."""
+    import polars as pl
+
+    from .. import db
+    from . import access
+    from . import incident_files as files
+
     t0 = time.perf_counter()
     settings = access.load_settings()
     net = db.load_network()
-    con = db.connect(a.parsed, run)
     ag, ah = run / "access_graph.parquet", run / "access_hosts.parquet"
-    rebuilt = a.force or not (ag.exists() and ah.exists())
+    rebuilt = force or not (ag.exists() and ah.exists())
     if rebuilt:
         edges, hosts = access.build_access(con, settings)
     else:
@@ -229,16 +253,20 @@ def reach_main(argv: Optional[List[str]] = None) -> int:
     access_secs = time.perf_counter() - t0
 
     bundle, reach_rows, index, alerts_out = compute_reach(run, con, edges, hosts, net, settings)
-    con.close()
     errors = files.check(bundle, index, alerts_out)
     wall = time.perf_counter() - t0
-    peak.stop.set()
+    if peak is not None:
+        peak.stop.set()
     if errors:
-        print(f"reach: {len(errors)} contract error(s), nothing written:\n  " + "\n  ".join(errors[:20]),
-              file=sys.stderr)
-        return 1
+        return 1, None, errors, reach_rows
     with_reach = sum(bool(x["next"]["reachable"]) for x in reach_rows)
-    stats = {"stage": "reach", "wall_secs": round(wall, 2), "peak_rss_mb": round(peak.peak / 2**20),
+    if peak is not None:
+        rss = peak.peak
+    else:
+        import psutil
+
+        rss = psutil.Process().memory_info().rss
+    stats = {"stage": "reach", "wall_secs": round(wall, 2), "peak_rss_mb": round(rss / 2**20),
              "access_secs": round(access_secs, 2), "access_rebuilt": bool(rebuilt),
              "edges_by_kind": dict(sorted(edges.group_by("kind").len().iter_rows())) if edges.height else {},
              "access_sessions": int(edges["count"].sum()) if edges.height else 0,
@@ -250,11 +278,4 @@ def reach_main(argv: Optional[List[str]] = None) -> int:
     if rebuilt:
         extra.update({"access_graph.parquet": edges, "access_hosts.parquet": hosts})
     files.write(run, bundle, index, alerts_out, extra)
-    for x in reach_rows:
-        n = x["next"]
-        top = n["reachable"][0]["host"] if n["reachable"] else "-"
-        print(f"#{x['incident_number']} reach {len(n['reachable'])} top {top} | {n['sentence']}")
-    print(f"\naccess graph {stats['edges_by_kind']} ({'built' if rebuilt else 'reused'} in {access_secs:.2f} s), "
-          f"{hosts.height:,} internal hosts; {with_reach} incidents with reach, {stats['incidents_empty']} with a "
-          f"stated reason, 0 contract errors; {wall:.2f} s -> {run}")
-    return 0
+    return 0, stats, [], reach_rows

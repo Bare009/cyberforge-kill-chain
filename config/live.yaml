@@ -1,0 +1,12 @@
+# Live mode (docs/build-plan.md P15): python -m killchain live --input <log> --run <run>
+interval_s: 2              # one tick: read new lines, detect, correlate, rebundle
+window_hours: 72           # event-time window kept in memory; rules with a longer window are skipped
+max_rows: 2000000          # safety cap on the in-memory table; the oldest lines go first
+max_backfill_mb: 256       # a bigger file is tailed from its last 256 MB
+max_line_bytes: 1048576    # a longer line is cut, as the AI-SOC tailer does
+duckdb: {memory_limit: 2GB, threads: 2}
+skip_rules:                # need more history than the live window holds
+  R13-insider-drift: "counts growth over several daily buckets"
+  A01-rare-event: "rarity is judged across the whole run"
+  A02-first-seen-admin-pair: "baseline is the first 2 days of the data"
+  A03-first-seen-user-country: "baseline is the first 2 days of the data"

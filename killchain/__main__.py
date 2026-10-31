@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-PLANNED = {"live": "P15"}
+PLANNED: Dict[str, str] = {}
 
 
 def cmd_parse(rest: List[str]) -> int:
@@ -126,12 +126,19 @@ def cmd_serve(rest: List[str]) -> int:
     return api_main(rest)
 
 
+def cmd_live(rest: List[str]) -> int:
+    from .live.cli import main as live_main
+
+    return live_main(rest)
+
+
 COMMANDS: Dict[str, Callable[[List[str]], int]] = {"parse": cmd_parse, "db": cmd_db, "eval": cmd_eval,
                                                    "detect": cmd_detect, "correlate": cmd_correlate,
                                                    "chain": cmd_chain, "reach": cmd_reach,
                                                    "score": cmd_score, "report": cmd_report,
                                                    "enrich": cmd_enrich, "agents": cmd_agents,
-                                                   "bundle": cmd_bundle, "run": cmd_run, "serve": cmd_serve}
+                                                   "bundle": cmd_bundle, "run": cmd_run, "serve": cmd_serve,
+                                                   "live": cmd_live}
 
 
 def main(argv: Optional[List[str]] = None) -> int:

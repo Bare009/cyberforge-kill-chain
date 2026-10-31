@@ -123,6 +123,16 @@ def configure(con: duckdb.DuckDBPyConnection, memory_limit: Optional[str] = None
     con.execute("SET preserve_insertion_order = false")
 
 
+def derived_select(src: str, net: Dict[str, Any]) -> str:
+    """SELECT of every parser column of `src` (a table, view or read_parquet call) plus the derived columns.
+
+    Both tables have src_ip and dst_ip, so both get the same derived columns.
+    The inner query parses each address once; the zone rules compare integers.
+    """
+    inner = f"SELECT *, {_ip_int('src_ip')} AS src_ip_int, {_ip_int('dst_ip')} AS dst_ip_int FROM {src}"
+    return f"SELECT *, {_time_cols()}, {_ip_cols(net)} FROM ({inner})"
+
+
 def create_views(con: duckdb.DuckDBPyConnection, parsed_dir: Union[str, Path],
                  network: Optional[Dict[str, Any]] = None) -> Dict[str, bool]:
     """Create firewall_events, windows_events and events. Returns which streams exist."""
@@ -134,10 +144,7 @@ def create_views(con: duckdb.DuckDBPyConnection, parsed_dir: Union[str, Path],
         have[stream] = src is not None
         if src is None:
             continue
-        # Both tables have src_ip and dst_ip, so both get the same derived columns.
-        # The inner query parses each address once; the zone rules compare integers.
-        inner = f"SELECT *, {_ip_int('src_ip')} AS src_ip_int, {_ip_int('dst_ip')} AS dst_ip_int FROM {src}"
-        con.execute(f"CREATE OR REPLACE VIEW {view} AS SELECT *, {_time_cols()}, {_ip_cols(net)} FROM ({inner})")
+        con.execute(f"CREATE OR REPLACE VIEW {view} AS {derived_select(src, net)}")
     if have.get("firewall"):
         con.execute("CREATE OR REPLACE VIEW events AS SELECT * FROM firewall_events")
     elif have.get("windows"):
