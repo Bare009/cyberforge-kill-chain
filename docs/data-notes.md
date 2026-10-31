@@ -1,7 +1,12 @@
 # Notes on the organisers' data
 
-Based on slices of `firex-10G.log` (about 10% of its real-traffic region) and
+Based on the full parse of `firex-10G.log` and on
 `firex-30G.log.manifest.json`, both from `logs.zip` (31 October 2026).
+
+**Every firewall incident type in the manifest was found in `firex-10G.log`,
+with the manifest's event counts.** The list, with entities and times, is the
+silver truth in `docs/build-plan.md` section 2.3; noise traps are in section
+2.2.
 
 ## firex-10G.log (6.54 GB)
 
@@ -11,8 +16,8 @@ time zone +0530.
 | Bytes | Lines | Content |
 |---|---|---|
 | 0 to 2.03 GB | 3.85 M | Real traffic, 2026-10-23 08:48:26 to 2026-10-30 08:48:25 +0530, in time order |
-| 2.03 to 4.82 GB | 5.28 M | Same event mix, every line stamped 2026-10-30 08:48:25.999999; 8.7% exact duplicates; no attack lines seen |
-| 4.82 to 6.54 GB | about 6.8 M | Random bytes |
+| 2.03 to 4.82 GB | 5.28 M | Same event mix, every line stamped 2026-10-30 08:48:25.999999; 812,235 exact duplicates; no attack lines seen |
+| 4.82 to 6.54 GB | 6.7 M (not log lines) | 1,602 Debian `.deb` packages appended to the file; the last text line is cut off by the first one |
 
 Event mix in the real region: traffic/forward 64%, failed admin logins 14%,
 webfilter 4.4%, IPS 3.0%, app-ctrl 3.0%, DNS 3.0%, antivirus 1.5%, VPN 1.5%,
