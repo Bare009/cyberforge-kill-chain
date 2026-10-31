@@ -983,7 +983,7 @@ P0 takes about an hour and is split so neither person waits:
 | Day | Track A (you) | Track B (teammate) |
 |---|---|---|
 | 1 | P0 (A part: folders, requirements, `.env.example`, **contracts and sample run**); P1 leftovers (CLI, DuckDB view, explorer); start P2 silver truth | P0 (B part: tools, data, API keys); copy AI-SOC frontend to `web/` and strip auth and unused pages; P11 API skeleton serving the sample run |
-| 2 | P2 finish (\eval score\); P5 labels; P3 rule engine and validator; first rules R01, R05 | Incident list and incident page (header, timeline, tabs) on the sample; MITRE backend on DuckDB and the MITRE page ported |
+| 2 | P2 finish (`eval score`); P5 labels; P3 rule engine and validator; first rules R01, R05 | Incident list and incident page (header, timeline, tabs) on the sample; MITRE backend on DuckDB and the MITRE page ported |
 | 3 | P4 rules R02-R12 with background review | Attack path graph component; reach-next tab; evidence tab; entity drawer |
 | 4 | P4 rules R13-R24; P4b anomaly layer | P9 threat-intel engine (providers, cache, local context); Threat Intel page |
 | 5 | P6 correlation; P7 chain; P8 access graph and reach next; first real bundle | Wire every page to the real bundle; Dashboard, Alerts, Rules pages; P10b LLM client and narrator |
