@@ -243,7 +243,7 @@ def test_network_down(full_run, tmp_path, monkeypatch):
 
 
 def test_from_reach_after_bundle_keeps_reach(full_run, tmp_path):
-    """Bundle renumbers incident_lines.parquet by risk; a rerun from reach must still match each incident's lines."""
+    """A rerun from reach after bundle (and score's renumbering) must still match each incident's lines."""
     run = copy_run(full_run, tmp_path)
     before = load(run / "reach.json")
     assert run_main(args(tmp_path, tmp_path / "attack.log", "attack", "--from", "reach", "--offline", "--no-llm")) == 0
@@ -279,6 +279,6 @@ def test_help_lists_run_ready(capsys):
     assert main([]) == 0
     rows = dict(l.split(None, 1) for l in capsys.readouterr().out.splitlines() if l.startswith("  "))
     assert rows["run"].strip() == "ready"
-    for n in ("enrich", "agents", "bundle"):
+    for n in ("enrich", "agents", "bundle", "serve"):
         assert rows[n].strip() == "ready"
-    assert rows["serve"].startswith("planned") and rows["live"].startswith("planned")
+    assert rows["live"].startswith("planned")
