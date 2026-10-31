@@ -44,10 +44,9 @@ choice; **[assumption]** not yet checked.
   targets, README.
 - **T1, should ship:** anomaly layer, the four LLM agents, live mode.
 - **T2, stretch:** Sigma import, Windows adapter rules (only if a Windows log
-  arrives), extra UI polish (themes, saved views), unsupervised anomaly model
-  (Isolation Forest, P16 item 4; built last, only with time left).
+  arrives), extra UI polish (themes, saved views).
 
-**Cut in this order when behind:** anomaly model → Sigma import → Windows rules → live mode →
+**Cut in this order when behind:** Sigma import → Windows rules → live mode →
 rule-writer agent → Q&A agent → triage opinion → anomaly layer.
 
 **Never cut:** evaluation, rule engine, the silver-incident rules, correlation,
@@ -902,30 +901,6 @@ following only the README; submission rules; rehearse twice; backup video.
    4720/4728/4732, 1102; host-name map; `logs_on` / `admin_on` edges.
 3. UI polish: saved views, light theme, shareable incident links with the graph
    state.
-4. **Unsupervised anomaly model (built last, only if time allows).** One
-   Isolation Forest (scikit-learn) as an extra detector in the anomaly layer.
-   - **Unit:** one internal or external host per hour, `ts_valid` rows only.
-   - **Features:** sessions, distinct destinations, distinct destination
-     ports, distinct countries, bytes sent, bytes received, sent/received
-     ratio, denied share, failed admin logins, IPS/AV/webfilter hits, share of
-     night-hour activity, new destinations compared with the host's earlier
-     hours. Counts are log-scaled.
-   - **Fit:** on the run's own data, no labels (`n_estimators=200`,
-     `contamination` left to the score threshold); a fixed `random_state` so
-     reruns give the same result; features computed with one DuckDB query.
-   - **Output:** alerts with `layer: anomaly`, `rule_id: ml-iforest`,
-     confidence 0.3, the anomaly score, and the three features that differ
-     most from the host's median as the explanation; label from the P4b
-     feature table (ports → T1046, destinations → T1021, failed logins →
-     T1110, bytes out → T1048), otherwise `unknown`.
-   - **Trust:** same rules as the other anomaly detectors: it never creates an
-     incident alone, it joins one when it shares entities and time, and
-     otherwise lists as unexplained activity.
-   - **Measured, not assumed:** `eval score` reports planted lines it finds
-     that no rule finds, and its false-alarm share; it stays only if it helps.
-   - **Cost:** about half a day; adds `scikit-learn` to `requirements.txt`;
-     a few minutes of runtime. Model saved under the run folder, refitted each
-     run.
 
 ---
 
@@ -1097,4 +1072,3 @@ Our aim: all "great". Measured so far: parsing 55 s at 4.5 GB.
 - [ ] P14 Docker Compose (pipeline, api, web, live); README tested on a clean clone; demo rehearsed; `v1.0`
 - [ ] P15 live mode: new attack visible within 5 s
 - [ ] P10b LLM budget: one call per incident, cache, rate limiter, fallback chain, budget meter
-- [ ] P16 (if time) Isolation Forest anomaly model, kept only if `eval score` shows it helps
