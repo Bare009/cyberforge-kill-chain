@@ -47,3 +47,92 @@ pip install -r requirements.txt
 
 Put the organisers' files under `data/raw/` (for example
 `data/raw/firex-10G.log`). `data/` is ignored by git.
+
+## Stage 1: parse raw logs into Parquet
+
+```powershell
+python -m killchain.parser data\raw\firex-10G.log --out data\parsed\firex-10G
+```
+
+Useful options: `--workers N` (default: CPUs minus 2, at most 14), `--max-mb 512`
+to parse only the start of a file, `--start BYTES` to begin further in (line
+numbers stay correct), `--overwrite` to replace an earlier run. `--help` lists
+the rest.
+
+Each input file is split into byte ranges that start on line boundaries. A first
+parallel pass counts newlines so every row carries its true line number; worker
+processes then parse the ranges and write Parquet parts. No process holds more
+than one 16 MB read block plus one 65,536-row batch, so memory does not grow
+with file size.
+
+### Output
+
+```
+data/parsed/<name>/
+  firewall/part-*.parquet   FortiGate key=value lines
+  windows/part-*.parquet    JSON lines (Windows events, ECS/EDR exports)
+  _stats.json               counts, timings, peak memory, junk byte ranges, samples of rejected lines
+```
+
+Columns in both tables:
+
+| Column | Meaning |
+|---|---|
+| `ts` | event time, UTC, microseconds |
+| `ts_quality` | `ok`, `stuck`, `backwards`, `eventtime_mismatch`, `date_missing`, `missing`, `tz_assumed` |
+| `source`, `line`, `byte_offset` | file name, 1-based line number, 0-based byte offset of the line start |
+| `line_hash` | 64-bit BLAKE2b of the raw line, for duplicate checks |
+| `extra` | JSON object with every key that has no column of its own |
+
+`line` and `byte_offset` use the same conventions as the organisers' manifest
+(`at: [line, byte, stream]`), so detections can be scored against it exactly.
+The raw line is not stored; seek to `byte_offset` to show it as evidence.
+
+`firewall` renames FortiGate keys to snake_case: `srcip` becomes `src_ip`,
+`dstport` becomes `dst_port`, `logdesc` becomes `log_desc`, `sentbyte` becomes
+`sent_bytes`, and so on (see `FIELDS` in `killchain/parser/fortigate.py`).
+`windows` maps common Windows/ECS paths to columns such as `event_id`, `host`,
+`target_user`, `logon_type`, `src_ip`, `service_name`, `share_name`,
+`relative_target` and `ticket_encryption` (see `ALIASES` in
+`killchain/parser/jsonlog.py`). No sample of the organisers' Windows stream has
+been shared yet, so that mapping is provisional.
+
+### Data problems the parser handles
+
+Found in `firex-10G.log`, the organisers' 6.5 GB file:
+
+| Bytes | Content | Handling |
+|---|---|---|
+| 0 to 2.03 GB | 3.85 M FortiGate lines, 7 days, in time order | parsed, `ts_quality=ok` |
+| 2.03 to 4.82 GB | 5.28 M lines whose clock is stuck at the window end (2026-10-30 08:48:25.999999 +0530) | parsed, `ts_quality=stuck`; detection rules must skip these rows |
+| 4.82 to 6.54 GB | 1.73 GB of random bytes | rejected as `binary`, reported as one junk range |
+
+Other details:
+
+- `eventtime` holds the local wall clock as if it were UTC (it is exactly `tz`
+  ahead of `date`+`time`). The parser checks both readings against
+  `date`+`time` and keeps the one that agrees, which preserves sub-second
+  precision.
+- A line never stops the run: malformed lines are counted by reason, sampled in
+  `_stats.json`, and coalesced into byte ranges.
+
+### Measured speed
+
+Windows 11, 16 logical CPUs, 14 workers, file in the OS cache:
+
+| Run | Wall time | Peak RSS (all processes) |
+|---|---|---|
+| first 512 MB (1.02 M lines) | 5.1 s, of which about 3 s is worker start-up | 3.7 GB |
+| 64 MB across the stuck-clock boundary | 3.0 s | 1.6 GB |
+
+Steady state is 37.5 µs of CPU per FortiGate line per worker, about 370,000
+lines per second with 14 workers.
+
+### Check a run
+
+```powershell
+python tools\verify_parse.py data\parsed\firex-10G firewall 2000
+```
+
+This re-reads sampled rows from the source file at `byte_offset` and checks the
+line hash, the line number (by recounting newlines) and the main columns.
