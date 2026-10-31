@@ -31,6 +31,8 @@ def text_form(inc: Dict[str, Any]) -> str:
         end = f" (ongoing until {s['ts_end_ist']})" if s["ongoing"] else ""
         out.append(f"{s['n']:>2}. {s['ts_start_ist']} IST{end} {s['technique']} {s['tactic']} "
                    f"{s['src'] or '-'} -> {s['dst'] or '-'} x{s['event_count']}: {s['action']}")
+        for x in s.get("supporting") or []:
+            out.append(f"      + {x['relation']}: {x['rule_id']} {x['technique']} x{x['event_count']}: {x['action']}")
     out.append("")
     out += [f"gap: {g}" for g in inc["gaps"]] or ["gaps: none"]
     out.append(f"reach next: {inc['next']['sentence']}")
@@ -92,6 +94,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     steps = [s for c in chains for s in c["chain"]]
     stats = {"stage": "chain", "wall_secs": round(wall, 2), "peak_rss_mb": round(peak.peak / 2**20),
              "incidents": len(chains), "steps": len(steps), "ongoing_steps": sum(s["ongoing"] for s in steps),
+             "supporting": sum(len(s.get("supporting") or []) for s in steps),
              "gaps": sum(len(c["gaps"]) for c in chains), "incident_lines": lines.height,
              "graph_nodes": sum(len(c["graph"]["nodes"]) for c in chains),
              "graph_edges": sum(len(c["graph"]["edges"]) for c in chains), "contract_errors": 0}
@@ -102,7 +105,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     })
     for c in chains:
         print(f"#{c['incident_number']} {c['chain_text']} | gaps {len(c['gaps'])}")
-    print(f"\n{stats['incidents']} incidents, {stats['steps']} steps ({stats['ongoing_steps']} ongoing), "
+    print(f"\n{stats['incidents']} incidents, {stats['steps']} numbered steps ({stats['ongoing_steps']} ongoing), "
+          f"{stats['supporting']} supporting, "
           f"{stats['gaps']} gaps, {stats['incident_lines']:,} evidence lines, 0 contract errors; "
           f"{wall:.2f} s -> {run}")
     return 0

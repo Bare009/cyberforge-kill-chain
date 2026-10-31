@@ -442,7 +442,7 @@ Generic detectors in `rules/anomaly/`, run by the same engine with
 
 Rules for its alerts:
 - An anomaly alert sharing entities and time with a rule alert joins that
-  incident as an extra step.
+  incident as supporting evidence on the nearest rule step (P7).
 - Alone, it becomes an incident only when ≥ 2 detectors fire on the same
   entity within an hour; otherwise it is listed as **unexplained activity**
   in the API and UI, not as an incident.
@@ -510,8 +510,12 @@ splits.
 
 ### P7. Numbered chain and path graph (3 h, T0, A)
 
-- One step per alert. Sorted by `ts_start`; ties and overlaps put the lower
+- One step per **rule** alert. Sorted by `ts_start`; ties and overlaps put the lower
   `stage_no` first; then `rule_id`. Numbered 1..N, no gaps.
+- Anomaly alerts are `supporting` evidence on the nearest rule step: shared
+  entity first, then the smallest time gap (overlap = 0), then the same tactic,
+  then the nearest start, then the lower step number. An anomaly-only incident
+  numbers its anomaly alerts.
 - A long step (beaconing, exfiltration) gets one number at its start, shows
   `ts_end`, and `ongoing: true` if it runs past later steps.
 - Unobserved phases go in `gaps` ("no credential-access evidence in the

@@ -172,6 +172,29 @@ def test_dominant_alert_sets_step_order(tmp_path):
     assert p[2]["rebuilt"] is True
 
 
+def test_supporting_alerts_count_for_paths(tmp_path):
+    # step 2 of the ordered truth incident is covered only by an anomaly alert listed as supporting on our step 2
+    alerts = [("a2", "R02", "rule", "T1595.002", list(range(100, 105))),
+              ("r9", "R16", "rule", "T1190", [9000]),
+              ("x1", "A10", "anomaly", "T1190", list(range(200, 205)))]
+
+    def with_supporting(listed):
+        run = write_run(tmp_path / ("in" if listed else "out"), alerts, [])
+        inc = {"incident_number": 1, "incident_id": "inc1", "title": "one",
+               "chain": [{"n": 1, "alert_id": "a2", "supporting": []},
+                         {"n": 2, "alert_id": "r9", "supporting": [{"alert_id": "x1"}] if listed else []}]}
+        (run / "incidents" / "1.json").write_text(json.dumps(inc), encoding="utf-8")
+        return sc.score(make_truth(), sc.load_run(run))
+
+    r = with_supporting(True)
+    p = {x["incident_id"]: x for x in r["paths"]}
+    assert p[2]["rebuilt"] is True and r["metrics"]["false_alarm_share"] == 0
+    assert sc.membership(sc.load_run(tmp_path / "in")["incidents"]).filter(
+        pl.col("alert_id") == "x1")["step_n"].to_list() == [2]
+    p = {x["incident_id"]: x for x in with_supporting(False)["paths"]}
+    assert p[2]["rebuilt"] is False and p[2]["reason"] == "steps missing from the incident"
+
+
 def test_incident_spanning_two_truth_incidents(tmp_path):
     alerts = [("a1", "R01", "rule", "T1110.001", list(range(1, 11))),
               ("a2", "R02", "rule", "T1595.002", list(range(100, 105)))]

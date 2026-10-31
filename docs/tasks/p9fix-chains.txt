@@ -1,0 +1,66 @@
+#1 1. Discovery → 2. Initial Access → 3. Persistence → 4. Exfiltration | steps 4, supporting 3, gaps 6 | A09->2 during; A10->4 during; A11->4 during
+#2 1. Execution → 2. Command and Control → 3. Exfiltration | steps 3, supporting 5, gaps 6 | A10->3 during; A04->3 during; A08->3 during; A04->3 during; A08->3 during
+#3 1. Persistence → 2. Initial Access | steps 2, supporting 3, gaps 1 | A01->1 during; A01->2 during; A03->2 during
+#4 1. Defense Evasion | steps 1, supporting 1, gaps 0 | A01->1 during
+#5 1. Exfiltration | steps 1, supporting 1, gaps 0 | A10->1 during
+#6 1. Credential Access | steps 1, supporting 0, gaps 0
+#7 1. Persistence | steps 1, supporting 0, gaps 0
+#8 1. Initial Access → 2. Lateral Movement | steps 2, supporting 3, gaps 6 | A02->2 during; A05->2 during; A05->2 during
+#9 1. Lateral Movement | steps 1, supporting 2, gaps 0 | A04->1 during; A05->1 during
+#10 1. Initial Access | steps 1, supporting 3, gaps 0 | A01->1 during; A03->1 during; A03->1 during
+#11 1. Initial Access | steps 1, supporting 2, gaps 0 | A01->1 during; A03->1 during
+#12 1. Command and Control | steps 1, supporting 1, gaps 0 | A11->1 during
+#13 1. Initial Access | steps 1, supporting 0, gaps 0
+#14 1. Command and Control | steps 1, supporting 0, gaps 0
+#15 1. Command and Control | steps 1, supporting 0, gaps 0
+#16 1. Impact | steps 1, supporting 0, gaps 0
+#17 1. Command and Control | steps 1, supporting 0, gaps 0
+#18 1. Impact | steps 1, supporting 0, gaps 0
+#19 1. Impact | steps 1, supporting 0, gaps 0
+#20 1. Initial Access | steps 1, supporting 0, gaps 0
+#21 1. Initial Access | steps 1, supporting 0, gaps 0
+#22 1. Credential Access | steps 1, supporting 0, gaps 0
+#23 1. Credential Access | steps 1, supporting 0, gaps 0
+#24 1. Discovery | steps 1, supporting 0, gaps 0
+#25 1. Initial Access | steps 1, supporting 0, gaps 0
+
+#1 764b1cb6e85f6a63 sev 5 | Discovery to Exfiltration by 32.127.48.11
+2026-10-29 01:51:23 to 2026-10-29 12:38:54 IST, 7 alerts, 940 events
+1. Discovery → 2. Initial Access → 3. Persistence → 4. Exfiltration
+
+ 1. 2026-10-29 01:51:23 IST T1046 discovery 32.127.48.11 -> 10.10.20.20 x240: 32.127.48.11 probed 240 ports on 10.10.20.20 in 1.1 minutes; 240 attempts were blocked
+ 2. 2026-10-29 02:07:10 IST T1190 initial-access 32.127.48.11 -> 10.10.20.20 x60: 32.127.48.11 sent 60 SQL injection attempts to 10.10.20.20 in 3.9 minutes; 6 were not blocked
+      + during: A09-denied-then-allowed T1190 x241: 32.127.48.11 was denied 240 times by the firewall, then got through to 10.10.20.20
+ 3. 2026-10-29 02:41:36 IST T1505.003 persistence 32.127.48.11 -> 10.10.20.20 x40: 32.127.48.11 made 40 requests to 10.10.20.20 for server paths that almost no other source requests
+ 4. 2026-10-29 10:09:09 IST T1048.002 exfiltration 32.127.48.11 -> 10.10.20.20 x600: 32.127.48.11 sent data to 10.10.20.20 in 600 sessions over 0.1 days, far more than it received
+      + during: A10-lopsided-pair T1048 x840: 32.127.48.11 sent at least 10 times more to 10.10.20.20 than it received, in 840 sessions over 0.4 days
+      + during: A11-too-regular T1071 x600: 32.127.48.11 talked to 10.10.20.20 600 times at near-fixed intervals over 0.1 days
+
+gap: No Execution evidence in the logs
+gap: No Privilege Escalation evidence in the logs
+gap: No Defense Evasion evidence in the logs
+gap: No Credential Access evidence in the logs
+gap: No Lateral Movement evidence in the logs
+gap: No Collection evidence in the logs
+reach next: No internal connections from portal (10.10.20.20) were observed; 230 hosts in the same server subnet (e.g. 10.10.20.31) are the likely next targets (inferred).
+
+#2 3e4ff877d0712aa4 sev 5 | Execution to Exfiltration by 7.154.5.35
+2026-10-26 08:22:00 to 2026-10-28 01:37:40 IST, 8 alerts, 810 events
+1. Execution → 2. Command and Control → 3. Exfiltration
+
+ 1. 2026-10-26 08:22:00 IST T1204.002 execution 10.10.10.118 -> 7.154.5.35 x3: antivirus detected {virus} on 10.10.10.118 from kjhsdf.duckdns.org 3 times but did not block it
+ 2. 2026-10-26 09:15:00 IST T1071.001 command-and-control 10.10.10.118 -> 7.154.5.35 x400: 10.10.10.118 contacted 7.154.5.35 400 times at a fixed interval over 1.4 days, with nearly identical sizes
+ 3. 2026-10-27 23:24:40 IST T1048.002 exfiltration 10.10.10.118 -> 7.154.5.35 x400: 10.10.10.118 sent data to 7.154.5.35 in 400 sessions over 0.1 days, far more than it received
+      + during: A10-lopsided-pair T1048 x400: 10.10.10.118 sent at least 10 times more to 7.154.5.35 than it received, in 400 sessions over 0.1 days
+      + during: A04-outlier-sessions unknown x185: 10.10.10.118 opened 185 sessions in hours far busier than its own normal
+      + during: A08-outlier-bytes-out T1048 x180: 10.10.10.118 sent data out in 180 sessions, far more per hour than its own normal
+      + during: A04-outlier-sessions unknown x182: 10.10.10.118 opened 182 sessions in hours far busier than its own normal
+      + during: A08-outlier-bytes-out T1048 x180: 10.10.10.118 sent data out in 180 sessions, far more per hour than its own normal
+
+gap: No Persistence evidence in the logs
+gap: No Privilege Escalation evidence in the logs
+gap: No Defense Evasion evidence in the logs
+gap: No Credential Access evidence in the logs
+gap: No Lateral Movement evidence in the logs
+gap: No Collection evidence in the logs
+reach next: No internal reach observed in the logs: 10.10.10.118 opened no allowed sessions to other internal hosts, and inferred neighbours are only drawn for server and DMZ subnets.

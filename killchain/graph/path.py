@@ -3,7 +3,9 @@
 Nodes are external IPs, internal hosts and servers, the firewall, accounts and domains, classified with
 config/network.yaml. Node ids are the raw entity values (the API matches entities on them). Every step
 draws one main directed edge labelled "{n}. {rule words} x{event_count}"; a step with a user goes
-source -> user -> target. Built with NetworkX and exported as {nodes, edges}.
+source -> user -> target. Each supporting anomaly of a step is drawn the same way with the parent step's
+number, its own technique and tactic, `supporting: true` and " (anomaly)" after the label; numbered-step
+edges carry no `supporting` key. Built with NetworkX and exported as {nodes, edges}.
 """
 
 from __future__ import annotations
@@ -75,15 +77,15 @@ def path_graph(steps: List[Dict[str, Any]], alerts_by_id: Dict[str, Dict[str, An
             g.add_node(d.pop("id"), **d)
         return value
 
-    def edge(src: str, dst: str, s: Dict[str, Any], label: str) -> None:
-        nonlocal order
-        g.add_edge(src, dst, step=s["n"], technique=s["technique"], tactic=s["tactic"], label=label,
-                   kind="step", _i=order)
-        order += 1
+    def draw(n: int, a: Dict[str, Any], rule_id: str, event_count: int, technique: str, tactic: str,
+             suffix: str, supporting: bool) -> None:
+        def edge(src: str, dst: str, label: str) -> None:
+            nonlocal order
+            extra = {"supporting": True} if supporting else {}
+            g.add_edge(src, dst, step=n, technique=technique, tactic=tactic, label=label + suffix,
+                       kind="step", **extra, _i=order)
+            order += 1
 
-    for s in steps:
-        a = alerts_by_id.get(s["alert_id"], {})
-        n = s["n"]
         if a.get("src_ip"):
             src = node(a["src_ip"], "ip")
         else:
@@ -102,19 +104,26 @@ def path_graph(steps: List[Dict[str, Any]], alerts_by_id: Dict[str, Dict[str, An
             dst = node(a["host"], "host")
         else:
             dst = None
-        main = f"{n}. {rule_words(s['rule_id'])} x{s['event_count']}"
+        main = f"{n}. {rule_words(rule_id)} x{event_count}"
         user = a.get("user")
         if user:
             u = node(user, "user")
             if dst is None:
-                edge(src, u, s, main)
+                edge(src, u, main)
             else:
-                edge(src, u, s, f"{n}. signs in as {user}")
-                edge(u, dst, s, main)
+                edge(src, u, f"{n}. signs in as {user}")
+                edge(u, dst, main)
         elif dst is not None:
-            edge(src, dst, s, main)
+            edge(src, dst, main)
         if dom and dom != dst:
-            edge(src, node(dom, "domain"), s, f"{n}. {dom}")
+            edge(src, node(dom, "domain"), f"{n}. {dom}")
+
+    for s in steps:
+        draw(s["n"], alerts_by_id.get(s["alert_id"], {}), s["rule_id"], s["event_count"], s["technique"],
+             s["tactic"], "", False)
+        for x in s.get("supporting") or []:
+            draw(s["n"], alerts_by_id.get(x["alert_id"], {}), x["rule_id"], x["event_count"], x["technique"],
+                 x["tactic"], " (anomaly)", True)
 
     nodes = [{"id": k, **d} for k, d in g.nodes(data=True)]
     edges = sorted(({"source": u, "target": v, **d} for u, v, d in g.edges(data=True)),

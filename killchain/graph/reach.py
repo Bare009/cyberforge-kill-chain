@@ -1,7 +1,8 @@
 """Reach next (docs/build-plan.md P8): where the attacker can go from what the incident shows they control.
 
-1. Footholds: internal targets of successful steps (not reconnaissance, discovery or impact: a scanned or
-   flooded host is not taken), internal sources of steps (internal attacker or infected host), and accounts
+1. Footholds: internal targets of successful steps and their supporting anomalies (not reconnaissance,
+   discovery or impact: a scanned or flooded host is not taken), internal sources of steps and their
+   supporting anomalies (internal attacker or infected host), and accounts
    with a successful admin login among the incident's evidence lines.
 2. Breadth-first search over the access graph (access.py) plus inferred zone_neighbour edges from server
    and DMZ footholds to the other server and DMZ hosts in their /24, up to max_hops. Nodes already in the
@@ -88,6 +89,16 @@ def edge_label(kind: str, count: int, ports: List[int], zone: str) -> str:
 
 # ── footholds, touched, likely tactics ───────────────────────────────────────
 
+def evidence_steps(chain: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Numbered steps plus their supporting anomaly entries, in the P7 order (ts_start, stage_no, rule_id,
+    alert_id). Reach looks at all of them, so moving an anomaly under a rule step does not change `next`."""
+    sup = [x for s in chain for x in s.get("supporting") or []]
+    if not sup:
+        return list(chain)                     # numbered steps are already in that order
+    return sorted(list(chain) + sup, key=lambda s: (str(s.get("ts_start") or ""), int(s.get("stage_no") or 0),
+                                                    str(s.get("rule_id") or ""), str(s.get("alert_id") or "")))
+
+
 def footholds(chain: List[Dict[str, Any]], login_accounts: Iterable[str], net: Dict[str, Any],
               settings: Dict[str, Any]) -> List[str]:
     skip = set(settings["foothold_skip_tactics"])
@@ -100,7 +111,7 @@ def touched(incident: Dict[str, Any], line_rows: Iterable[Dict[str, Any]]) -> Se
     """Lower-cased values already part of the incident: its entities, step ends and evidence-line entities."""
     ents = incident.get("entities") or {}
     out = {_key(v) for k in ("ips", "hosts", "users", "domains") for v in ents.get(k) or []}
-    out |= {_key(s[k]) for s in incident.get("chain") or [] for k in ("src", "dst") if s.get(k)}
+    out |= {_key(s[k]) for s in evidence_steps(incident.get("chain") or []) for k in ("src", "dst") if s.get(k)}
     out |= {_key(r[k]) for r in line_rows for k in ("src_ip", "dst_ip", "user") if r.get(k)}
     return out
 
@@ -138,9 +149,10 @@ def reach_next(incident: Dict[str, Any], chain_graph: Dict[str, Any], edges: Any
     chain = incident["chain"]
     logins = set(settings["login_success_desc"])
     accounts = sorted({r["user"] for r in line_rows if r.get("user") and r.get("log_desc") in logins})
-    fh = footholds(chain, accounts, net, settings)
+    ev_steps = evidence_steps(chain)
+    fh = footholds(ev_steps, accounts, net, settings)
     seen = touched(incident, line_rows)
-    tactics = likely_tactics((s["stage_no"] for s in chain), settings.get("likely_next", 3))
+    tactics = likely_tactics((s["stage_no"] for s in ev_steps), settings.get("likely_next", 3))
 
     g = (edges if isinstance(edges, nx.MultiDiGraph) else access_digraph(edges)).copy()
     host_rows = {r["ip"]: r for r in hosts.iter_rows(named=True)}

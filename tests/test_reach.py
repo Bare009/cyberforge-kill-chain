@@ -231,6 +231,21 @@ def test_footholds_rules():
     assert rc.footholds(chain, ["parul.sinha"], NET, S) == ["10.10.20.24", "10.10.10.118", "parul.sinha"]
 
 
+def test_footholds_include_supporting():
+    # the only successful step to an internal host is a supporting anomaly under a blocked rule step
+    sup = {**step(1, "203.228.177.117", "10.10.99.1"), "rule_id": "A01-rare-event", "alert_id": "x1",
+           "ts_start": "2026-10-29T00:00:01.000000Z"}
+    rule = {**step(1, "203.228.177.117", "10.10.20.20", tactic="discovery", success=False),
+            "rule_id": "R02-port-scan", "alert_id": "r1", "ts_start": "2026-10-29T00:00:00.000000Z",
+            "supporting": [sup]}
+    inc = incident([rule])
+    assert [s["alert_id"] for s in rc.evidence_steps(inc["chain"])] == ["r1", "x1"]
+    nxt, _, fh = run(inc, edges_df([]), hosts_df(["10.10.99.1"]))
+    assert fh == ["10.10.99.1"]
+    assert {"203.228.177.117", "10.10.99.1", "10.10.20.20"} <= rc.touched(inc, [])
+    assert nxt["likely_tactics"] == rc.likely_tactics([9, 3])
+
+
 def test_desktop_foothold_gets_no_neighbours():
     inc = incident([step(1, "10.10.10.118", "7.154.5.35", tactic="exfiltration")])
     nxt, _, fh = run(inc, edges_df([]), hosts_df(["10.10.10.118", "10.10.10.119", "10.10.10.120"]))

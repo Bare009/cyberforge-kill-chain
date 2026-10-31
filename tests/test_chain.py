@@ -128,16 +128,103 @@ def chain_b(outlier_start):
             al("o2", "A08-outlier", outlier_start, minutes=60, tactic="exfiltration", layer="anomaly")]
 
 
-def test_chain_b_shape():
+def sup_ids(step):
+    return [x["alert_id"] for x in step["supporting"]]
+
+
+def test_chain_b_rule_steps_and_supporting():
     steps = ch.build_steps(chain_b(37 * 60 + 6), None, NET)
-    assert ids(steps) == ["m", "b", "x1", "x2", "o1", "o2"]
-    assert [s["ongoing"] for s in steps] == [False, False, True, True, False, False]
+    assert ids(steps) == ["m", "b", "x2"]
+    assert [sup_ids(s) for s in steps] == [[], [], ["x1", "o1", "o2"]]
+    assert {x["relation"] for x in steps[2]["supporting"]} == {"during"}
+    assert ch.chain_text(steps) == "1. Execution → 2. Command and Control → 3. Exfiltration"
+    assert [s["ongoing"] for s in steps] == [False, False, False]
 
 
-def test_chain_b_outlier_during_beaconing_comes_before_exfil():
+def test_outlier_during_beaconing_attaches_to_beaconing():
     steps = ch.build_steps(chain_b(10 * 60), None, NET)
-    assert ids(steps) == ["m", "b", "o1", "o2", "x1", "x2"]
-    assert steps[1]["ongoing"] is True
+    assert ids(steps) == ["m", "b", "x2"]
+    assert sup_ids(steps[1]) == ["o1", "o2"] and sup_ids(steps[2]) == ["x1"]
+
+
+AB = {"src_ip": "32.127.48.11", "dst_ip": "10.10.20.20"}
+
+
+def chain_a():
+    return [al("a09", "A09-denied-then-allowed", 0, minutes=500, tactic="initial-access", layer="anomaly", **AB),
+            al("r02", "R02-port-scan", 0, minutes=1, **AB),
+            al("a10", "A10-lopsided-pair", 0, minutes=680, tactic="exfiltration", layer="anomaly", **AB),
+            al("r16", "R16-web-sql-injection", 16, minutes=4, tactic="initial-access", **AB),
+            al("r20", "R20-rare-path", 50, minutes=20, tactic="persistence", **AB),
+            al("a11", "A11-too-regular", 500, minutes=150, tactic="command-and-control", layer="anomaly", **AB),
+            al("r12", "R12-transfer", 500, minutes=150, tactic="exfiltration", **AB)]
+
+
+def test_chain_a_supporting():
+    steps = ch.build_steps(chain_a(), None, NET)
+    assert ids(steps) == ["r02", "r16", "r20", "r12"]
+    assert [sup_ids(s) for s in steps] == [[], ["a09"], [], ["a10", "a11"]]
+    assert all(s["layer"] == "rule" for s in steps)
+    sup = [x["stage_no"] for s in steps for x in s["supporting"]]
+    g = ch.gaps([s["stage_no"] for s in steps], sup)
+    assert not any("Command and Control" in x for x in g)
+    assert any("Command and Control" in x for x in ch.gaps([s["stage_no"] for s in steps]))
+
+
+def test_attach_prefers_shared_entity():
+    near = al("r1", "R01", 0, minutes=60, src_ip="1.1.1.1", dst_ip="10.10.20.9")
+    far = al("r2", "R02", 600, minutes=5, src_ip="10.10.10.118")
+    x = al("x", "A04", 10, minutes=10, layer="anomaly", src_ip="10.10.10.118")
+    out = ch.attach_supporting([near, far], [x])
+    assert out == {"r1": [], "r2": [(x, "before")]}
+    assert ch.shares_entity(x, far) and not ch.shares_entity(x, near)
+    assert ch.shares_entity({"domain": "Bad.Example"}, {"domain": "bad.example"})
+
+
+def test_attach_before_and_after():
+    rules = [al("r1", "R01", 100, minutes=10), al("r2", "R02", 200, minutes=10)]
+    early = al("e", "A01", 0, minutes=30, layer="anomaly")
+    late = al("l", "A02", 400, minutes=5, layer="anomaly")
+    touch = al("t", "A03", 210, minutes=5, layer="anomaly")       # starts exactly when r2 ends
+    out = ch.attach_supporting(rules, [late, early, touch])
+    assert out == {"r1": [(early, "before")], "r2": [(touch, "during"), (late, "after")]}
+    assert ch.gap_secs(early, rules[0]) == 70 * 60 and ch.gap_secs(touch, rules[1]) == 0
+
+
+def test_attach_tie_breaks():
+    r1 = al("r1", "R01", 0, minutes=100, tactic="discovery")
+    r2 = al("r2", "R02", 20, minutes=100, tactic="exfiltration")
+    same_tactic = al("x", "A08", 50, minutes=5, tactic="exfiltration", layer="anomaly")
+    assert ch.attach_supporting([r1, r2], [same_tactic])["r2"] == [(same_tactic, "during")]
+    nearest = al("y", "A11", 18, minutes=5, tactic="command-and-control", layer="anomaly")
+    assert ch.attach_supporting([r1, r2], [nearest])["r2"] == [(nearest, "during")]
+    middle = al("z", "A11", 10, minutes=5, tactic="command-and-control", layer="anomaly")
+    assert ch.attach_supporting([r1, r2], [middle])["r1"] == [(middle, "during")]
+
+
+def test_anomaly_only_incident_is_numbered():
+    xs = [al("x2", "A04", 20, layer="anomaly"), al("x1", "A01", 0, layer="anomaly"),
+          al("x3", "A10", 40, tactic="exfiltration", layer="anomaly")]
+    steps = ch.build_steps(xs, None, NET)
+    assert ids(steps) == ["x1", "x2", "x3"] and [s["n"] for s in steps] == [1, 2, 3]
+    assert all(s["layer"] == "anomaly" and s["supporting"] == [] for s in steps)
+
+
+def test_supporting_fields():
+    xs = chain_a()
+    ev = evidence_for(xs, per=4, window=1)
+    steps = ch.build_steps(xs, ev, NET)
+    entries = [x for s in steps for x in s["supporting"]]
+    assert len(entries) == 3
+    for x in entries:
+        assert set(x) == set(C.SUPPORT)
+        errs = []
+        C._check(x, C.SUPPORT, "sup", errs)
+        assert errs == [] and x["line_total"] == 5 and x["layer"] == "anomaly"
+        assert all(C.TS_RE.match(x[k]) for k in ("ts_start", "ts_end"))
+        assert all(C.TS_IST_RE.match(x[k]) for k in ("ts_start_ist", "ts_end_ist"))
+        assert x["src"] == "32.127.48.11" and x["dst"] == "10.10.20.20"
+    assert steps[1]["supporting"][0]["action"] == "A09-denied-then-allowed happened"
 
 
 # ── gaps and chain_text ──────────────────────────────────────────────────────
@@ -177,7 +264,7 @@ def test_step_fields_and_evidence():
     ev = evidence_for(xs, per=25, window=2)
     steps = ch.build_steps(xs, ev, NET)
     for s in steps:
-        assert set(s) == set(C.STEP)
+        assert set(s) == set(C.STEP) | {"supporting"}
         errs = []
         C._check(s, C.STEP, "step", errs)
         assert errs == []
@@ -255,6 +342,42 @@ def test_graph_edges():
     assert {n["id"]: n["label"] for n in g["nodes"]}["sources of step 5"] == "6,005 sources"
     assert [e["step"] for e in g["edges"]] == sorted(e["step"] for e in g["edges"])
     assert {e["step"] for e in g["edges"]} == {1, 2, 3, 4, 5}
+    assert not any("supporting" in e for e in g["edges"])
+
+
+def test_graph_draws_supporting_edges():
+    xs = chain_a()
+    xs[2]["event_count"] = 840
+    steps, g = _graph(xs)
+    _valid_graph(g)
+    sup = [e for e in g["edges"] if e.get("supporting")]
+    assert [(e["step"], e["label"]) for e in sup] == [
+        (2, "2. denied then allowed x10 (anomaly)"), (4, "4. lopsided pair x840 (anomaly)"),
+        (4, "4. too regular x10 (anomaly)")]
+    assert all(e["supporting"] is True and e["kind"] == "step" for e in sup)
+    assert [e["tactic"] for e in sup] == ["initial-access", "exfiltration", "command-and-control"]
+    main = [e for e in g["edges"] if not e.get("supporting")]
+    assert [e["label"] for e in main] == ["1. port scan x10", "2. web sql injection x10", "3. rare path x10",
+                                          "4. transfer x10"]
+    assert [e["step"] for e in g["edges"]] == [1, 2, 2, 3, 4, 4, 4]          # each anomaly next to its parent
+
+
+def test_incident_lines_and_tactics_include_supporting():
+    xs = chain_a()
+    alerts = pl.DataFrame(xs).with_columns(pl.col("host", "user", "url", "technique_name").cast(pl.Utf8),
+                                           pl.col("incident_number").cast(pl.Int64))
+    ev = evidence_for(xs, per=2)
+    incs = pl.DataFrame({"incident_id": ["i1"], "incident_number": [1]})
+    mem = pl.DataFrame({"incident_id": ["i1"] * len(xs), "alert_id": [a["alert_id"] for a in xs]})
+    chains, lines = ch.build_chains(incs, mem, alerts, ev, NET)
+    c = chains[0]
+    assert lines.height == 14
+    step_of = dict(lines.select("alert_id", "step").unique().iter_rows())
+    assert step_of == {"r02": 1, "a09": 2, "r16": 2, "r20": 3, "a10": 4, "a11": 4, "r12": 4}
+    assert c["tactics"] == ["discovery", "initial-access", "persistence", "exfiltration", "command-and-control"]
+    assert c["chain_text"] == "1. Discovery → 2. Initial Access → 3. Persistence → 4. Exfiltration"
+    assert not any("Command and Control" in x for x in c["gaps"])
+    assert {e["step"] for e in c["graph"]["edges"]} == {1, 2, 3, 4}
 
 
 # ── provisional bundle files ─────────────────────────────────────────────────
@@ -351,19 +474,36 @@ def test_real_run_chains():
     ev = pl.read_parquet(REAL_RUN / "alert_evidence.parquet")
     chains, lines = ch.build_chains(inc, mem, alerts, ev, NET)
     src = dict(alerts.select("alert_id", "src_ip").iter_rows())
+    layer = dict(alerts.select("alert_id", "layer").iter_rows())
 
-    def rule_order(ip):
+    def chain_of(ip):
         c = [c for c in chains if any(src.get(s["alert_id"]) == ip and s["layer"] == "rule" for s in c["chain"])]
         assert len(c) == 1
-        return c[0], [s["rule_id"][:3] for s in c[0]["chain"] if s["layer"] == "rule"]
+        return c[0]
 
-    a, ra = rule_order("32.127.48.11")
-    assert ra == ["R02", "R16", "R20", "R12"]                      # scan -> SQLi -> web shell -> data out
-    b, rb = rule_order("10.10.10.118")
-    assert rb == ["R24", "R11", "R12"]                             # malware -> beaconing -> exfil
-    r12 = next(s for s in b["chain"] if s["rule_id"].startswith("R12"))
-    assert r12["ongoing"] is True
-    assert all(s["n"] > r12["n"] for s in b["chain"] if s["rule_id"][:3] in ("A04", "A08"))
+    def sup3(step):
+        return [x["rule_id"][:3] for x in step["supporting"]]
+
+    a = chain_of("32.127.48.11")
+    assert [s["rule_id"][:3] for s in a["chain"]] == ["R02", "R16", "R20", "R12"]   # scan -> SQLi -> web shell -> data out
+    assert a["chain_text"] == "1. Discovery → 2. Initial Access → 3. Persistence → 4. Exfiltration"
+    assert [sup3(s) for s in a["chain"]] == [[], ["A09"], [], ["A10", "A11"]]
+    b = chain_of("10.10.10.118")
+    assert [s["rule_id"][:3] for s in b["chain"]] == ["R24", "R11", "R12"]          # malware -> beaconing -> exfil
+    assert b["chain_text"] == "1. Execution → 2. Command and Control → 3. Exfiltration"
+    assert [sup3(s) for s in b["chain"]] == [[], [], ["A10", "A04", "A08", "A04", "A08"]]
+    # every anomaly member appears exactly once as supporting; every numbered step is a rule step
+    by_inc = {}
+    for iid, aid in mem.select("incident_id", "alert_id").iter_rows():
+        by_inc.setdefault(iid, set()).add(aid)
+    for c in chains:
+        sup = [x["alert_id"] for s in c["chain"] for x in s["supporting"]]
+        assert len(sup) == len(set(sup))
+        assert set(sup) == {x for x in by_inc[c["incident_id"]] if layer[x] == "anomaly"}
+        assert all(s["layer"] == "rule" for s in c["chain"])
+    assert sum(len(c["chain"]) for c in chains) == 32
+    assert sum(len(s["supporting"]) for c in chains for s in c["chain"]) == 24
+    assert lines.height == 44622
     aj = json.loads((REAL_RUN / "alerts.json").read_text(encoding="utf-8"))
     out = files.alerts_with_incidents(aj, mem)
     by_id = {c["incident_id"]: c for c in chains}
@@ -373,4 +513,5 @@ def test_real_run_chains():
         assert C.validate_bundle(i, index, out) == []
         assert all(s["line_total"] >= 1 for s in i["chain"])
         assert {e["step"] for e in i["graph"]["edges"]} == {s["n"] for s in i["chain"]}   # every step drawn
-    assert sum(len(c["chain"]) for c in chains) == 56
+        assert sum(bool(e.get("supporting")) for e in i["graph"]["edges"]) >= \
+            sum(len(s["supporting"]) for s in i["chain"])                                # anomalies drawn too

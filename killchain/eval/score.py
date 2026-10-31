@@ -3,7 +3,8 @@
 Inputs, all from the run folder (contracts B and C, docs/contracts.md):
   alerts.parquet            one row per alert
   alert_evidence.parquet    every evidence line (alert_id, source, line, technique, ...)
-  incidents/<n>.json        incidents; an alert belongs to the incident whose chain lists it
+  incidents/<n>.json        incidents; an alert belongs to the incident whose chain lists it as a
+                            step or as supporting evidence
                             (when absent: incidents.parquet + incident_alerts.parquet from correlate)
   **/_stats.json            stage timings and memory
 
@@ -71,10 +72,20 @@ def incidents_from_parquet(run: Path) -> List[Dict[str, Any]]:
             for num, iid, title in inc.sort("incident_number").iter_rows()]
 
 
+def _step_alerts(inc: Dict[str, Any]) -> List[tuple]:
+    """(alert_id, step n) for every step and every supporting entry (which takes its parent's n)."""
+    return [(aid, s["n"]) for s in inc.get("chain", [])
+            for aid in [s["alert_id"]] + [x["alert_id"] for x in s.get("supporting") or []]]
+
+
+def _alert_ids(inc: Dict[str, Any]) -> set:
+    return {aid for aid, _ in _step_alerts(inc)}
+
+
 def membership(incidents: List[Dict[str, Any]]) -> pl.DataFrame:
     rows = [{"incident_number": inc["incident_number"], "incident_id": inc["incident_id"],
-             "alert_id": s["alert_id"], "step_n": s["n"]}
-            for inc in incidents for s in inc.get("chain", [])]
+             "alert_id": aid, "step_n": n}
+            for inc in incidents for aid, n in _step_alerts(inc)]
     return pl.DataFrame(rows, schema={"incident_number": pl.Int64, "incident_id": pl.Utf8,
                                       "alert_id": pl.Utf8, "step_n": pl.Int64})
 
@@ -162,7 +173,7 @@ def score(truth: pl.DataFrame, run: Dict[str, Any], reviewed: Optional[Dict[str,
     truth_alerts = set(hit["alert_id"].unique().to_list())
     fa_rows = []
     for inc in incidents:
-        ids = {s["alert_id"] for s in inc.get("chain", [])}
+        ids = _alert_ids(inc)
         if ids & truth_alerts:
             continue
         r = reviewed.get(inc["incident_id"], {})

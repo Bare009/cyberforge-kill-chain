@@ -41,7 +41,8 @@ data/runs/<run>/                      (examples/sample-run/ has the same layout)
   incident_alerts.parquet             (track A) correlation output, read by the bundle step
   unexplained.parquet                 (track A) correlation output, read by the bundle step
   chains.json                         (track A) chain, gaps and path graph per incident, read by the bundle step
-  incident_lines.parquet              (track A) every evidence line of every chain step
+  incident_lines.parquet              (track A) every evidence line of every chain step; supporting
+                                      alerts' lines carry the parent step's number
   chain/_stats.json                   (track A) chain stage timings and counts
   access_graph.parquet                (track A) access graph edges: src, dst, kind, strength, count, ports, lines
   access_hosts.parquet                (track A) every internal IP in the logs with zone, role, /24, event count
@@ -127,6 +128,26 @@ role` (`trigger` | `window` | `context`). Every member line is listed.
 `line_total`, `enrichment_flags` (short strings), `confidence`, `layer`.
 `ts_start` never decreases along the chain.
 
+Optional `supporting` (list, `[]` when none): anomaly alerts shown as evidence
+for this step. Each entry has `alert_id`, `rule_id`, `layer`, `title`,
+`action`, `technique`, `technique_name` (nullable), `tactic`, `stage_no`,
+`kill_chain_stage`, `ts_start`, `ts_end`, `ts_start_ist`, `ts_end_ist`, `src`
+(nullable), `dst` (nullable), `event_count`, `success`, `line_total`,
+`confidence` and `relation` (`during` | `before` | `after` the step), filled
+like the step fields of the same name. When an incident has a rule-layer
+alert, only rule alerts are numbered and every anomaly alert is attached to one
+rule step; an incident with only anomaly alerts numbers them and has empty
+`supporting` lists. An anomaly goes to the rule step that first shares an
+entity (`src_ip`, `dst_ip`, `user`, `host`, `domain`), then has the smallest
+time gap (0 when the ranges overlap or touch), then the same tactic, then the
+nearest start, then the lower `n`. An alert id appears at most once across all
+steps and supporting entries, and every supporting `alert_id` is in
+`alerts.json`.
+
+`supporting` and the edge flag below were added after day 1 as optional,
+backward-compatible fields, agreed with the user for both tracks.
+`examples/sample-run/` predates them and stays valid.
+
 ### Graph
 
 - **Node:** `id`, `label`, `kind` (`external_ip`, `internal_host`, `server`,
@@ -135,7 +156,10 @@ role` (`trigger` | `window` | `context`). Every member line is listed.
   optional `reach` (`observed` | `inferred`) on nodes that are only reachable.
 - **Edge:** `source`, `target` (node ids), `step` (int, null for reach edges),
   `technique`, `tactic`, `label` (`2. web sqli x60`), `kind` (`step`,
-  `reach_observed`, `reach_inferred`).
+  `reach_observed`, `reach_inferred`); optional `supporting` (bool, `true`
+  only on edges drawn for a supporting anomaly: `step` is the parent step's
+  number, `technique`/`tactic` are the anomaly's, the label ends in
+  ` (anomaly)`).
 
 ### Reach next (`next`)
 

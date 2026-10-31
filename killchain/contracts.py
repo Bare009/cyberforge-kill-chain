@@ -6,6 +6,11 @@ doc and `examples/sample-run/`.
 
 Use `validate_bundle()` in tests and before writing a run, so both the
 pipeline (track A) and the API (track B) can rely on the shapes.
+
+Change (agreed with the user for both tracks, optional and backward-compatible):
+a step may carry `supporting` (a list of SUPPORT entries: anomaly alerts attached
+to that rule step), and a graph edge may carry `supporting` (bool). Bundles
+without these keys, such as examples/sample-run/, stay valid.
 """
 
 from __future__ import annotations
@@ -32,6 +37,7 @@ TRIAGE = ("looks_real", "likely_noise")
 REPORT_SOURCES = ("ai", "template")
 RISK_BANDS = ("critical", "high", "medium", "low")
 RISK_PARTS = ("severity", "stage", "breadth", "success", "asset", "reach", "threat_intel")
+RELATIONS = ("during", "before", "after")
 
 TECHNIQUE_RE = re.compile(r"^T\d{4}(\.\d{3})?$")
 TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$")       # UTC, ISO 8601
@@ -63,6 +69,15 @@ STEP: Dict[str, Tuple[Any, bool]] = {
     "stage_no": (I, False), "kill_chain_stage": (S, False), "src": (S, True), "dst": (S, True),
     "event_count": (I, False), "success": (B, False), "line_sample": (L, False), "line_total": (I, False),
     "enrichment_flags": (L, False), "confidence": (NUM, False), "layer": (S, False),
+}
+# optional step.supporting[]: an anomaly alert shown as evidence for a numbered rule step
+SUPPORT: Dict[str, Tuple[Any, bool]] = {
+    "alert_id": (S, False), "rule_id": (S, False), "layer": (S, False), "title": (S, False),
+    "action": (S, False), "technique": (S, False), "technique_name": (S, True), "tactic": (S, False),
+    "stage_no": (I, False), "kill_chain_stage": (S, False),
+    "ts_start": (S, False), "ts_end": (S, False), "ts_start_ist": (S, False), "ts_end_ist": (S, False),
+    "src": (S, True), "dst": (S, True), "event_count": (I, False), "success": (B, False),
+    "line_total": (I, False), "confidence": (NUM, False), "relation": (S, False),
 }
 NODE: Dict[str, Tuple[Any, bool]] = {
     "id": (S, False), "label": (S, False), "kind": (S, False), "zone": (S, False), "importance": (NUM, False),
@@ -145,6 +160,39 @@ def validate_alert(a: Dict[str, Any], where: str = "alert") -> List[str]:
     return e
 
 
+def _check_supporting(sup: Any, where: str, e: List[str]) -> None:
+    if not isinstance(sup, list):
+        e.append(f"{where}: expected a list")
+        return
+    for j, x in enumerate(sup):
+        w = f"{where}[{j}]"
+        n0 = len(e)
+        _check(x, SUPPORT, w, e)
+        if len(e) > n0 or not isinstance(x, dict):
+            continue
+        _enum(x["tactic"], TACTICS, f"{w}.tactic", e)
+        _enum(x["layer"], LAYERS, f"{w}.layer", e)
+        _enum(x["kill_chain_stage"], KILL_CHAIN_STAGES, f"{w}.kill_chain_stage", e)
+        _enum(x["relation"], RELATIONS, f"{w}.relation", e)
+        _ts(x["ts_start"], f"{w}.ts_start", e)
+        _ts(x["ts_end"], f"{w}.ts_end", e)
+        _ts(x["ts_start_ist"], f"{w}.ts_start_ist", e, ist=True)
+        _ts(x["ts_end_ist"], f"{w}.ts_end_ist", e, ist=True)
+
+
+def _chain_alert_ids(chain: Any) -> List[Any]:
+    """Alert ids of every step and every supporting entry, in chain order."""
+    out: List[Any] = []
+    for s in chain or []:
+        if not isinstance(s, dict):
+            continue
+        out.append(s.get("alert_id"))
+        sup = s.get("supporting")
+        if isinstance(sup, list):
+            out += [x.get("alert_id") for x in sup if isinstance(x, dict)]
+    return out
+
+
 def validate_incident(inc: Dict[str, Any], where: str = "incident") -> List[str]:
     e: List[str] = []
     _check(inc, INCIDENT, where, e)
@@ -186,6 +234,13 @@ def validate_incident(inc: Dict[str, Any], where: str = "incident") -> List[str]
             _enum(s.get("layer"), LAYERS, f"{w}.layer", e)
             for j, ln in enumerate(s.get("line_sample") or []):
                 _check(ln, EVIDENCE, f"{w}.line_sample[{j}]", e)
+            if "supporting" in s:
+                _check_supporting(s["supporting"], f"{w}.supporting", e)
+    seen_ids: set = set()
+    for aid in _chain_alert_ids(inc["chain"]):
+        if aid in seen_ids:
+            e.append(f"{where}.chain: alert {aid} is listed twice")
+        seen_ids.add(aid)
     starts = [s.get("ts_start") for s in inc["chain"] if isinstance(s, dict)]
     if starts != sorted(starts):
         e.append(f"{where}.chain: ts_start must not decrease")
@@ -205,6 +260,8 @@ def validate_incident(inc: Dict[str, Any], where: str = "incident") -> List[str]
             _check(ed, EDGE, f"{where}.graph.edges[{i}]", e)
             if isinstance(ed, dict):
                 _enum(ed.get("kind"), EDGE_KINDS, f"{where}.graph.edges[{i}].kind", e)
+                if "supporting" in ed and not isinstance(ed["supporting"], bool):
+                    e.append(f"{where}.graph.edges[{i}].supporting: expected bool")
                 for end in ("source", "target"):
                     if ed.get(end) not in ids:
                         e.append(f"{where}.graph.edges[{i}].{end}: {ed.get(end)!r} is not a node id")
@@ -246,4 +303,8 @@ def validate_bundle(incident: Dict[str, Any], index: Dict[str, Any], alerts: Lis
     for s in incident.get("chain") or []:
         if isinstance(s, dict) and s.get("alert_id") not in alert_ids:
             e.append(f"chain step {s.get('n')}: alert_id {s.get('alert_id')!r} is not in alerts.json")
+        sup = s.get("supporting") if isinstance(s, dict) else None
+        for x in sup if isinstance(sup, list) else []:
+            if isinstance(x, dict) and x.get("alert_id") not in alert_ids:
+                e.append(f"chain step {s.get('n')} supporting: alert_id {x.get('alert_id')!r} is not in alerts.json")
     return e
