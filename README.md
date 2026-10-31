@@ -7,6 +7,7 @@ each one.
 | Stage | Status |
 |---|---|
 | 1. Streaming log parser (FR-1) | done: `killchain.parser` |
+| 1b. DuckDB event views, `python -m killchain`, explorer | done: `killchain.db`, `tools/explore.py` |
 | 2. Detection rules with ATT&CK labels (FR-2, FR-3, B-4) | next |
 | 3. Incidents, attack paths, reach-next (FR-4 to FR-6) | planned |
 | 4. API and UI (FR-7) | planned |
@@ -162,3 +163,32 @@ python tools\test_parser_edges.py
   0 mismatches in 1.35 M field checks.
 - `test_parser_edges.py` parses a small file with every damaged-line case and
   checks the flags and the values kept in `extra`.
+
+## Query a parsed run
+
+Every stage reads the parsed Parquet through DuckDB views (`killchain/db.py`).
+The session runs in UTC; IST is a derived column.
+
+```powershell
+python -m killchain              # list the stages and which are ready
+python -m killchain db --parsed data\parsed\firex-10G          # counts, time range, zones
+python -m killchain db --parsed data\parsed\firex-10G --sql "SELECT src_zone, count(*) FROM events WHERE ts_valid GROUP BY 1"
+python tools\explore.py data\parsed\firex-10G --where "log_desc = 'Admin login successful'" --cols ts_ist,src_ip,user,src_country
+python tools\explore.py data\parsed\firex-10G --where "log_desc = 'Admin login failed' AND NOT src_internal" --group src_net24 --top 10
+python tools\explore.py data\parsed\firex-10G --around "2026-10-29 01:51:00" --minutes 5 --where "src_ip = '32.127.48.11'" --raw 3
+```
+
+Views: `events` (the firewall table), `firewall_events`, `windows_events`. On
+top of the parser's columns they add:
+
+| Column | Meaning |
+|---|---|
+| `ts_valid` | usable for time windows: `ts_quality` is `ok` or `tz_assumed`, and no `parse_issue` |
+| `ts_utc`, `ts_ist` | the event time as plain UTC, and in IST |
+| `ist_hour` | hour of `ts_ist`, 0-23 |
+| `src_internal`, `dst_internal` | address is in a private range |
+| `src_zone`, `dst_zone`, `src_role`, `dst_role`, `src_importance`, `dst_importance` | from `config/network.yaml` |
+| `src_net24`, `dst_net24` | the address's /24 |
+
+On `firex-10G.log`: 9,125,383 rows, 3,848,247 with `ts_valid`; a full-table
+query takes 1-2 s.
