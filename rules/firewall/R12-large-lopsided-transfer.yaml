@@ -1,0 +1,19 @@
+id: R12-large-lopsided-transfer
+title: Large one-way transfer between an internal and an outside host
+status: stable
+tuning: "planted 41 MB out (2,000 flows), 8.4 MB out (chain B), 12.3 MB in (chain A); background: 0 alerts on firex-10G"
+attack:
+  technique: T1048.002
+  alt_techniques: [T1048, T1030, T1041]
+  tactic: exfiltration
+severity: 5
+confidence: 0.8
+kind: sql
+sql: |
+  WITH f AS (SELECT source, line, src_ip, dst_ip, sent_bytes, rcvd_bytes FROM {events}
+             WHERE log_type = 'traffic' AND action = 'accept' AND src_internal <> dst_internal
+               AND sent_bytes > 4 * coalesce(rcvd_bytes, 0) AND sent_bytes >= 2000),
+  p AS (SELECT src_ip, dst_ip FROM f GROUP BY ALL HAVING count(*) >= 100 AND sum(sent_bytes) >= 5000000)
+  SELECT f.src_ip || '>' || f.dst_ip AS alert_key, f.source, f.line FROM f JOIN p USING (src_ip, dst_ip)
+entities: {src_ip: src_ip, dst_ip: dst_ip}
+action_text: "{src_ip} sent data to {dst_ip} in {event_count} sessions over {days} days, far more than it received"

@@ -1,0 +1,20 @@
+id: R07-success-after-failures
+title: Successful admin login right after many failures from the same /24
+status: stable
+tuning: "planted 29 failures then 1 success within 10 min from one /24; only 5 successes in 7 days"
+attack:
+  technique: T1110.001
+  alt_techniques: [T1110, T1078]
+  tactic: credential-access
+  technique_by:
+    log_desc: {"Admin login successful": T1078}
+severity: 5
+confidence: 0.9
+kind: sequence
+group_by: [src_net24]
+within: 15m
+steps:
+  - {name: failures, where: "log_desc = 'Admin login failed' AND NOT src_internal", min: 20}
+  - {name: success, where: "log_desc = 'Admin login successful' AND NOT src_internal"}
+entities: {src_ip: src_ip, dst_ip: dst_ip, user: user}
+action_text: "after {event_count} attempts from {src_net24}, an administrator login succeeded"

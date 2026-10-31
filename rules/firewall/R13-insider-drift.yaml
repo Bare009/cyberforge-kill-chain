@@ -1,0 +1,23 @@
+id: R13-insider-drift
+title: Internal host reaching more servers on admin ports every day
+status: stable
+tuning: "planted 19, 50, then 60 distinct servers on SMB over 3 days; background: 0 alerts on firex-10G"
+attack:
+  technique: T1078.002
+  alt_techniques: [T1078, T1083, T1021.002]
+  tactic: initial-access
+severity: 4
+confidence: 0.75
+kind: sql
+sql: |
+  WITH f AS (SELECT source, line, src_ip, dst_ip, CAST(ts_ist AS DATE) AS d FROM {events}
+             WHERE src_internal AND dst_internal AND dst_port IN (22, 135, 445, 3389, 5985, 5986) AND action = 'accept'),
+  c AS (SELECT src_ip, d, count(DISTINCT dst_ip) AS n FROM f GROUP BY ALL),
+  r AS (SELECT src_ip, d, n, lag(n) OVER (PARTITION BY src_ip ORDER BY d) AS prev,
+               lag(d) OVER (PARTITION BY src_ip ORDER BY d) AS prev_d FROM c),
+  up AS (SELECT src_ip FROM r WHERE prev IS NOT NULL AND n > prev AND d - prev_d = 1
+         GROUP BY src_ip HAVING count(*) >= 2),
+  tot AS (SELECT src_ip FROM f GROUP BY src_ip HAVING count(DISTINCT dst_ip) >= 20)
+  SELECT f.src_ip AS alert_key, f.source, f.line FROM f JOIN up USING (src_ip) JOIN tot USING (src_ip)
+entities: {src_ip: src_ip, dst_ip: dst_ip}
+action_text: "{src_ip} reached {dst_count} internal servers on admin ports, more each day for {days} days"

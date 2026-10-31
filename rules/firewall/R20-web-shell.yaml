@@ -1,0 +1,19 @@
+id: R20-web-shell
+title: Requests to server paths that no other source uses (web shell)
+status: stable
+tuning: "planted 4 shell URLs, each used by 2 sources (40 requests each); background web URLs are shared by many sources"
+attack:
+  technique: T1505.003
+  alt_techniques: [T1071.001]
+  tactic: persistence
+severity: 5
+confidence: 0.8
+kind: sql
+sql: |
+  WITH w AS (SELECT * FROM {events} WHERE log_subtype = 'webfilter' AND action = 'passthrough'
+             AND NOT src_internal AND dst_internal AND url IS NOT NULL AND url <> '/'),
+  u AS (SELECT url FROM w GROUP BY url HAVING count(DISTINCT src_ip) <= 3),
+  h AS (SELECT w.src_ip, w.dst_ip FROM w JOIN u USING (url) GROUP BY ALL HAVING count(*) >= 20)
+  SELECT w.src_ip || '>' || w.dst_ip AS alert_key, w.source, w.line FROM w JOIN u USING (url) JOIN h USING (src_ip, dst_ip)
+entities: {src_ip: src_ip, dst_ip: dst_ip, url: url}
+action_text: "{src_ip} made {event_count} requests to {dst_ip} for server paths that almost no other source requests"

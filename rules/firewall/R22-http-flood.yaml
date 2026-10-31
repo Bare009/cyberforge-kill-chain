@@ -1,0 +1,18 @@
+id: R22-http-flood
+title: Connection flood of complete sessions to one server
+status: stable
+tuning: "planted about 660 accepted sessions a minute from 6,003 addresses for 10 min; normal about 1 a minute"
+attack:
+  technique: T1498.001
+  alt_techniques: [T1499.002, T1498, T1499]
+  tactic: impact
+severity: 4
+confidence: 0.85
+kind: distinct
+where: "log_type = 'traffic' AND action = 'accept' AND NOT src_internal AND dst_internal"
+group_by: [dst_ip]
+field: src_ip
+window: 5m
+having: {gte: 1000}
+entities: {dst_ip: dst_ip}
+action_text: "{src_count} outside addresses opened {event_count} sessions to {dst_ip} in {minutes} minutes"

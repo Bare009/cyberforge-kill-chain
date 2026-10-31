@@ -1,0 +1,24 @@
+id: R11-beaconing
+title: Regular small connections to one outside host (beaconing)
+status: stable
+tuning: "planted 1,612 flows every 300 s (std 4.6 s); 400 flows of chain B; background: 0 alerts on firex-10G"
+attack:
+  technique: T1071.001
+  alt_techniques: [T1573, T1071]
+  tactic: command-and-control
+severity: 4
+confidence: 0.8
+kind: sql
+sql: |
+  WITH f AS (SELECT source, line, src_ip, dst_ip, ts_utc, sent_bytes FROM {events}
+             WHERE log_type = 'traffic' AND action = 'accept' AND src_internal AND NOT dst_internal
+               AND sent_bytes IS NOT NULL AND sent_bytes <= 4096),
+  n AS (SELECT src_ip, dst_ip FROM f GROUP BY ALL HAVING count(*) >= 50),
+  g AS (SELECT f.*, epoch(ts_utc) - lag(epoch(ts_utc)) OVER (PARTITION BY f.src_ip, f.dst_ip ORDER BY ts_utc) AS gap
+        FROM f JOIN n USING (src_ip, dst_ip)),
+  s AS (SELECT src_ip, dst_ip, median(gap) AS med, stddev_samp(gap) AS sd,
+               stddev_samp(sent_bytes) / nullif(avg(sent_bytes), 0) AS bcv
+        FROM g GROUP BY ALL HAVING med >= 10 AND sd / med <= 0.1 AND bcv <= 0.3)
+  SELECT g.src_ip || '>' || g.dst_ip AS alert_key, g.source, g.line FROM g JOIN s USING (src_ip, dst_ip)
+entities: {src_ip: src_ip, dst_ip: dst_ip}
+action_text: "{src_ip} contacted {dst_ip} {event_count} times at a fixed interval over {days} days, with nearly identical sizes"

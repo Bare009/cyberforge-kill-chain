@@ -1,0 +1,17 @@
+id: R10-dns-tunnel
+title: DNS tunnelling through long subdomain labels
+status: stable
+tuning: "planted 1,500 queries with 40-character labels in 74 min; background labels are short"
+attack:
+  technique: T1071.004
+  alt_techniques: [T1048.003, T1071]
+  tactic: command-and-control
+severity: 4
+confidence: 0.85
+kind: count
+where: "log_subtype = 'dns' AND length(split_part(hostname, '.', 1)) >= 30"
+group_by: [src_ip, "regexp_extract(hostname, '([^.]+\\.[^.]+)$', 1) AS domain"]
+window: 1h
+having: {gte: 100}
+entities: {src_ip: src_ip, domain: "regexp_extract(hostname, '([^.]+\\.[^.]+)$', 1)"}
+action_text: "{src_ip} sent {event_count} DNS queries with long encoded names under {domain} in {minutes} minutes"

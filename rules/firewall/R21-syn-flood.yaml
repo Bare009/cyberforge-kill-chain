@@ -1,0 +1,18 @@
+id: R21-syn-flood
+title: TCP flood from thousands of addresses to one host
+status: stable
+tuning: "planted 9,000 denied TCP sessions from 8,424 addresses in 44 min; background: 0 alerts on firex-10G"
+attack:
+  technique: T1498.001
+  alt_techniques: [T1498]
+  tactic: impact
+severity: 4
+confidence: 0.85
+kind: distinct
+where: "log_type = 'traffic' AND action = 'deny' AND proto = 6 AND NOT src_internal"
+group_by: [dst_ip]
+field: src_ip
+window: 10m
+having: {gte: 1000}
+entities: {dst_ip: dst_ip}
+action_text: "{src_count} outside addresses sent {event_count} blocked TCP connections to {dst_ip} in {minutes} minutes"

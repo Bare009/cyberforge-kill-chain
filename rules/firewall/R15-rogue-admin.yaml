@@ -1,0 +1,20 @@
+id: R15-rogue-admin
+title: Administrator account created, used and deleted quickly
+status: stable
+tuning: "planted add 03:55, login 04:02, delete 04:07; only 2 admin add/delete events in 7 days"
+attack:
+  technique: T1136.001
+  alt_techniques: [T1098, T1136, T1078]
+  tactic: persistence
+severity: 5
+confidence: 0.9
+promote: true
+kind: sequence
+group_by: ["coalesce(nullif(regexp_extract(msg, 'system\\.admin (\\S+)', 1), ''), user) AS account"]
+within: 1h
+steps:
+  - {name: account added, where: "msg ILIKE 'Add system.admin %'"}
+  - {name: account used, where: "log_desc = 'Admin login successful'"}
+  - {name: account deleted, where: "msg ILIKE 'Delete system.admin %'"}
+entities: {src_ip: src_ip, user: user}
+action_text: "administrator account {account} was created, used to log in and deleted within {minutes} minutes"

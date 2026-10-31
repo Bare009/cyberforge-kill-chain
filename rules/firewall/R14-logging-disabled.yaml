@@ -1,0 +1,19 @@
+id: R14-logging-disabled
+title: Logging switched off around a configuration change
+status: stable
+tuning: "planted 3 admin changes in 4 h by one user; only 5 config-change events in 7 days"
+attack:
+  technique: T1562.002
+  alt_techniques: [T1562, T1070]
+  tactic: defense-evasion
+severity: 5
+confidence: 0.9
+kind: sequence
+group_by: [user]
+within: 8h
+steps:
+  - {name: logging off, where: "msg ILIKE '%log disk%' AND msg ILIKE '%to ''disable''%'"}
+  - {name: policies purged, where: "msg ILIKE '%purged%'"}
+  - {name: logging on, where: "msg ILIKE '%log disk%' AND msg ILIKE '%to ''enable''%'"}
+entities: {src_ip: src_ip, user: user}
+action_text: "{user} turned disk logging off, purged policies and turned logging back on within {hours} hours"

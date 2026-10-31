@@ -1,0 +1,17 @@
+id: R17-web-xss
+title: Cross-site scripting against a web server
+status: stable
+tuning: "planted 60 from one source"
+attack:
+  technique: T1189
+  alt_techniques: ['T1059.007', 'T1190']
+  tactic: initial-access
+severity: 4
+confidence: 0.85
+kind: match
+where: "log_subtype = 'ips' AND NOT src_internal AND dst_internal AND (attack ILIKE '%xss%' OR regexp_matches(lower(url), '(<script|%3cscript|onerror=|onerror%3d|javascript:)'))"
+group_by: [src_ip, dst_ip]
+split_gap: 30m
+having: {gte: 20}
+entities: {src_ip: src_ip, dst_ip: dst_ip, domain: hostname, url: url}
+action_text: "{src_ip} sent {event_count} cross-site scripting attempts to {dst_ip} in {minutes} minutes; {passed} were not blocked"

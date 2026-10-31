@@ -1,0 +1,18 @@
+id: R23-dns-amplification
+title: Unsolicited DNS answers from many resolvers (amplification)
+status: stable
+tuning: "planted 4,000 UDP answers from 4,000 resolvers in 10 min; background: 0 alerts on firex-10G"
+attack:
+  technique: T1498.002
+  alt_techniques: [T1498]
+  tactic: impact
+severity: 4
+confidence: 0.85
+kind: distinct
+where: "proto = 17 AND src_port = 53 AND NOT src_internal"
+group_by: [dst_ip]
+field: src_ip
+window: 10m
+having: {gte: 500}
+entities: {dst_ip: dst_ip}
+action_text: "{src_count} outside DNS servers sent {event_count} unsolicited answers to {dst_ip} in {minutes} minutes"

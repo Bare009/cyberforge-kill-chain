@@ -10,7 +10,7 @@ each one.
 | 1b. DuckDB event views, `python -m killchain`, explorer | done: `killchain.db`, `tools/explore.py` |
 | 1c. Evaluation: silver truth (25 incidents) and the PRD metrics | done: `killchain.eval` |
 | 2a. ATT&CK labels and the rule engine (5 kinds, validator) | done: `killchain.attack`, `killchain.detect`; rules format in `rules/README.md` |
-| 2b. Rules for every planted incident (FR-2, FR-3, B-4) | in progress: 2 of 24 |
+| 2b. Rules for every planted incident (FR-2, FR-3, B-4) | done: 24 rules in `rules/firewall/`; on firex-10G all 25 incidents found, 0 background alerts, 2 s |
 | 3. Incidents, attack paths, reach-next (FR-4 to FR-6) | planned |
 | 4. API and UI (FR-7) | in progress: `killchain.api` (health, incidents, path), `web/` scaffold |
 | 5. Scoring harness against the ground-truth manifest | planned |

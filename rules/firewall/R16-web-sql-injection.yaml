@@ -1,0 +1,17 @@
+id: R16-web-sql-injection
+title: SQL injection against a web server
+status: stable
+tuning: "planted 220 and 60 (chain A) from one source; noise SQLi signatures about 2.4 per source"
+attack:
+  technique: T1190
+  alt_techniques: []
+  tactic: initial-access
+severity: 4
+confidence: 0.85
+kind: match
+where: "log_subtype = 'ips' AND NOT src_internal AND dst_internal AND (attack ILIKE '%sql%injection%' OR regexp_matches(lower(url), '(union.+select|or\\s+1=1|sleep\\(|--)'))"
+group_by: [src_ip, dst_ip]
+split_gap: 30m
+having: {gte: 20}
+entities: {src_ip: src_ip, dst_ip: dst_ip, domain: hostname, url: url}
+action_text: "{src_ip} sent {event_count} SQL injection attempts to {dst_ip} in {minutes} minutes; {passed} were not blocked"

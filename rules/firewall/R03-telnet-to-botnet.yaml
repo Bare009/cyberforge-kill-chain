@@ -1,0 +1,18 @@
+id: R03-telnet-to-botnet
+title: Many internal hosts reaching one outside address on telnet
+status: stable
+tuning: "planted 52 internal hosts to one address on port 23 in 40 min; background: 0 alerts on firex-10G"
+attack:
+  technique: T1071.001
+  alt_techniques: [T1071]
+  tactic: command-and-control
+severity: 4
+confidence: 0.8
+kind: distinct
+where: "dst_port IN (23, 2323) AND src_internal AND NOT dst_internal"
+group_by: [dst_ip]
+field: src_ip
+window: 1h
+having: {gte: 10}
+entities: {src_ip: src_ip, dst_ip: dst_ip, user: user}
+action_text: "{src_count} internal devices tried to reach {dst_ip} on telnet {event_count} times in {minutes} minutes"

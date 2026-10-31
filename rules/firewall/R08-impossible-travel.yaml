@@ -1,0 +1,19 @@
+id: R08-impossible-travel
+title: One VPN user connecting from two countries within 30 minutes
+status: stable
+tuning: "planted 4 tunnel-ups alternating two countries in 22 min; only 4 tunnel-up events in 7 days"
+attack:
+  technique: T1078.004
+  alt_techniques: [T1078]
+  tactic: initial-access
+severity: 4
+confidence: 0.85
+promote: true
+kind: sql
+sql: |
+  WITH v AS (SELECT * FROM {events} WHERE log_subtype = 'vpn' AND action = 'tunnel-up' AND user IS NOT NULL),
+  p AS (SELECT DISTINCT a.user, a.source, a.line FROM v a JOIN v b ON a.user = b.user
+        AND a.src_country <> b.src_country AND abs(epoch(a.ts_utc) - epoch(b.ts_utc)) <= 1800)
+  SELECT user AS alert_key, source, line FROM p
+entities: {src_ip: src_ip, user: user}
+action_text: "VPN user {user} connected from two countries {event_count} times within {minutes} minutes"

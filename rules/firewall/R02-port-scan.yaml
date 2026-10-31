@@ -1,0 +1,18 @@
+id: R02-port-scan
+title: Port scan of one host
+status: stable
+tuning: "planted 1,024 ports in 108 s and 240 ports in 63 s (chain A); background: 0 alerts on firex-10G"
+attack:
+  technique: T1046
+  alt_techniques: [T1595.001, T1595.002, T1595]
+  tactic: discovery
+severity: 3
+confidence: 0.85
+kind: distinct
+where: "log_type = 'traffic' AND NOT src_internal"
+group_by: [src_ip, dst_ip]
+field: dst_port
+window: 5m
+having: {gte: 100}
+entities: {src_ip: src_ip, dst_ip: dst_ip, user: user}
+action_text: "{src_ip} probed {distinct_count} ports on {dst_ip} in {minutes} minutes; {blocked} attempts were blocked"

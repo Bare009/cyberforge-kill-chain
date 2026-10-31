@@ -1,0 +1,17 @@
+id: R18-web-path-traversal
+title: Path traversal against a web server
+status: stable
+tuning: "planted 80 from one source; noise SSLVPN traversal signature about 2.4 per source"
+attack:
+  technique: T1190
+  alt_techniques: ['T1083']
+  tactic: initial-access
+severity: 4
+confidence: 0.85
+kind: match
+where: "log_subtype = 'ips' AND NOT src_internal AND dst_internal AND (attack ILIKE '%traversal%' OR regexp_matches(lower(url), '(\\.\\./|\\.\\.%2f|%2e%2e|php://filter|\\.\\.\\.\\.//)'))"
+group_by: [src_ip, dst_ip]
+split_gap: 30m
+having: {gte: 20}
+entities: {src_ip: src_ip, dst_ip: dst_ip, domain: hostname, url: url}
+action_text: "{src_ip} sent {event_count} path traversal attempts to {dst_ip} in {minutes} minutes; {passed} were not blocked"

@@ -1,0 +1,20 @@
+id: R09-lateral-movement
+title: One internal host opening admin services on many internal hosts
+status: stable
+tuning: "planted 30 servers in 26 min on SMB and RDP; background: 0 alerts on firex-10G"
+attack:
+  technique: T1021.002
+  alt_techniques: [T1021]
+  tactic: lateral-movement
+  technique_by:
+    dst_port: {3389: T1021.001, 22: T1021.004, 5985: T1021.006, 5986: T1021.006}
+severity: 4
+confidence: 0.85
+kind: distinct
+where: "src_internal AND dst_internal AND dst_port IN (22, 135, 445, 3389, 5985, 5986) AND action = 'accept'"
+group_by: [src_ip]
+field: dst_ip
+window: 1h
+having: {gte: 10}
+entities: {src_ip: src_ip, dst_ip: dst_ip}
+action_text: "{src_ip} opened SMB/RDP sessions to {distinct_count} internal hosts in {minutes} minutes"
