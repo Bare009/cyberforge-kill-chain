@@ -88,8 +88,10 @@ docker compose down
 | `pipeline` | `docker/Dockerfile` target `pipeline` | one stage: `docker compose run --rm pipeline detect --run data/runs/firex-10G` |
 | `pipeline-all` | same | every stage for one log: `docker compose run --rm pipeline-all firex-10G.log` (parse → db → detect → correlate → chain → reach → enrich → score → report → [narrate] → bundle) |
 | `live` | same, profile `live` | `python -m killchain live` (P15); needs `--input <log>` or `KILLCHAIN_LIVE_INPUT`, and a run folder of its own (see [Live mode](#live-mode)) |
+| `live-ingest` | same, profile `live` | live mode over `data/ingest/live.log` into `data/runs/live-ingest` (see [SIEM connections](#siem-connections)) |
 
-Mounts: `./data` (the api reads it read-only, except `data/cache`), `./rules`
+Mounts: `./data` (the api reads it read-only, except `data/cache`,
+`data/connectors` and `data/ingest`), `./rules`
 (rules saved from the rule writer land here), and the logs folder at
 `/app/logs`, read-only (`LOGS_DIR`, default `./logs`). Without the logs the
 Evidence tab lists line numbers but no raw text. Other settings: `API_PORT`
@@ -403,6 +405,114 @@ step's last line written to its rule showing in `GET /alerts` with an incident
 number, median 3.7 s, max 4.1 s; to the live publish, median 1.8 s, max 2.1 s. The
 API side includes the API's own wait for the files to stay unchanged for one
 1 s poll.
+
+## SIEM connections
+
+`killchain/connectors/` is AI-SOC's connector backend (Settings → SIEM
+Integrations), copied and moved from MongoDB onto files. Connectors live in
+`data/connectors/connectors.json`. Everything they deliver lands in
+`data/ingest/`: every record in `<connector_id>/records.ndjson`, and the raw log
+line a record carries in the shared `data/ingest/live.log`, which live mode
+tails. No login, like the rest of the API.
+
+| Vendor | Transports |
+|---|---|
+| Fortinet FortiGate | webhook, syslog |
+| Wazuh | webhook, syslog |
+| SentinelOne | API pull (threats or cloud-detection alerts), webhook, syslog |
+| Sumo Logic | API pull (Cloud SIEM signals or insights), webhook |
+| AlienVault USM Anywhere | API pull (alarms), webhook, syslog |
+| Cybolt, custom | API pull (configurable REST client), webhook, syslog |
+
+- **Webhook**: the source POSTs JSON to `/ingest/webhook/{connector_id}`. It can send
+  one object, a JSON string (one log line), an array of objects or strings, or an
+  object holding the array under `alerts`, `events`, `records`, `messages`, `data`,
+  `items` or `results`. The limits are 8 MiB and 500 records per request. The
+  endpoint returns 202, or 400 for bad JSON, 401 for bad credentials or a disabled
+  connector, and 413 when a limit is exceeded. `GET .../ping` checks the
+  credentials without ingesting anything.
+- **API pull**: the API process polls the vendor every `interval_seconds` (60 s
+  minimum, `KILLCHAIN_CONNECTORS=0` turns it off). Each poll resumes from a
+  watermark, and re-read items are skipped by id. Vendor credentials are encrypted
+  with `CONNECTOR_CREDENTIALS_KEY`. When that is unset, a key is generated once
+  into `data/connectors/.credentials_key`; that is fine for a demo but not for
+  real credentials. Targets must use https and must not resolve to link-local
+  addresses (cloud metadata). Loopback and private addresses are refused unless
+  `COLLECTOR_ALLOW_PRIVATE_TARGETS=true`, and http needs `COLLECTOR_ALLOW_HTTP=true`.
+- **Syslog** (off by default; set `KILLCHAIN_SYSLOG=1`): plain UDP and TCP on
+  `SYSLOG_UDP_PORT` / `SYSLOG_TCP_PORT` (5514). A sender is matched to a connector
+  by its allowed IP or CIDR, and messages from unmatched senders are dropped.
+  There is no TLS listener. Point a FortiGate at it with `config log syslogd
+  setting`, `set status enable`, `set server <host>`, `set port 5514`, `set mode udp`.
+
+Create a webhook connector from the UI, or with curl. The secret is returned
+only in this response. If you lose it, call `rotate-secret`.
+
+```powershell
+$c = Invoke-RestMethod -Method Post http://localhost:8000/settings/siem-integrations -ContentType application/json `
+  -Body '{"vendor":"fortigate","name":"Edge FW","transport":"webhook","auth_mode":"bearer"}'
+$c.webhookUrl; $c.secret          # http://localhost:8000/ingest/webhook/<id>, soar_...
+```
+
+Send records with a bearer token (`Authorization: Bearer <secret>`, or the
+header `X-SOAR-Token: <secret>`):
+
+```powershell
+$line = Get-Content data\raw\firex-10G.log -TotalCount 1
+$body = @{ records = @(@{ full_log = $line }, @{ rule = "plain JSON, stored only" }) } | ConvertTo-Json -Compress
+Invoke-RestMethod -Method Post $c.webhookUrl -Headers @{ Authorization = "Bearer $($c.secret)" } -ContentType application/json -Body $body
+```
+
+```bash
+curl -X POST "$URL" -H "Authorization: Bearer $SECRET" -H 'Content-Type: application/json' \
+  -d '["date=2026-10-23 time=08:48:26 devname=\"FGT60F\" logid=\"0000000013\" type=\"traffic\" ..."]'
+```
+
+An `hmac` connector expects `X-SOAR-Signature: sha256=<hex>`: the HMAC-SHA256
+of the exact body bytes, keyed with the lowercase hex SHA-256 of the secret.
+The key is the hash of the secret, not the secret itself:
+
+```bash
+KEY=$(printf %s "$SECRET" | sha256sum | cut -d' ' -f1)
+SIG=$(printf %s "$BODY" | openssl dgst -sha256 -hmac "$KEY" | sed 's/^.* //')
+curl -X POST "$URL" -H "X-SOAR-Signature: sha256=$SIG" -H 'Content-Type: application/json' -d "$BODY"
+```
+
+```powershell
+$key = -join ([Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($secret)) | % { $_.ToString('x2') })
+$h = New-Object Security.Cryptography.HMACSHA256 (,[Text.Encoding]::UTF8.GetBytes($key))
+$sig = -join ($h.ComputeHash([Text.Encoding]::UTF8.GetBytes($body)) | % { $_.ToString('x2') })
+Invoke-RestMethod -Method Post $url -Headers @{ 'X-SOAR-Signature' = "sha256=$sig" } -ContentType application/json -Body $body
+```
+
+**How the data reaches the pipeline.** Each record's raw line goes into
+`data/ingest/live.log`. The sink takes the first non-empty string among
+`full_log`, `_raw`, `raw`, `message`, `log` and `event.original`, or the record
+itself when it is a plain string. For syslog it takes the message body. Run live
+mode on that file:
+
+```powershell
+python -m killchain live --input data\ingest\live.log --run data\runs\live-ingest
+python -m killchain.api --run data\runs\live-ingest --raw-dir data\ingest     # after live's first publish
+```
+
+The API creates an empty `live.log` at startup, so live mode can start first.
+Live mode publishes a bundle on its first tick. Connectors are stored apart from
+runs, so the API can be restarted on `live-ingest` without losing them. With
+Docker, run `docker compose --profile live up -d live-ingest`, then serve that
+run with `KILLCHAIN_RUN=live-ingest`.
+
+**Only FortiGate lines are analysed.** The parser reads FortiGate key=value
+lines only. A record with no raw line is stored and counted as `notAnalysable`
+on the connector row. Raw lines in other formats (CEF, Linux syslog, Wazuh
+`full_log`) do reach `live.log`, but the parser counts them as unparsed and
+detection ignores them. API pull from SentinelOne, Sumo Logic or USM Anywhere
+returns those vendors' JSON, so it is stored but not analysed.
+
+AI-SOC features left out: mTLS client certificates, the forwarding agent
+(`/agents` always returns `[]`), TLS syslog, tenancy, licensing, audit and source
+health. The settings routes and their camelCase responses are AI-SOC's. Each row
+also carries `linesForwarded`, `notAnalysable` and `duplicates`.
 
 ## Bundle
 

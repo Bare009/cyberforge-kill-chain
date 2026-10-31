@@ -40,13 +40,23 @@ services:
     environment:
       <<: *env
       KILLCHAIN_RUN: ${KILLCHAIN_RUN:-sample-run}
+      # SIEM connections (killchain/connectors): API-pull poller on by default,
+      # syslog listener off unless KILLCHAIN_SYSLOG=1; webhook URLs shown in the UI use the base URL.
+      KILLCHAIN_CONNECTORS: ${KILLCHAIN_CONNECTORS:-1}
+      KILLCHAIN_SYSLOG: ${KILLCHAIN_SYSLOG:-0}
+      CONNECTOR_CREDENTIALS_KEY: ${CONNECTOR_CREDENTIALS_KEY:-}
+      INGEST_PUBLIC_BASE_URL: ${INGEST_PUBLIC_BASE_URL:-http://localhost:${API_PORT:-8000}}
     volumes:
       - ./data:/app/data:ro                 # runs are read only ...
       - ./data/cache:/app/data/cache        # ... except the threat-intel and LLM caches
+      - ./data/connectors:/app/data/connectors   # ... SIEM connections (connectors.json, credentials key)
+      - ./data/ingest:/app/data/ingest      # ... and what they deliver (records, live.log)
       - ./rules:/app/rules                  # rules saved from the rule writer land in ./rules
       - ${LOGS_DIR:-./logs}:/app/logs:ro    # raw log text for the Evidence tab (read at byte offsets)
     ports:
       - "${API_PORT:-8000}:8000"
+      - "${SYSLOG_HOST_PORT:-5514}:5514/udp"  # syslog listener (only with KILLCHAIN_SYSLOG=1)
+      - "${SYSLOG_HOST_PORT:-5514}:5514/tcp"
     restart: unless-stopped
 
   web:
@@ -72,4 +82,11 @@ services:
     <<: *python
     profiles: ["live"]
     command: ["live", "--run", "data/runs/${KILLCHAIN_RUN:-sample-run}"]
+    restart: unless-stopped
+  # Live mode over what the SIEM connections deliver (data/ingest/live.log, written by the api).
+  # Serve its run with KILLCHAIN_RUN=live-ingest once it has published.
+  live-ingest:
+    <<: *python
+    profiles: ["live"]
+    command: ["live", "--input", "data/ingest/live.log", "--run", "data/runs/live-ingest"]
     restart: unless-stopped

@@ -8,6 +8,7 @@ import {
   Radio,
   Gauge,
   Activity,
+  Plug,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -26,6 +27,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { to: '/threat-intel', label: 'Threat Intel', icon: Globe },
   { to: '/rules', label: 'Rules', icon: FileCode2 },
   { to: '/live', label: 'Live', icon: Radio },
+  { to: '/connections', label: 'SIEM connections', icon: Plug },
 ]
 
 export const SECONDARY_NAV: NavItem[] = [

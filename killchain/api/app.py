@@ -35,6 +35,9 @@ from .system import router as system_router
 from .views import RuleStore
 from .views import router as views_router
 from killchain.enrich.settings import CACHE_PATH
+from killchain.connectors.poller import connectors_lifespan
+from killchain.connectors.routes import router as connectors_router
+from killchain.connectors.webhook import router as ingest_router
 
 # The Vite dev server and the Docker web container (P14).
 DEFAULT_CORS = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080"
@@ -114,6 +117,7 @@ def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[s
         title="KillChain API",
         description="Incidents, numbered attack chains, attack paths and reach next for one analysed run.",
         version="0.1.0",
+        lifespan=connectors_lifespan,     # SIEM connections: API-pull poller, optional syslog
     )
     raw = Path(raw_dir) if raw_dir else default_raw_dir()
     ti_cache_path = Path(ti_cache) if ti_cache else CACHE_PATH
@@ -147,11 +151,13 @@ def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[s
     app.include_router(agents_router)
     app.include_router(live_router)
     app.include_router(system_router)
+    app.include_router(connectors_router)     # /settings/siem-vendors, /settings/siem-integrations...
+    app.include_router(ingest_router)         # /ingest/webhook/{connector_id}
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_cors_origins(),
-        allow_methods=["GET", "POST"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],   # PATCH/DELETE: SIEM connection edits
         allow_headers=["Content-Type"],
     )
 

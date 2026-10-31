@@ -12,6 +12,7 @@ import { Dashboard } from '@/pages/Dashboard'
 import { Alerts } from '@/pages/Alerts'
 import { Rules } from '@/pages/Rules'
 import { Live } from '@/pages/Live'
+import { Connections } from '@/pages/Connections'
 import { Evaluation } from '@/pages/Evaluation'
 import { System } from '@/pages/System'
 import { NotFound } from '@/pages/Placeholder'
@@ -41,6 +42,7 @@ export default function App() {
               <Route path="threat-intel" element={<ThreatIntel />} />
               <Route path="rules" element={<Rules />} />
               <Route path="live" element={<Live />} />
+              <Route path="connections" element={<Connections />} />
               <Route path="evaluation" element={<Evaluation />} />
               <Route path="system" element={<System />} />
               <Route path="*" element={<NotFound />} />

@@ -16,5 +16,7 @@ uvicorn>=0.27
 # Threat intel and LLM agents
 httpx>=0.27
 openai>=1.40
+# SIEM connections (API-pull credentials are Fernet-encrypted)
+cryptography>=42
 # Tests
 pytest>=8.0
