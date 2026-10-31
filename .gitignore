@@ -1,0 +1,25 @@
+# Local data: organisers' logs, manifests, parsed tables, run outputs
+/data/
+*.log
+*.jsonl
+*.zip
+*.gz
+*.parquet
+*.manifest.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Web
+web/node_modules/
+web/dist/
+
+# Editor and local settings
+.kiro/
+.vscode/
+.idea/
+.env
