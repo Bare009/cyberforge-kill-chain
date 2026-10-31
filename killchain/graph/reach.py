@@ -228,7 +228,7 @@ def reach_next(incident: Dict[str, Any], chain_graph: Dict[str, Any], edges: Any
     fh_in_zones = any(_is_ip(f, net) and classify_ip(f, net)[1] in zones for f in fh)
     sentence = _sentence(rows, labels, fh, hop, net, obs_inside, zones_text=zones_text, fh_in_zones=fh_in_zones)
     nxt = {"reachable": reachable, "sentence": sentence, "likely_tactics": tactics}
-    return nxt, merge_graph(chain_graph, kept, net, settings), fh
+    return nxt, merge_graph(chain_graph, kept, net, settings, rows), fh
 
 
 def _sentence(rows: List[Dict[str, Any]], labels: List[str], fh: List[str], hop: Dict[str, int],
@@ -295,19 +295,35 @@ def _sentence(rows: List[Dict[str, Any]], labels: List[str], fh: List[str], hop:
 # ── graph merge ──────────────────────────────────────────────────────────────
 
 def merge_graph(chain_graph: Dict[str, Any], kept: List[Dict[str, Any]], net: Dict[str, Any],
-                settings: Dict[str, Any]) -> Dict[str, Any]:
-    """The P7 path graph plus reach nodes (with `reach`) and one reach edge per via entry."""
+                settings: Dict[str, Any], rows: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    """The P7 path graph plus reach nodes (with `reach`) and one reach edge per via entry.
+
+    rows: every reachable host found, kept or not. A host that a kept host is
+    reached through (a hop-1 subnet neighbour cut by max_reachable) is drawn as
+    a reach node with its own edge back to the foothold; without it the graph
+    would show it unconnected, as if it were part of the incident."""
     g = copy.deepcopy(chain_graph)
     ids = {n["id"] for n in g["nodes"]}
+    by_host = {r["host"]: r for r in rows or []}
+
+    def add(r: Dict[str, Any]) -> None:
+        g["nodes"].append({**_node(r["host"], net), "reach": "observed" if r["observed"] else "inferred"})
+        ids.add(r["host"])
+
     for r in kept:
         if r["host"] not in ids:
-            g["nodes"].append({**_node(r["host"], net), "reach": "observed" if r["observed"] else "inferred"})
-            ids.add(r["host"])
-    for r in kept:
+            add(r)
+    todo = list(kept)
+    while todo:
+        r = todo.pop(0)
         for x in r["via"][: settings["max_via"]]:
             if x["from"] not in ids:
-                g["nodes"].append(_node(x["from"], net))
-                ids.add(x["from"])
+                if x["from"] in by_host:
+                    add(by_host[x["from"]])
+                    todo.append(by_host[x["from"]])
+                else:
+                    g["nodes"].append(_node(x["from"], net))
+                    ids.add(x["from"])
             g["edges"].append({"source": x["from"], "target": r["host"], "step": None, "technique": None,
                                "tactic": None, "label": edge_label(x["kind"], x["count"], x["ports"], r["zone"]),
                                "kind": "reach_inferred" if x["kind"] == "zone_neighbour" else "reach_observed"})

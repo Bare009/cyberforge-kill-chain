@@ -13,7 +13,7 @@ interface StubProps {
 }
 
 const Stub = forwardRef<unknown, StubProps>(function ForceGraphStub(props, ref) {
-  useImperativeHandle(ref, () => ({ zoomToFit: () => undefined }))
+  useImperativeHandle(ref, () => ({ zoomToFit: () => undefined, centerAt: () => undefined, zoom: () => 1 }))
   return (
     <div data-testid="force-graph">
       {props.graphData.nodes.map((n) => (

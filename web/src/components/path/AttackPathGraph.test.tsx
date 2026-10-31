@@ -62,7 +62,7 @@ describe('AttackPathGraph', () => {
     fireEvent.click(screen.getByRole('button', { name: '2' }))
     expect(screen.getByText(sampleIncident.chain[1].action)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'edge 2. web sqli x60' })).toHaveAttribute('data-color', '#0d9488')
-    expect(screen.getByRole('button', { name: 'edge 3. web shell x40' })).toHaveAttribute('data-color', '#cbd5e1')
+    expect(screen.getByRole('button', { name: 'edge 3. web shell x40' })).toHaveAttribute('data-color', '#e2e8f0')
     fireEvent.click(screen.getByRole('button', { name: /All steps/ }))
     expect(screen.getByText(/All 4 steps shown/)).toBeInTheDocument()
   })
@@ -83,6 +83,37 @@ describe('AttackPathGraph', () => {
     })
     expect(screen.getByText(sampleIncident.chain[3].action)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Play steps in order' })).toBeInTheDocument()   // stopped
+  })
+
+  it('cuts a long reach list to the top 3 with a "+N more" node, and shows all or none on request', () => {
+    const reach = ['10.10.20.31', '10.10.20.74', '10.10.20.218', '10.10.20.182', '10.10.20.96']
+    const graph = {
+      nodes: [...sampleIncident.graph.nodes.filter((n) => !n.reach),
+        ...reach.map((id) => ({ id, label: id, kind: 'server' as const, zone: 'server' as const, importance: 0.75, reach: 'inferred' as const }))],
+      edges: [...sampleIncident.graph.edges.filter((e) => e.kind === 'step'),
+        ...reach.map((t) => ({ source: '10.10.20.20', target: t, step: null, technique: null, tactic: null,
+          label: 'same server subnet (inferred)', kind: 'reach_inferred' as const }))],
+    }
+    draw({ graph })
+    expect(screen.getByRole('button', { name: 'node 10.10.20.218' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'node 10.10.20.182' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'node __more__:10.10.20.20' }))          // the "+2 more" node
+    expect(screen.getByRole('button', { name: 'node 10.10.20.182' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'All 5' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Off' }))
+    expect(screen.queryByRole('button', { name: 'node 10.10.20.31' })).not.toBeInTheDocument()
+  })
+
+  it('hides the edges of supporting anomalies until asked', () => {
+    const graph = {
+      nodes: sampleIncident.graph.nodes,
+      edges: [...sampleIncident.graph.edges, { source: '32.127.48.11', target: '10.10.20.20', step: 2, technique: 'T1190',
+        tactic: 'initial-access', label: '2. denied then allowed x241 (anomaly)', kind: 'step' as const, supporting: true }],
+    }
+    draw({ graph })
+    expect(screen.queryByRole('button', { name: /denied then allowed/ })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Anomaly evidence (1)' }))
+    expect(screen.getByRole('button', { name: 'edge 2. denied then allowed x241 (anomaly)' })).toBeInTheDocument()
   })
 
   it('says so when there is nothing to draw', () => {

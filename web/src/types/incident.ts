@@ -105,6 +105,8 @@ export interface GraphEdge {
   tactic: string | null
   label: string
   kind: EdgeKind
+  /** true on an edge drawn for a supporting anomaly of step `step` (optional, contract C). */
+  supporting?: boolean
 }
 
 export interface ReachVia {
