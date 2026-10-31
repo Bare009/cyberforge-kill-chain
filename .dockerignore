@@ -1,0 +1,28 @@
+# Build context for docker/Dockerfile (pipeline and api). Keep it small:
+# the logs and run outputs are mounted at run time, never copied into an image.
+.git
+.kiro
+.vscode
+.idea
+.env
+.env.*
+!.env.example
+data/
+logs/
+*.log
+*.log.txt
+*.jsonl
+*.zip
+*.gz
+*.parquet
+*.duckdb
+edr_events.json
+BUILD_GUIDE.md
+PRD_Kill_Chain_Attack_Path.md
+web/
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.venv
+venv
+tests/

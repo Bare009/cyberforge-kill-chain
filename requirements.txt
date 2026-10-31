@@ -6,6 +6,7 @@ orjson>=3.9
 psutil>=5.9
 # Rules and queries
 duckdb>=1.1
+pytz>=2023.3          # duckdb needs it to return TIMESTAMPTZ values to Python
 pyyaml>=6.0
 # Incidents and graphs
 networkx>=3.0

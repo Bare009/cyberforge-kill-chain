@@ -30,8 +30,7 @@ The status bar shows whether the API answers `GET /health`.
 
 ## Pages
 
-Routes follow `docs/build-plan.md` P12. Pages not built yet show a placeholder
-saying when they are planned.
+Routes follow `docs/build-plan.md` P12; every page is built.
 
 | Route | Page | State |
 |---|---|---|
@@ -42,9 +41,12 @@ saying when they are planned.
 | `/alerts` | Alerts | built: tabs All, Not in an incident, Unexplained (with the reason); filters in the URL (`q`, `tactic`, `technique`, `layer`, `severity`, `rule`, `entity`, `incident`, `sort`, `page`), 50 a page, links to the incident and the rule |
 | `/threat-intel` | Threat Intel | built: provider status, last enrich run, on-demand lookup box, indicator table with verdict, kind and "checked outside" filters |
 | `/rules` | Rules | built: every rule and anomaly detector with alerts, incidents, run time and last alert; `?rule=ID` opens its settings, YAML and recent alerts. Rule writer: describe a rule, draft it with AI (or write it), test it on the run (alerts, first 5 hits), then Save; Save is enabled only after a passing test. LLM budget meter beside it |
-| `/live` | Live | placeholder (day 6) |
-| `/evaluation` | Evaluation | placeholder (day 6) |
-| `/system` | System | placeholder (day 6) |
+| `/live` | Live | built: "Follow live updates" switch (on by default, remembered), live process state, lines per second, tail position, bundle reloads, the changes feed (new and changed incidents, new alerts). While following, every page refreshes when the run changes and the incident list marks changed incidents "Live" |
+| `/evaluation` | Evaluation | built: the seven PRD metrics with grade and Good/Great targets, the truth used (silver is stated), planted incidents with recall, path order and our incident, labels, per class, per rule, time and memory per stage |
+| `/system` | System | built: pipeline stages (time, memory, output), run and raw-log availability, data quality, threat intel and caches, LLM models and budget, run files, API versions |
+
+In Docker (`web/Dockerfile`) the app is built with `VITE_API_URL=/api` and
+served by nginx on 8080, which proxies `/api/` to the api service.
 
 ## What came from AI-SOC
 

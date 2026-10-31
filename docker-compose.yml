@@ -1,0 +1,75 @@
+# KillChain (docs/build-plan.md P14).
+#
+#   docker compose up -d --build            UI on http://localhost:8080, API on http://localhost:8000
+#   KILLCHAIN_RUN=firex-10G docker compose up -d     serve data/runs/firex-10G instead of the sample
+#   docker compose run --rm pipeline-all firex-10G.log     process ./logs/firex-10G.log into data/runs/firex-10G
+#   docker compose run --rm pipeline detect --run data/runs/firex-10G      one stage
+#   docker compose --profile live up -d     also the live process (P15, track A)
+#
+# Settings (shell or .env): KILLCHAIN_RUN (default sample-run), LOGS_DIR (default ./logs),
+# API_PORT (8000), WEB_PORT (8080), PARSE_WORKERS (4). Keys come from .env (optional).
+
+x-python: &python
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+    target: pipeline
+  image: killchain-pipeline
+  env_file:
+    - path: .env
+      required: false
+  environment: &env
+    KILLCHAIN_DATA_DIR: /app/data
+    KILLCHAIN_RAW_DIR: /app/logs
+    PARSE_WORKERS: ${PARSE_WORKERS:-4}
+  volumes:
+    - ./data:/app/data
+    - ./rules:/app/rules
+    - ${LOGS_DIR:-./logs}:/app/logs:ro
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: api
+    image: killchain-api
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *env
+      KILLCHAIN_RUN: ${KILLCHAIN_RUN:-sample-run}
+    volumes:
+      - ./data:/app/data:ro                 # runs are read only ...
+      - ./data/cache:/app/data/cache        # ... except the threat-intel and LLM caches
+      - ./rules:/app/rules                  # rules saved from the rule writer land in ./rules
+      - ${LOGS_DIR:-./logs}:/app/logs:ro    # raw log text for the Evidence tab (read at byte offsets)
+    ports:
+      - "${API_PORT:-8000}:8000"
+    restart: unless-stopped
+
+  web:
+    build: ./web
+    image: killchain-web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    restart: unless-stopped
+
+  pipeline:
+    <<: *python
+    profiles: ["pipeline"]
+
+  pipeline-all:
+    <<: *python
+    entrypoint: ["/app/docker/pipeline.sh"]
+    profiles: ["pipeline"]
+
+  live:
+    <<: *python
+    profiles: ["live"]
+    command: ["live", "--run", "data/runs/${KILLCHAIN_RUN:-sample-run}"]
+    restart: unless-stopped

@@ -57,6 +57,7 @@ data/runs/<run>/                      (examples/sample-run/ has the same layout)
   unexplained.json                    (bundle) anomaly alerts in no incident, alert rows plus reason, group_id
   ti.json                             (bundle) enrichment.json bound to the current incident numbers
   bundle/_stats.json                  (bundle) stage timing
+  live/status.json                    (track A, P15; proposed) the live process's state, read by the API
   events.duckdb                       (track A internal) prepared event tables
   truth.parquet, metrics.json         (track A) silver truth and evaluation result;
                                       the API serves metrics.json at GET /metrics
@@ -237,3 +238,23 @@ offsets are real, made by `tools/make_sample_run.py` from the parsed log. The
 risk score, threat intel, reach next and report are placeholders in the right
 shape, and every file carries `"sample": true` where it applies.
 Rebuild with `python tools/make_sample_run.py`.
+
+## Live mode: `live/status.json` (proposed by track B, to agree with track A)
+
+The live process (`python -m killchain live`, P15) rewrites the run's bundle files as new
+alerts and incidents appear, the same way the bundle step does (whole files, replaced by
+rename). The API watches those files and reloads them; it needs nothing else for the UI to
+update. For the Live page the process also keeps `<run>/live/status.json` current, rewriting
+it (by rename) at least every 5 s while it runs:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `state` | `running` \| `stopped` | `stopped` written once on a clean exit |
+| `updated_at` | UTC time | when this file was written; older than 15 s reads as "stale" |
+| `source` | string | log file being tailed |
+| `offset`, `size` | int | bytes read so far, and the file's size |
+| `lines_total` | int | lines read since the start |
+| `lines_per_sec` | number | over the last poll |
+| `last_line_ts` | UTC time, nullable | event time of the newest parsed line |
+
+Extra fields are shown as they are; every field but `state` and `updated_at` may be missing.

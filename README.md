@@ -46,7 +46,7 @@ rules/              detection rules: firewall/, anomaly/, windows/
 eval/               silver truth and reviewed incidents
 examples/           sample-run/: one real incident in the contract format
 web/                React UI (from AI-SOC)
-docker/             images for the pipeline and the API
+docker/             Dockerfile (pipeline and api targets), pipeline.sh (every stage for one log)
 tools/              developer checks and the sample-run builder
 tests/              pytest suite
 docs/               plan, contracts, requirements, architecture, data notes
@@ -69,6 +69,33 @@ python -m pytest -q         # contract and sample checks
 
 Put the organisers' files under `data/raw/` (for example
 `data/raw/firex-10G.log`). `data/` is ignored by git.
+
+## Docker
+
+Docker Desktop (or Docker Engine with Compose v2.24 or newer). `.env` is optional.
+
+```powershell
+docker compose up -d --build                      # UI http://localhost:8080, API http://localhost:8000/docs
+$env:KILLCHAIN_RUN = "firex-10G"; docker compose up -d   # serve data/runs/firex-10G instead of the sample
+docker compose down
+```
+
+| Service | Image | Does |
+|---|---|---|
+| `api` | `docker/Dockerfile` target `api` | serves `data/runs/$KILLCHAIN_RUN` (else `examples/sample-run`) on 8000; reloads it when its files change |
+| `web` | `web/Dockerfile` (node build, nginx) | the UI on 8080; proxies `/api/` to `api`, the live stream unbuffered |
+| `pipeline` | `docker/Dockerfile` target `pipeline` | one stage: `docker compose run --rm pipeline detect --run data/runs/firex-10G` |
+| `pipeline-all` | same | every stage for one log: `docker compose run --rm pipeline-all firex-10G.log` (parse → db → detect → correlate → chain → reach → enrich → score → report → [narrate] → bundle) |
+| `live` | same, profile `live` | `python -m killchain live` (P15, not built yet) |
+
+Mounts: `./data` (the api reads it read-only, except `data/cache`), `./rules`
+(rules saved from the rule writer land here), and the logs folder at
+`/app/logs`, read-only (`LOGS_DIR`, default `./logs`). Without the logs the
+Evidence tab lists line numbers but no raw text. Other settings: `API_PORT`
+(8000; use another when Splunk holds 8000), `WEB_PORT` (8080),
+`PARSE_WORKERS` (4; more workers need more memory), `TI_OFFLINE=1`.
+The build context leaves out `data/`, `logs/` and every log file, so images stay
+small (api 690 MB, web 50 MB) whatever sits in those folders.
 
 ## Stage 1: parse raw logs into Parquet
 
@@ -298,6 +325,19 @@ Swagger UI: `http://localhost:<port>/docs`.
 | `POST /rules/draft` | `{"description": ...}`: a YAML rule written by the LLM, validated and test-run on this run; nothing is saved |
 | `POST /rules/test` | `{"yaml": ...}`: validate a rule and run it on this run's events: alerts, evidence lines, time, first 5 hits |
 | `POST /rules/save` | `{"yaml": ...}`: save a valid rule as `rules/<firewall|anomaly>/<id>.yaml`; 409 if the id exists |
+
+| `GET /metrics` | `metrics.json` from `eval score` with the PRD's Good and Great target per metric; `available: false` until eval ran |
+| `GET /system` | stages with time and memory, data quality, TI and LLM status, raw-log availability, the run's files, the API's versions |
+| `GET /live/status` | whether the API watches the run, bundle reloads, the live process's state from `<run>/live/status.json`, recent changes |
+| `GET /live/stream` | Server-Sent Events: `hello`, then `bundle` (new, changed and removed incidents, new alerts) and `status`; `since`, `limit` |
+
+**Live reload.** `python -m killchain.api` watches the run folder every second
+(`--no-watch` turns it off). When the bundle files change and then stay the
+same for one more check, it reloads the bundle for every endpoint and sends a
+`bundle` event; the UI then refreshes every page and marks the changed
+incidents. Rerunning any stage and the bundle step shows up in the open UI
+within about 3 s (measured on the real run). The live process (P15) only has to
+rewrite the bundle and keep `live/status.json` current.
 
 Ask and draft share a cap of 6 a minute (`config/llm.yaml`), then 429 with
 `Retry-After`; without an LLM key they answer 503. Rule SQL from the UI or the
