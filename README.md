@@ -251,7 +251,11 @@ Swagger UI: `http://localhost:<port>/docs`.
 | `GET /incidents` | incidents worst first; filters `severity` (minimum), `tactic`, `technique` (a parent matches its sub-techniques), `entity`, `q`, `limit`, `offset` |
 | `GET /incidents/{id}` | the full incident; `id` is the number or the stable hash |
 | `GET /incidents/{id}/path` | numbered chain, attack path graph, reach next |
+| `GET /mitre/catalogue` | the ATT&CK release behind the matrix, with MITRE's attribution |
+| `GET /mitre/matrix` | tactic x technique alert counts (same shape as AI-SOC); `preset` `24h`/`7d`/`30d`/`90d` counts back from the run's last alert, or `start`+`end`; filters `severity`, `status` (`open` = not in an incident, `correlated`), `source` (`rule`, `anomaly`) |
+| `GET /mitre/techniques/{id}` | one technique: trend by IST day, sub-techniques, alerts per rule and target, recent alerts with their incident |
 
-The other endpoints in `docs/build-plan.md` P11 are added as their pages are
-built. `GET /incidents/1/path` on the sample: p50 20 ms, p95 27 ms over HTTP
+The MITRE endpoints run DuckDB `GROUP BY` queries over the run's alerts
+(`killchain/api/mitre.py`). The other endpoints in `docs/build-plan.md` P11
+are added as their pages are built. `GET /incidents/1/path` on the sample: p50 20 ms, p95 27 ms over HTTP
 from PowerShell on Windows (target p95 < 500 ms).

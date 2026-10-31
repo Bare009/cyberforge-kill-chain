@@ -1,0 +1,382 @@
+{
+ "technique": {
+  "id": "T1190",
+  "name": "Exploit Public-Facing Application",
+  "url": "https://attack.mitre.org/techniques/T1190/",
+  "parent": null,
+  "parentName": null,
+  "tactics": [
+   {
+    "id": "TA0001",
+    "name": "Initial Access"
+   }
+  ],
+  "subtechniquesTotal": 0
+ },
+ "period": {
+  "start": "2026-09-29T07:08:54.468885+00:00",
+  "end": "2026-10-29T07:08:54.468885+00:00",
+  "preset": "30d"
+ },
+ "summary": {
+  "alerts": 1,
+  "openAlerts": 0,
+  "correlatedAlerts": 1,
+  "alertsOnTechniqueItself": 1,
+  "severity": {
+   "critical": 0,
+   "high": 1,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  "maxSeverity": "HIGH",
+  "firstSeen": "2026-10-28T20:37:10.515776+00:00",
+  "lastSeen": "2026-10-28T20:37:10.515776+00:00"
+ },
+ "trend": [
+  {
+   "date": "2026-09-29",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-09-30",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-01",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-02",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-03",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-04",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-05",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-06",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-07",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-08",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-09",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-10",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-11",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-12",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-13",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-14",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-15",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-16",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-17",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-18",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-19",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-20",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-21",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-22",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-23",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-24",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-25",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-26",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-27",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-28",
+   "alerts": 0,
+   "critical": 0,
+   "high": 0,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  },
+  {
+   "date": "2026-10-29",
+   "alerts": 1,
+   "critical": 0,
+   "high": 1,
+   "medium": 0,
+   "low": 0,
+   "info": 0,
+   "unknown": 0
+  }
+ ],
+ "subtechniques": [],
+ "bySource": [
+  {
+   "source": "fw-web-sqli",
+   "alerts": 1
+  }
+ ],
+ "byAsset": [
+  {
+   "asset": "10.10.20.20",
+   "alerts": 1
+  }
+ ],
+ "byStatus": [
+  {
+   "status": "in an incident",
+   "alerts": 1
+  }
+ ],
+ "recentAlerts": [
+  {
+   "id": "d923a363ee17ec67",
+   "time": "2026-10-28T20:37:10.515776+00:00",
+   "severity": "HIGH",
+   "status": "correlated",
+   "title": "32.127.48.11 sent 60 SQL injection attempts to 10.10.20.20; 6 were not blocked.",
+   "source": "fw-web-sqli",
+   "subtechniqueId": null,
+   "confidence": 0.9,
+   "incidentNumber": 1
+  }
+ ]
+}

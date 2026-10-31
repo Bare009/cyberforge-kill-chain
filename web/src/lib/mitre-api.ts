@@ -34,21 +34,31 @@ export async function fetchTechniqueDetail(techniqueId: string, q: MitreQuery): 
   return data
 }
 
-/** Link to the alert list, filtered to the same alerts a cell counts. */
-export function alertsLink(opts: { technique?: string; tactic?: string; preset?: string; start?: string; end?: string }): string {
+/** Short tactic name for our filters: "Initial Access" -> "initial-access". */
+function tacticParam(tactic: string): string {
+  return tactic.trim().toLowerCase().replace(/\s+/g, '-')
+}
+
+function drillLink(base: '/alerts' | '/incidents', opts: { technique?: string; tactic?: string }): string {
   const sp = new URLSearchParams()
   if (opts.technique) sp.set('technique', opts.technique)
-  if (opts.tactic) sp.set('tactic', opts.tactic)
-  if (opts.start && opts.end) {
-    // An absolute range as the list's custom range, which like the matrix goes
-    // by the event time (or the arrival time when an alert has none).
-    sp.set('date_range', `custom|${opts.start}|${opts.end}`)
-  } else if (opts.preset === '24h' || opts.preset === '7d') {
-    // The alert list speaks 1h / 24h / 7d; anything longer has no equivalent there,
-    // so leave it off rather than silently narrowing what the cell showed.
-    sp.set('date_range', opts.preset)
-  }
-  return `/alerts?${sp.toString()}`
+  if (opts.tactic) sp.set('tactic', tacticParam(opts.tactic))
+  const qs = sp.toString()
+  return qs ? `${base}?${qs}` : base
+}
+
+/**
+ * Link to the alert list, filtered to a technique or a tactic. A parent
+ * technique also matches its sub-techniques there, as in the matrix cell.
+ * The run is one fixed period, so no time range is passed.
+ */
+export function alertsLink(opts: { technique?: string; tactic?: string }): string {
+  return drillLink('/alerts', opts)
+}
+
+/** Link to the incident list, filtered the same way. */
+export function incidentsLink(opts: { technique?: string; tactic?: string }): string {
+  return drillLink('/incidents', opts)
 }
 
 // ── Exports ──────────────────────────────────────────────────────────────────

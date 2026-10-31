@@ -5,6 +5,8 @@ import { MainLayout } from '@/components/layout/MainLayout'
 import { CommandPalette } from '@/components/CommandPalette'
 import { Toaster } from '@/components/Toaster'
 import { Mitre } from '@/pages/Mitre'
+import { Incidents } from '@/pages/Incidents'
+import { IncidentPage } from '@/pages/IncidentPage'
 import { NotFound, Placeholder } from '@/pages/Placeholder'
 
 const queryClient = new QueryClient({
@@ -33,26 +35,8 @@ export default function App() {
                   />
                 }
               />
-              <Route
-                path="incidents"
-                element={
-                  <Placeholder
-                    title="Incidents"
-                    planned="day 2"
-                    description="Incidents worst first: risk, tactic chips, merged alerts and events, first and last time."
-                  />
-                }
-              />
-              <Route
-                path="incidents/:id"
-                element={
-                  <Placeholder
-                    title="Incident"
-                    planned="days 2-3"
-                    description="Summary, risk parts, numbered attack chain, attack path graph, reach next, threat intel, evidence, report, Q&A."
-                  />
-                }
-              />
+              <Route path="incidents" element={<Incidents />} />
+              <Route path="incidents/:id" element={<IncidentPage />} />
               <Route path="mitre" element={<Mitre />} />
               <Route
                 path="alerts"

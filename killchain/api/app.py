@@ -1,8 +1,8 @@
 """FastAPI app over a precomputed run bundle (FR-7). No login.
 
-Built so far (P11, day 1): /health, /incidents, /incidents/{id},
-/incidents/{id}/path. The other endpoints of docs/build-plan.md P11 are added
-page by page.
+Built so far (P11): /health, /incidents, /incidents/{id}, /incidents/{id}/path
+(day 1); /mitre/catalogue, /mitre/matrix, /mitre/techniques/{id} (day 2, in
+mitre.py). The other endpoints of docs/build-plan.md P11 are added page by page.
 """
 
 from __future__ import annotations
@@ -16,6 +16,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 from .bundle import RunBundle, load_bundle, resolve_run_dir
+from .mitre import MitreStore
+from .mitre import router as mitre_router
 
 # The Vite dev server and the Docker web container (P14).
 DEFAULT_CORS = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080"
@@ -61,6 +63,8 @@ def create_app(run: Optional[Union[str, Path]] = None) -> FastAPI:
         version="0.1.0",
     )
     app.state.bundle = bundle
+    app.state.mitre = MitreStore(bundle.alerts)
+    app.include_router(mitre_router)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(
         CORSMiddleware,

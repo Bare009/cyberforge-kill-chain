@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { AttackMatrix } from '@/components/mitre/AttackMatrix'
 import { TechniqueDetailPanel } from '@/components/mitre/TechniqueDetailPanel'
 import { SEVERITY_TEXT, pct } from '@/components/mitre/heat'
-import { alertsLink, exportMatrix, fetchMitreMatrix } from '@/lib/mitre-api'
+import { exportMatrix, fetchMitreMatrix, incidentsLink } from '@/lib/mitre-api'
 import { cn, getDisplayTimeZone } from '@/lib/utils'
 import { describeWindow } from '@/lib/timeRange'
 import type { MitrePreset, MitreQuery, SeverityLabel } from '@/types/mitre'
@@ -19,6 +19,12 @@ function urlWindow(sp: URLSearchParams): { start: string; end: string } | null {
   const e = Date.parse(sp.get('end') ?? '')
   if (Number.isNaN(s) || Number.isNaN(e) || e <= s) return null
   return { start: new Date(s).toISOString(), end: new Date(e).toISOString() }
+}
+
+/** A technique id passed in the URL (?technique=T1190), normalised; null when absent or invalid. */
+function urlTechnique(sp: URLSearchParams): string | null {
+  const t = (sp.get('technique') ?? '').trim().toUpperCase()
+  return /^T\d{4}(\.\d{3})?$/.test(t) ? t : null
 }
 
 const PRESETS: { value: MitrePreset; label: string }[] = [
@@ -44,20 +50,20 @@ export function Mitre() {
   // The dashboard's range, when the page was opened from it. A preset button replaces it.
   const [custom, setCustom] = useState(() => urlWindow(searchParams))
   const [onlyObserved, setOnlyObserved] = useState(true)
-  const [includeFp, setIncludeFp] = useState(false)
-  const [selected, setSelected] = useState<string | null>(null)
+  // ?technique=T1190 (from an incident's ATT&CK tab) opens that technique's detail.
+  const [selected, setSelected] = useState<string | null>(() => urlTechnique(searchParams))
   const zone = getDisplayTimeZone()
 
-  // Taken into state above; drop it from the address bar so it does not come back on reload.
+  // Taken into state above; drop them from the address bar so they do not come back on reload.
   useEffect(() => {
-    if (searchParams.has('start') || searchParams.has('end')) setSearchParams(new URLSearchParams(), { replace: true })
+    if (searchParams.has('start') || searchParams.has('end') || searchParams.has('technique')) {
+      setSearchParams(new URLSearchParams(), { replace: true })
+    }
   }, [searchParams, setSearchParams])
 
   const query = useMemo<MitreQuery>(
-    () => (custom
-      ? { start: custom.start, end: custom.end, includeFalsePositives: includeFp }
-      : { preset, includeFalsePositives: includeFp }),
-    [custom, preset, includeFp]
+    () => (custom ? { start: custom.start, end: custom.end } : { preset }),
+    [custom, preset]
   )
   const { data, isLoading, isError, error, isFetching } = useQuery({
     queryKey: ['mitre', 'matrix', query],
@@ -88,7 +94,7 @@ export function Mitre() {
           <h1 className="font-semibold text-2xl text-slate-900">MITRE ATT&amp;CK</h1>
           <p className="text-sm text-slate-500">
             Every enterprise tactic and technique, shaded by the alerts mapped to it. Click a cell for
-            the detail and a way into the matching alerts.
+            the detail and a way into the matching incidents.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -175,7 +181,8 @@ export function Mitre() {
           no alerts may be well defended, out of scope, or simply not detected &mdash; nothing here tells
           those apart, so this is not detection coverage. Cell shade is the alert volume (log scale) and
           the hue is the worst severity in the cell. A technique serving several tactics appears in each
-          of its columns, which is why column totals are not added up.
+          of its columns, which is why column totals are not added up. The logs are historical, so a
+          period counts back from the last event in the run, not from today.
         </span>
       </p>
 
@@ -186,10 +193,6 @@ export function Mitre() {
               <label className="flex items-center gap-2 text-xs text-slate-700">
                 <Checkbox checked={onlyObserved} onCheckedChange={(v) => setOnlyObserved(v === true)} />
                 Only techniques with alerts
-              </label>
-              <label className="flex items-center gap-2 text-xs text-slate-700">
-                <Checkbox checked={includeFp} onCheckedChange={(v) => setIncludeFp(v === true)} />
-                Include false positives
               </label>
             </div>
             <div className="flex items-center gap-3 text-[11px] text-slate-500">
@@ -277,9 +280,9 @@ export function Mitre() {
                 {(data?.tactics ?? []).map((t) => (
                   <li key={t.id} className="flex items-center gap-2 text-xs">
                     <Link
-                      to={alertsLink({ tactic: t.name, preset, start: custom?.start, end: custom?.end })}
+                      to={incidentsLink({ tactic: t.shortname })}
                       className="w-36 shrink-0 truncate text-slate-700 hover:text-blue-700 hover:underline"
-                      title={`Alerts for ${t.name}`}
+                      title={`Incidents with a ${t.name} step`}
                     >
                       {t.name}
                     </Link>
@@ -314,8 +317,8 @@ export function Mitre() {
           <CardContent className="pt-4 text-xs text-slate-600">
             <span className="font-medium text-slate-800">Technique ids not in the shipped ATT&amp;CK release: </span>
             {data!.unknownTechniques.map((u) => `${u.id} (${u.alerts})`).join(', ')}. These alerts are
-            counted in the period total but have no cell. Regenerate the catalogue
-            (scripts/setup/build_mitre_catalogue.py) if ATT&amp;CK has moved on.
+            counted in the period total but have no cell. Either a rule names a wrong id, or ATT&amp;CK has
+            moved on and killchain/attack/data/attack_catalogue.json needs updating.
           </CardContent>
         </Card>
       )}

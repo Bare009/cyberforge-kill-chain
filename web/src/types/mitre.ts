@@ -1,5 +1,5 @@
 /** MITRE ATT&CK coverage.
- * Mirrors web_app/backend/app/services/mitre_matrix.py. */
+ * Mirrors killchain/api/mitre.py, which keeps AI-SOC's mitre_matrix.py shapes. */
 
 export type SeverityBucket = 'critical' | 'high' | 'medium' | 'low' | 'info' | 'unknown'
 export type SeverityCounts = Record<SeverityBucket, number>
@@ -143,6 +143,8 @@ export interface TechniqueDetail {
     source: string | null
     subtechniqueId: string | null
     confidence: number | null
+    /** KillChain addition: the incident the alert belongs to, or null. */
+    incidentNumber?: number | null
   }[]
 }
 

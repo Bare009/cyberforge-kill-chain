@@ -5,7 +5,7 @@ import { ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { alertsLink, fetchTechniqueDetail } from '@/lib/mitre-api'
+import { alertsLink, fetchTechniqueDetail, incidentsLink } from '@/lib/mitre-api'
 import { cn } from '@/lib/utils'
 import type { MitreQuery, SeverityLabel } from '@/types/mitre'
 import { SEVERITY_COLOURS, SEVERITY_ORDER, SEVERITY_TEXT, fmtDateTime } from './heat'
@@ -115,7 +115,10 @@ export function TechniqueDetailPanel({ techniqueId, query, onSelect, onClose }: 
           </div>
           <div className="flex shrink-0 gap-1.5">
             <Button asChild size="sm" variant="outline">
-              <Link to={alertsLink({ technique: t.id, preset: query.preset, start: query.start, end: query.end })}>View alerts</Link>
+              <Link to={incidentsLink({ technique: t.id })}>View incidents</Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link to={alertsLink({ technique: t.id })}>View alerts</Link>
             </Button>
             <Button size="sm" variant="ghost" onClick={onClose}>
               Close
@@ -206,9 +209,9 @@ export function TechniqueDetailPanel({ techniqueId, query, onSelect, onClose }: 
 
             <Separator />
             <div className="grid gap-4 sm:grid-cols-3">
-              <Bars label="Log sources" rows={data.bySource.map((r) => ({ name: r.source, alerts: r.alerts }))} />
-              <Bars label="Assets" rows={data.byAsset.map((r) => ({ name: r.asset, alerts: r.alerts }))} />
-              <Bars label="Status" rows={data.byStatus.map((r) => ({ name: r.status, alerts: r.alerts }))} />
+              <Bars label="Detection rules" rows={data.bySource.map((r) => ({ name: r.source, alerts: r.alerts }))} />
+              <Bars label="Targets" rows={data.byAsset.map((r) => ({ name: r.asset, alerts: r.alerts }))} />
+              <Bars label="Incident" rows={data.byStatus.map((r) => ({ name: r.status, alerts: r.alerts }))} />
             </div>
 
             {data.recentAlerts.length > 0 && (
@@ -231,10 +234,12 @@ export function TechniqueDetailPanel({ techniqueId, query, onSelect, onClose }: 
                           <span className="shrink-0 font-mono text-[10px] text-slate-500">{a.subtechniqueId}</span>
                         )}
                         <span className="shrink-0 text-slate-400">{fmtDateTime(a.time)}</span>
-                        {a.id && (
+                        {a.incidentNumber != null ? (
                           <Button asChild size="sm" variant="ghost" className="h-6 px-2 text-[11px]">
-                            <Link to={`/alerts/${encodeURIComponent(a.id)}`}>Open</Link>
+                            <Link to={`/incidents/${a.incidentNumber}`}>Incident {a.incidentNumber}</Link>
                           </Button>
+                        ) : (
+                          <span className="shrink-0 text-[11px] text-slate-400">not in an incident</span>
                         )}
                       </li>
                     ))}
