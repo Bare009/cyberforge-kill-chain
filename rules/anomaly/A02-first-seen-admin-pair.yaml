@@ -1,0 +1,24 @@
+id: A02-first-seen-admin-pair
+title: Internal host reaching many servers on admin ports it never used before
+status: experimental
+layer: anomaly
+tuning: "pairs first seen after the first 2 days, sources with >= 10 such pairs; firex-10G: 305 new pairs from 224 sources, 10.10.10.44 has 60, every other source <= 4; 1 alert (10.10.10.44, 2,400 lines), 0 background"
+attack:
+  technique: T1021
+  alt_techniques: [T1021.002, T1078]
+  tactic: lateral-movement
+severity: 3
+confidence: 0.5
+promote: false
+kind: sql
+sql: |
+  WITH t AS (SELECT min(ts_utc) AS t0 FROM {events}),
+  f AS (SELECT source, line, src_ip, dst_ip, ts_utc FROM {events}
+        WHERE log_type = 'traffic' AND src_internal AND dst_ip IS NOT NULL
+          AND dst_port IN (22, 23, 135, 139, 445, 3389, 5985, 5986)),
+  p AS (SELECT src_ip, dst_ip FROM f GROUP BY src_ip, dst_ip
+        HAVING min(ts_utc) >= (SELECT t0 FROM t) + INTERVAL 2 DAY),
+  s AS (SELECT src_ip FROM p GROUP BY src_ip HAVING count(*) >= 10)
+  SELECT f.src_ip AS alert_key, f.source, f.line FROM f JOIN p USING (src_ip, dst_ip) JOIN s USING (src_ip)
+entities: {src_ip: src_ip, dst_ip: dst_ip, user: user}
+action_text: "{src_ip} reached {dst_count} servers on admin ports it had not used in the first 2 days"

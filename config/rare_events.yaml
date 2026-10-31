@@ -1,0 +1,13 @@
+# Labels for rare event values, used by rules/anomaly/A01-rare-event.yaml
+# (attack.technique_by_file). Maps column -> value -> {technique, tactic} or a
+# plain technique id (only for techniques with one tactic). A rare value that is
+# not listed here is labelled `unknown`.
+#
+# The tactic decides the kill chain stage of the alert, so give one for
+# techniques that sit in several tactics (T1078, T1098, T1562 ...).
+
+log_desc:
+  Admin login successful: {technique: T1078, tactic: initial-access}
+  SSL VPN tunnel up: {technique: T1078, tactic: initial-access}
+  Object attribute configured: {technique: T1098, tactic: persistence}
+  Attribute configured: {technique: T1562, tactic: defense-evasion}

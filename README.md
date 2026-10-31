@@ -11,6 +11,7 @@ each one.
 | 1c. Evaluation: silver truth (25 incidents) and the PRD metrics | done: `killchain.eval` |
 | 2a. ATT&CK labels and the rule engine (5 kinds, validator) | done: `killchain.attack`, `killchain.detect`; rules format in `rules/README.md` |
 | 2b. Rules for every planted incident (FR-2, FR-3, B-4) | done: 24 rules in `rules/firewall/`; on firex-10G all 25 incidents found, 0 background alerts, 2 s |
+| 2c. Anomaly layer (11 detectors, `rules/anomaly/`) | done: generic `kind: sql` detectors, `layer: anomaly`, confidence 0.3-0.5, never promoted; on firex-10G 25 anomaly alerts (rare 6, first-seen pair 1, user-country 4, outlier sessions 3, destinations 3, ports 0, failed logins 0, bytes out 2, denied-then-allowed 1, lopsided 3, too regular 2), 0 background, 10,289 evidence lines; the 32 rule alerts unchanged; recall 100%, labels 100%, false alarms 0%; detection 6.1 s for all 35 rules |
 | 3. Incidents, attack paths, reach-next (FR-4 to FR-6) | planned |
 | 4. API and UI (FR-7) | in progress: `killchain.api` (health, incidents, path), `web/` scaffold |
 | 5. Scoring harness against the ground-truth manifest | planned |

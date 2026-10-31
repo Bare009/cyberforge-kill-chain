@@ -12,6 +12,9 @@ A rule file:
       tactic: credential-access        # must be one of the technique's tactics
       technique_by:                    # optional per-line labels: column -> value -> technique
         dst_port: {3389: T1021.001}
+      technique_by_file: config/rare_events.yaml   # optional: more of the same from a file (inline wins);
+                                       # values may be {technique, tactic}. With technique: unknown the
+                                       # alert takes its evidence's most common label.
     severity: 4                        # 1-5
     confidence: 0.9                    # 0-1
     promote: false                     # true: one hit is enough for an incident
@@ -51,6 +54,7 @@ ENTITY_FIELDS = ("src_ip", "dst_ip", "host", "user", "domain", "url")
 HAVING_OPS = {"gte": ">=", "gt": ">", "lte": "<=", "lt": "<", "eq": "="}
 DURATION_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*(s|m|h|d)\s*$")
 UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+ROOT = Path(__file__).resolve().parents[2]
 GROUP_AS_RE = re.compile(r"^(?P<expr>.+?)\s+AS\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*$", re.I | re.S)
 IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 DEFAULT_SUCCESS = ("(coalesce(action, '') NOT IN ('deny', 'dropped', 'blocked', 'block', 'drop', 'reset') "
@@ -97,6 +101,7 @@ class Rule:
     time_quality: str
     action_text: str
     tuning: str = ""
+    technique_tactic: Dict[str, Optional[str]] = field(default_factory=dict)   # from technique_by_file
     raw: Dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -134,6 +139,34 @@ def _group(items: Any, where: str) -> List[Tuple[str, str]]:
     return out
 
 
+def _technique_file(rel: str, where: str) -> Dict[str, Dict[Any, Tuple[str, Optional[str]]]]:
+    """column -> value -> (technique, tactic) from a YAML file (path relative to the repo root).
+    A value maps to {technique, tactic} or to a plain technique id."""
+    p = Path(rel) if Path(rel).is_absolute() else ROOT / rel
+    name = p.name
+    try:
+        d = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    except OSError as e:
+        raise RuleError(f"{where}: technique_by_file {rel}: {e.strerror}") from None
+    except yaml.YAMLError as e:
+        raise RuleError(f"{where}: {name} is not valid YAML ({str(e).splitlines()[0]})") from None
+    if not isinstance(d, dict):
+        raise RuleError(f"{where}: {name} must map column -> value -> technique")
+    out: Dict[str, Dict[Any, Tuple[str, Optional[str]]]] = {}
+    for col, mapping in d.items():
+        if not isinstance(mapping, dict):
+            raise RuleError(f"{where}: {name} column {col!r} must map value -> technique")
+        out[col] = {}
+        for val, spec in mapping.items():
+            tid, tac = (spec.get("technique"), spec.get("tactic")) if isinstance(spec, dict) else (spec, None)
+            try:
+                lab = attack.label(tid, tac)
+            except attack.AttackError as e:
+                raise RuleError(f"{where}: {name} {col}={val!r}: {e}") from None
+            out[col][val] = (lab["technique"], lab["tactic"])
+    return out
+
+
 def parse_rule(d: Dict[str, Any], path: Path, default_layer: str = "rule") -> Rule:
     w = path.name
     if not isinstance(d, dict):
@@ -164,6 +197,13 @@ def parse_rule(d: Dict[str, Any], path: Path, default_layer: str = "rule") -> Ru
             tby[col] = {k: attack.technique(v).id for k, v in mapping.items()}
     except attack.AttackError as e:
         raise RuleError(f"{w}: {e}") from None
+    ttac: Dict[str, Optional[str]] = {}
+    if att.get("technique_by_file"):
+        for col, mapping in _technique_file(att["technique_by_file"], w).items():
+            for val, (tid, tac) in mapping.items():
+                tby.setdefault(col, {}).setdefault(val, tid)
+                if tby[col][val] == tid:
+                    ttac.setdefault(tid, tac)
     sev = d.get("severity", 3)
     if not isinstance(sev, int) or not 1 <= sev <= 5:
         raise RuleError(f"{w}: severity must be an integer 1-5")
@@ -191,7 +231,7 @@ def parse_rule(d: Dict[str, Any], path: Path, default_layer: str = "rule") -> Ru
         steps=d.get("steps") or [], within_s=duration(d["within"], w + " within") if d.get("within") else None,
         sql=d.get("sql"), entities={k: str(v) for k, v in ents.items()}, success=d.get("success") or DEFAULT_SUCCESS,
         time_quality=tq, action_text=str(d.get("action_text") or d.get("title")), tuning=str(d.get("tuning", "")),
-        raw=d,
+        technique_tactic=ttac, raw=d,
     )
     _kind_fields(r, w)
     return r

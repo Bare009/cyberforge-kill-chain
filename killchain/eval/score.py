@@ -94,14 +94,12 @@ def score(truth: pl.DataFrame, run: Dict[str, Any], reviewed: Optional[Dict[str,
     anomaly_only = (hit.group_by("source", "line").agg(pl.col("layer").unique().alias("layers"))
                     .filter(pl.col("layers").list.contains("anomaly") & ~pl.col("layers").list.contains("rule")).height)
 
-    # label accuracy: per covered truth line, best label among the evidence rows that cover it
-    lab = hit.with_columns(
-        (pl.col("our_technique") == pl.col("technique")).alias("exact"),
-        (pl.col("our_technique").str.split(".").list.first() == pl.col("technique").str.split(".").list.first()).alias("parent"),
-        ((pl.col("our_technique") == pl.col("technique")) | pl.col("alt").list.contains(pl.col("our_technique"))).alias("alt_ok"),
-    ).group_by("source", "line").agg(pl.col("exact").any(), pl.col("parent").any(), pl.col("alt_ok").any())
-    lab = lab.with_columns((pl.col("alt_ok") | pl.col("parent")).alias("any"))
-    label = {k: (lab[k].sum() / n_cov if n_cov else 0.0) for k in ("exact", "parent", "any")}
+    label = _labels(hit, n_cov)
+    rule_label = _labels(hit.filter(pl.col("layer") == "rule"), rule_lines)
+    ao = (hit.group_by("source", "line").agg(pl.col("layer").unique().alias("layers"))
+          .filter(pl.col("layers").list.contains("anomaly") & ~pl.col("layers").list.contains("rule"))
+          .join(truth.select("source", "line", "incident_id", "incident_name"), on=["source", "line"])
+          .group_by("incident_id", "incident_name").agg(pl.len().alias("lines")).sort("incident_id"))
 
     # attack paths: one of our incidents must cover the truth incident's steps, in order
     tl = hit.join(mem, on="alert_id", how="inner").rename({"step_n_right": "our_step"}) if mem.height else None
@@ -147,17 +145,25 @@ def score(truth: pl.DataFrame, run: Dict[str, Any], reviewed: Optional[Dict[str,
     n_inc = len(incidents)
     not_real = [r for r in fa_rows if r["reviewed"] != "real"]
 
+    # anomaly layer: incidents made only of anomaly alerts, and anomaly alerts with no truth overlap
+    layer_of = dict(layer.iter_rows())
+    ao_inc = [inc for inc in incidents if inc.get("chain")
+              and all(layer_of.get(s["alert_id"]) == "anomaly" for s in inc["chain"])]
+    fa_ids = {r["incident_id"] for r in not_real}
+    anomaly_ids = layer.filter(pl.col("layer") == "anomaly")["alert_id"].to_list()
+
     # per rule
     if alerts.height:
         bg = alerts.filter(~pl.col("alert_id").is_in(list(truth_alerts))).group_by("rule_id").agg(pl.len().alias("background_alerts"))
-        per_rule = (alerts.group_by("rule_id").agg(pl.len().alias("alerts"))
+        per_rule = (alerts.select("alert_id", "rule_id").join(layer, on="alert_id", how="left").group_by("rule_id")
+                    .agg(pl.len().alias("alerts"), pl.col("layer").first())
                     .join(hit.join(alerts.select("alert_id", "rule_id"), on="alert_id")
                           .group_by("rule_id").agg(pl.struct("source", "line").n_unique().alias("truth_lines")),
                           on="rule_id", how="left")
                     .join(bg, on="rule_id", how="left").fill_null(0).sort("rule_id"))
     else:
-        per_rule = pl.DataFrame(schema={"rule_id": pl.Utf8, "alerts": pl.UInt32, "truth_lines": pl.UInt32,
-                                        "background_alerts": pl.UInt32})
+        per_rule = pl.DataFrame(schema={"rule_id": pl.Utf8, "alerts": pl.UInt32, "layer": pl.Utf8,
+                                        "truth_lines": pl.UInt32, "background_alerts": pl.UInt32})
 
     # time and memory
     stats = list(run["stats"]) + list(extra_stats or [])
@@ -182,6 +188,13 @@ def score(truth: pl.DataFrame, run: Dict[str, Any], reviewed: Optional[Dict[str,
             "truth_incidents": per_inc.height,
             "incidents_found": int((per_inc["recall"] >= INCIDENT_COVERED).sum()) if per_inc.height else 0,
             "label_exact": label["exact"], "label_parent": label["parent"], "label_any": label["any"],
+            "rule_layer_recall": rule_lines / n_truth if n_truth else 0.0,
+            "rule_layer_label_accuracy": rule_label["any"],
+            "anomaly_only_by_incident": ao.to_dicts(),
+            "anomaly_only_incidents": len(ao_inc),
+            "anomaly_only_false": sum(inc["incident_id"] in fa_ids for inc in ao_inc),
+            "anomaly_alerts": len(anomaly_ids),
+            "anomaly_background_alerts": len(set(anomaly_ids) - truth_alerts),
             "our_incidents": n_inc, "incidents_without_truth": len(fa_rows),
             "confirmed_false": sum(r["reviewed"] == "false" for r in fa_rows),
             "unreviewed": [r for r in fa_rows if r["reviewed"] == "unreviewed"],
@@ -193,6 +206,17 @@ def score(truth: pl.DataFrame, run: Dict[str, Any], reviewed: Optional[Dict[str,
         "paths": paths,
         "per_rule": per_rule.to_dicts(),
     }
+
+
+def _labels(hit: pl.DataFrame, n_cov: int) -> Dict[str, float]:
+    """Label accuracy: per covered truth line, the best label among the evidence rows that cover it."""
+    lab = hit.with_columns(
+        (pl.col("our_technique") == pl.col("technique")).alias("exact"),
+        (pl.col("our_technique").str.split(".").list.first() == pl.col("technique").str.split(".").list.first()).alias("parent"),
+        ((pl.col("our_technique") == pl.col("technique")) | pl.col("alt").list.contains(pl.col("our_technique"))).alias("alt_ok"),
+    ).group_by("source", "line").agg(pl.col("exact").any(), pl.col("parent").any(), pl.col("alt_ok").any())
+    lab = lab.with_columns((pl.col("alt_ok") | pl.col("parent")).alias("any"))
+    return {k: (lab[k].sum() / n_cov if n_cov else 0.0) for k in ("exact", "parent", "any")}
 
 
 def _p95(xs: List[float]) -> float:
@@ -252,12 +276,20 @@ def render(result: Dict[str, Any]) -> str:
     lines.append(f"our incidents {d['our_incidents']}, without truth {d['incidents_without_truth']} "
                  f"(confirmed false {d['confirmed_false']}, unreviewed {len(d['unreviewed'])}); "
                  f"multi-step rebuilt {d['multi_step_rebuilt']}")
+    lines.append(f"anomaly layer: {d['anomaly_alerts']} alerts ({d['anomaly_background_alerts']} background), "
+                 f"anomaly-only truth lines {d['anomaly_only_lines']:,}, anomaly-only incidents "
+                 f"{d['anomaly_only_incidents']} ({d['anomaly_only_false']} false); rule layer alone: recall "
+                 f"{d['rule_layer_recall']:.1%}, labels {d['rule_layer_label_accuracy']:.1%}")
+    if d["anomaly_only_by_incident"]:
+        lines.append("found only by the anomaly layer: " + ", ".join(
+            f"#{r['incident_id']} {r['incident_name']} ({r['lines']} lines)" for r in d["anomaly_only_by_incident"]))
     missed = [r for r in result["per_incident"] if r["recall"] < INCIDENT_COVERED]
     if missed:
         lines.append("not found: " + ", ".join(f"#{r['incident_id']} {r['incident_name']} ({r['recall']:.0%})" for r in missed))
     if result["per_rule"]:
         lines.append("")
-        lines.append("rule                          alerts  truth_lines  background")
+        lines.append("rule                             layer    alerts  truth_lines  background")
         for r in result["per_rule"]:
-            lines.append(f"{r['rule_id']:30s}{r['alerts']:6d}{r['truth_lines']:13d}{r['background_alerts']:12d}")
+            lines.append(f"{r['rule_id']:33s}{str(r.get('layer') or 'rule'):8s}{r['alerts']:6d}{r['truth_lines']:13d}"
+                         f"{r['background_alerts']:12d}")
     return "\n".join(lines)

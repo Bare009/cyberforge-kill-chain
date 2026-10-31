@@ -120,6 +120,30 @@ def test_anomaly_only_lines(tmp_path):
     assert r["detail"]["anomaly_only_lines"] == 5
 
 
+def test_anomaly_only_false_incident(tmp_path):
+    alerts = [("a1", "R01", "rule", "T1110.001", list(range(1, 11))),
+              ("x1", "A04", "anomaly", "unknown", [9000])]
+    r = run_score(tmp_path, alerts, [(1, ["a1"]), (2, ["x1"])])
+    d = r["detail"]
+    assert d["anomaly_only_incidents"] == 1 and d["anomaly_only_false"] == 1
+    assert d["anomaly_alerts"] == 1 and d["anomaly_background_alerts"] == 1
+    assert {x["rule_id"]: x["layer"] for x in r["per_rule"]} == {"R01": "rule", "A04": "anomaly"}
+
+
+def test_anomaly_labels_do_not_lower_rule_metrics(tmp_path):
+    # the anomaly alert covers the same lines with a wrong label, plus 5 lines no rule covers
+    alerts = [("a1", "R01", "rule", "T1110.001", list(range(1, 11))),
+              ("x1", "A01", "anomaly", "T1046", list(range(1, 11))),
+              ("x2", "A02", "anomaly", "T1190", list(range(200, 205)))]
+    r = run_score(tmp_path, alerts, [(1, ["a1", "x1"]), (2, ["x2"])])
+    d = r["detail"]
+    assert d["rule_layer_recall"] == pytest.approx(10 / 20)
+    assert r["metrics"]["detection_recall"] == pytest.approx(15 / 20)
+    assert d["rule_layer_label_accuracy"] == 1.0 and r["metrics"]["label_accuracy"] == 1.0
+    assert d["anomaly_only_by_incident"] == [{"incident_id": 2, "incident_name": "chain", "lines": 5}]
+    assert d["anomaly_only_incidents"] == 1 and d["anomaly_only_false"] == 0
+
+
 def test_manifest_for_another_file_is_refused(tmp_path):
     log = tmp_path / "x.log"
     log.write_bytes(b"line one\nline two\nline three\n")

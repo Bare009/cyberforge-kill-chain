@@ -1,0 +1,28 @@
+id: A04-outlier-sessions
+title: Source with far more sessions in an hour than its own normal
+status: experimental
+layer: anomaly
+tuning: "hour value / g(hour) above median + 6 MAD (MAD floor 10) of the source's own hours, raw >= 100, sources with >= 24 active hours; one alert per source and IST day; firex-10G: 3 hours, 3 alerts (10.10.10.63 once, 10.10.10.118 twice), all planted, 0 background"
+attack:
+  technique: unknown
+  tactic: discovery
+severity: 2
+confidence: 0.3
+promote: false
+kind: sql
+sql: |
+  WITH ev AS (SELECT source, line, src_ip, ts_utc, date_trunc('hour', ts_utc) AS hr, log_type, log_desc,
+                     dst_ip, dst_port, dst_internal, sent_bytes, rcvd_bytes FROM {events} WHERE src_ip IS NOT NULL),
+  tot AS (SELECT hr, count(*) FILTER (WHERE log_type = 'traffic') AS s FROM ev GROUP BY hr),
+  g AS (SELECT hr, s / nullif((SELECT median(s) FROM tot), 0) AS g FROM tot),
+  h AS (SELECT src_ip, hr, count(*) FILTER (WHERE log_type = 'traffic') AS x FROM ev GROUP BY src_ip, hr),
+  n AS (SELECT h.*, h.x / nullif(g.g, 0) AS v FROM h JOIN g USING (hr)),
+  b AS (SELECT src_ip, median(v) AS med FROM n GROUP BY src_ip HAVING count(*) >= 24),
+  m AS (SELECT n.src_ip, any_value(b.med) AS med, median(abs(n.v - b.med)) AS mad
+        FROM n JOIN b USING (src_ip) GROUP BY n.src_ip),
+  f AS (SELECT n.src_ip, n.hr FROM n JOIN m USING (src_ip)
+        WHERE n.v > m.med + 6 * greatest(m.mad, 10) AND n.x >= 100)
+  SELECT ev.src_ip || '|' || strftime(ev.hr + INTERVAL 330 MINUTE, '%Y-%m-%d') AS alert_key, ev.source, ev.line
+  FROM ev JOIN f USING (src_ip, hr) WHERE log_type = 'traffic'
+entities: {src_ip: src_ip, dst_ip: dst_ip, user: user}
+action_text: "{src_ip} opened {event_count} sessions in hours far busier than its own normal"

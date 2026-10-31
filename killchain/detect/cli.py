@@ -73,14 +73,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     alerts, evidence, per_rule = engine.run_rules(con, rules)
     wall = time.perf_counter() - t0
     peak.stop.set()
+    layers = {"rule": 0, "anomaly": 0}
+    if alerts.height:
+        for lay, n in alerts.group_by("layer").len().iter_rows():
+            layers[lay] = n
     stats = {"stage": "detect", "wall_secs": round(wall, 2), "peak_rss_mb": round(peak.peak / 2**20),
-             "rules": len(rules), "alerts": alerts.height, "evidence_lines": evidence.height, "per_rule": per_rule}
+             "rules": len(rules), "alerts": alerts.height, "evidence_lines": evidence.height, "layers": layers,
+             "per_rule": per_rule}
     bad = engine.write_outputs(out, alerts, evidence, stats)
     w = max([len(r["rule_id"]) for r in per_rule] + [10])
     for r in per_rule:
-        print(f"{r['rule_id']:{w}s} {r['kind']:9s} alerts {r['alerts']:>5}  lines {r['evidence_lines']:>7,}  {r['secs']:6.2f} s")
+        print(f"{r['rule_id']:{w}s} {r['layer']:7s} {r['kind']:9s} alerts {r['alerts']:>5}  "
+              f"lines {r['evidence_lines']:>7,}  {r['secs']:6.2f} s")
     print(f"\n{alerts.height} alerts, {evidence.height:,} evidence lines from {len(rules)} rules in {wall:.1f} s "
           f"(peak {stats['peak_rss_mb']} MB) -> {out}")
+    print(f"rule layer {layers['rule']} alerts, anomaly layer {layers['anomaly']} alerts from "
+          f"{sum(r.layer == 'anomaly' for r in rules)} detectors")
     if bad:
         print("contract errors:\n  " + "\n  ".join(bad[:20]), file=sys.stderr)
         return 1

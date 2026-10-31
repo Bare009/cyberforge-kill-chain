@@ -1,0 +1,24 @@
+id: A01-rare-event
+title: Rare event type seen fewer than 20 times in the run
+status: experimental
+layer: anomaly
+tuning: "log_desc, log_id or action values with < 20 lines in the run; firex-10G: 14 lines, 6 alerts (Tejas.Roy, parul.sinha, keerat.ghughal, Deepika.Khan, Rakes, svc_backup30), all planted, 0 background"
+attack:
+  technique: unknown
+  tactic: discovery
+  technique_by_file: config/rare_events.yaml
+severity: 2
+confidence: 0.4
+promote: false
+kind: sql
+sql: |
+  WITH ev AS (SELECT source, line, user, src_ip, log_id, log_desc, action FROM {events}),
+  ld AS (SELECT log_desc FROM ev WHERE log_desc IS NOT NULL GROUP BY log_desc HAVING count(*) < 20),
+  li AS (SELECT log_id FROM ev WHERE log_id IS NOT NULL GROUP BY log_id HAVING count(*) < 20),
+  ac AS (SELECT action FROM ev WHERE action IS NOT NULL GROUP BY action HAVING count(*) < 20),
+  f AS (SELECT * FROM ev WHERE log_desc IN (SELECT log_desc FROM ld)
+        UNION SELECT * FROM ev WHERE log_id IN (SELECT log_id FROM li)
+        UNION SELECT * FROM ev WHERE action IN (SELECT action FROM ac))
+  SELECT coalesce(user, src_ip, '-') || '|' || coalesce(log_desc, action, log_id) AS alert_key, source, line FROM f
+entities: {src_ip: src_ip, dst_ip: dst_ip, user: user, domain: hostname}
+action_text: "{src_ip} caused {event_count} lines of an event type seen fewer than 20 times in the whole log"

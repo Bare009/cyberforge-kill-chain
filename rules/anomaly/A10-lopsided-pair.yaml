@@ -1,0 +1,22 @@
+id: A10-lopsided-pair
+title: Pair of hosts where one side sends far more than it receives
+status: experimental
+layer: anomaly
+tuning: "sum(sent) >= 1 MB and >= 10 x sum(rcvd) over the run; firex-10G: 3 pairs, 10.10.20.31 -> 7.93.184.183 (41 MB), 32.127.48.11 -> 10.10.20.20 (12.3 MB), 10.10.10.118 -> 7.154.5.35 (8.4 MB); 3 alerts, all planted, 0 background. Evidence is only the lines with sent > rcvd"
+attack:
+  technique: T1048
+  alt_techniques: [T1048.002, T1041, T1030]
+  tactic: exfiltration
+severity: 3
+confidence: 0.5
+promote: false
+kind: sql
+sql: |
+  WITH f AS (SELECT source, line, src_ip, dst_ip, sent_bytes, rcvd_bytes FROM {events}
+             WHERE log_type = 'traffic' AND src_ip IS NOT NULL AND dst_ip IS NOT NULL),
+  p AS (SELECT src_ip, dst_ip FROM f GROUP BY src_ip, dst_ip
+        HAVING sum(sent_bytes) >= 1000000 AND sum(sent_bytes) >= 10 * greatest(sum(coalesce(rcvd_bytes, 0)), 1))
+  SELECT f.src_ip || '>' || f.dst_ip AS alert_key, f.source, f.line FROM f JOIN p USING (src_ip, dst_ip)
+  WHERE f.sent_bytes > coalesce(f.rcvd_bytes, 0)
+entities: {src_ip: src_ip, dst_ip: dst_ip, user: user}
+action_text: "{src_ip} sent at least 10 times more to {dst_ip} than it received, in {event_count} sessions over {days} days"

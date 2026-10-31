@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import duckdb
 import polars as pl
 
+from .. import attack
 from ..contracts import validate_alert
 from . import compile as cp
 from .rules import Rule
@@ -66,7 +67,7 @@ def run_rule(con: duckdb.DuckDBPyConnection, r: Rule) -> Tuple[pl.DataFrame, pl.
     t_members = time.perf_counter() - t0
     if n_members == 0:
         return _empty_alerts(), pl.DataFrame(schema=EVIDENCE_SCHEMA), {
-            "rule_id": r.id, "kind": r.kind, "alerts": 0, "evidence_lines": 0,
+            "rule_id": r.id, "layer": r.layer, "kind": r.kind, "alerts": 0, "evidence_lines": 0,
             "secs": round(time.perf_counter() - t0, 3), "members_secs": round(t_members, 3)}
 
     gnames = [n for _, n in r.group_by]
@@ -90,8 +91,13 @@ def run_rule(con: duckdb.DuckDBPyConnection, r: Rule) -> Tuple[pl.DataFrame, pl.
         SELECT a.alert_id, m.source, m.line, e.byte_offset, e.ts, {cp.technique_case(r)} AS technique, m.role
         FROM _m m JOIN _a a USING (grp, seg) JOIN {r.table} e ON e.source = m.source AND e.line = m.line
         ORDER BY a.alert_id, m.line""").pl()
-    alerts = _to_alerts(r, a, gnames)
-    stats = {"rule_id": r.id, "kind": r.kind, "alerts": alerts.height, "evidence_lines": ev.height,
+    top = {}
+    if r.label["technique"] == "unknown" and ev.height:
+        top = dict((ev.group_by("alert_id", "technique").agg(pl.len().alias("n"))
+                    .sort(["alert_id", "n", "technique"], descending=[False, True, False])
+                    .unique("alert_id", keep="first", maintain_order=True).select("alert_id", "technique")).iter_rows())
+    alerts = _to_alerts(r, a, gnames, top)
+    stats = {"rule_id": r.id, "layer": r.layer, "kind": r.kind, "alerts": alerts.height, "evidence_lines": ev.height,
              "secs": round(time.perf_counter() - t0, 3), "members_secs": round(t_members, 3)}
     return alerts, ev.cast({k: v for k, v in EVIDENCE_SCHEMA.items() if k in ev.columns}), stats
 
@@ -105,9 +111,14 @@ def _minutes(a: datetime, b: datetime) -> str:
     return f"{m:.0f}" if m >= 10 else f"{m:.1f}".rstrip("0").rstrip(".") or "0"
 
 
-def _to_alerts(r: Rule, a: pl.DataFrame, gnames: List[str]) -> pl.DataFrame:
+def _to_alerts(r: Rule, a: pl.DataFrame, gnames: List[str], top: Optional[Dict[str, str]] = None) -> pl.DataFrame:
+    """top: alert_id -> most common evidence technique, used to label `technique: unknown` rules."""
     rows = []
     for row in a.iter_rows(named=True):
+        lab = r.label
+        tid = (top or {}).get(row["alert_id"])
+        if tid and tid != "unknown":
+            lab = attack.label(tid, r.technique_tactic.get(tid))
         n = int(row["event_count"])
         passed = int(row["passed"])
         vals = _Fmt({k: v for k, v in row.items() if v is not None})
@@ -125,7 +136,7 @@ def _to_alerts(r: Rule, a: pl.DataFrame, gnames: List[str]) -> pl.DataFrame:
         group_key = {g: (str(row.get(f"g_{g}")) if row.get(f"g_{g}") is not None else None) for g in gnames}
         rows.append({
             "alert_id": row["alert_id"], "rule_id": r.id, "layer": r.layer, "title": r.title,
-            **r.label, "alt_techniques": r.alt_techniques, "severity": r.severity, "confidence": r.confidence,
+            **lab, "alt_techniques": r.alt_techniques, "severity": r.severity, "confidence": r.confidence,
             "ts_start": row["ts_start"], "ts_end": row["ts_end"],
             **{k: (str(row[k]) if row.get(k) is not None else None) for k in ("src_ip", "dst_ip", "host", "user",
                                                                              "domain", "url")},

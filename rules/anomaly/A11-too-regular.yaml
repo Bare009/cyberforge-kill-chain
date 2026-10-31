@@ -1,0 +1,22 @@
+id: A11-too-regular
+title: Sessions between two hosts at machine-regular intervals
+status: experimental
+layer: anomaly
+tuning: ">= 30 accepted sessions, mean gap >= 10 s, gap coefficient of variation <= 0.1; firex-10G: 2 pairs, 10.10.10.112 -> 198.79.124.52 (1,612, CV 0.016), 32.127.48.11 -> 10.10.20.20 (600, CV 0.009); 2 alerts, both planted, 0 background"
+attack:
+  technique: T1071
+  alt_techniques: [T1071.001, T1573, T1029]
+  tactic: command-and-control
+severity: 3
+confidence: 0.5
+promote: false
+kind: sql
+sql: |
+  WITH f AS (SELECT source, line, src_ip, dst_ip, epoch(ts_utc) AS t FROM {events}
+             WHERE log_type = 'traffic' AND action = 'accept' AND src_ip IS NOT NULL AND dst_ip IS NOT NULL),
+  g AS (SELECT src_ip, dst_ip, t - lag(t) OVER (PARTITION BY src_ip, dst_ip ORDER BY t, line) AS gap FROM f),
+  p AS (SELECT src_ip, dst_ip FROM g GROUP BY src_ip, dst_ip
+        HAVING count(*) >= 30 AND avg(gap) >= 10 AND stddev_samp(gap) / nullif(avg(gap), 0) <= 0.1)
+  SELECT f.src_ip || '>' || f.dst_ip AS alert_key, f.source, f.line FROM f JOIN p USING (src_ip, dst_ip)
+entities: {src_ip: src_ip, dst_ip: dst_ip, user: user}
+action_text: "{src_ip} talked to {dst_ip} {event_count} times at near-fixed intervals over {days} days"

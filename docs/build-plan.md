@@ -1071,7 +1071,7 @@ Our aim: all "great". Measured so far: parsing 55 s at 4.5 GB.
 - [ ] P2 silver truth for 25 incidents, `eval score` table
 - [ ] P3 rule engine and validator
 - [ ] P4 rules R01-R24, every silver incident ≥ 95% of its lines, background reviewed
-- [ ] P4b anomaly layer
+- [x] P4b anomaly layer
 - [ ] P5 labels, 7-phase stage, per-line overrides
 - [ ] P6 incidents: both chains whole, no giant merge
 - [ ] P7 numbered chains and path graphs

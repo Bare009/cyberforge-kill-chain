@@ -1,0 +1,23 @@
+id: A03-first-seen-user-country
+title: User logging in from a country not seen for them before
+status: experimental
+layer: anomaly
+tuning: "successful login or tunnel-up from outside, (user, country) first seen after the first 2 days; firex-10G: 4 pairs, 4 alerts (keerat.ghughal x2, Deepika.Khan, svc_backup30), all planted, 0 background"
+attack:
+  technique: T1078
+  alt_techniques: [T1078.004, T1133]
+  tactic: initial-access
+severity: 3
+confidence: 0.5
+promote: false
+kind: sql
+sql: |
+  WITH t AS (SELECT min(ts_utc) AS t0 FROM {events}),
+  f AS (SELECT source, line, user, src_country, ts_utc FROM {events}
+        WHERE user IS NOT NULL AND src_country IS NOT NULL AND NOT src_internal
+          AND (log_desc ILIKE '%login successful%' OR action = 'tunnel-up')),
+  p AS (SELECT user, src_country FROM f GROUP BY user, src_country
+        HAVING min(ts_utc) >= (SELECT t0 FROM t) + INTERVAL 2 DAY)
+  SELECT f.user || '|' || f.src_country AS alert_key, f.source, f.line FROM f JOIN p USING (user, src_country)
+entities: {src_ip: src_ip, dst_ip: dst_ip, user: user}
+action_text: "{user} logged in from a country not seen for them before ({src_ip})"

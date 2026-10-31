@@ -1,0 +1,28 @@
+id: A09-denied-then-allowed
+title: Source denied many times, then allowed through to the same host
+status: experimental
+layer: anomaly
+tuning: ">= 50 denied sessions, then an accepted one to the same destination; firex-10G: 1 pair, 32.127.48.11 -> 10.10.20.20 (240 denies, 600 accepts), 1 alert of 241 lines, 0 background. Evidence is the denies plus the first accept only"
+attack:
+  technique: T1190
+  alt_techniques: [T1595, T1133]
+  tactic: initial-access
+severity: 3
+confidence: 0.5
+promote: false
+kind: sql
+sql: |
+  WITH d AS (SELECT source, line, src_ip, dst_ip, ts_utc,
+                    row_number() OVER (PARTITION BY src_ip, dst_ip ORDER BY ts_utc, line) AS k
+             FROM {events} WHERE log_type = 'traffic' AND action = 'deny' AND src_ip IS NOT NULL AND dst_ip IS NOT NULL),
+  p AS (SELECT src_ip, dst_ip, ts_utc AS t50 FROM d WHERE k = 50),
+  a AS (SELECT e.source, e.line, e.src_ip, e.dst_ip,
+               row_number() OVER (PARTITION BY e.src_ip, e.dst_ip ORDER BY e.ts_utc, e.line) AS k
+        FROM {events} e JOIN p ON e.src_ip = p.src_ip AND e.dst_ip = p.dst_ip
+        WHERE e.log_type = 'traffic' AND e.action = 'accept' AND e.ts_utc > p.t50),
+  q AS (SELECT DISTINCT src_ip, dst_ip FROM a)
+  SELECT d.src_ip || '>' || d.dst_ip AS alert_key, d.source, d.line FROM d JOIN q USING (src_ip, dst_ip)
+  UNION ALL
+  SELECT src_ip || '>' || dst_ip AS alert_key, source, line FROM a WHERE k = 1
+entities: {src_ip: src_ip, dst_ip: dst_ip, user: user}
+action_text: "{src_ip} was denied {blocked} times by the firewall, then got through to {dst_ip}"
