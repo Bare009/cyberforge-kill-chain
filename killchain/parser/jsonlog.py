@@ -82,7 +82,7 @@ SCHEMA = pa.schema(
         ("line_hash", pa.int64()),
     ]
     + [(c, pa.int64() if c in INT_COLS else pa.string()) for c in COLUMNS]
-    + [("extra", pa.string())]
+    + [("parse_issue", pa.string()), ("extra", pa.string())]
 )
 
 
@@ -121,7 +121,7 @@ class JsonBatch:
         self.ts: List[Any] = []
         self.rows: List[tuple] = []
         self.meta: List[Tuple[int, int, int]] = []
-        self.extras: List[Optional[str]] = []
+        self.extras: List[Optional[dict]] = []
         self.unknown_keys: Counter = Counter()
 
     def __len__(self) -> int:
@@ -149,13 +149,16 @@ class JsonBatch:
         rest = {k: flat[k] for k in flat if k not in used}
         if rest:
             self.unknown_keys.update(rest.keys())
-            self.extras.append(au.dumps(rest))
-        else:
-            self.extras.append(None)
+        self.extras.append(rest or None)
 
     def to_table(self, source: str, tq: au.TimeQuality, default_tz: int) -> Tuple[pa.Table, dict]:
         ts, valid, quality = au.json_time(self.ts, default_tz)
         tq.apply(ts, valid, quality)
+        issues: List[Optional[List[str]]] = [None] * len(self.rows)
+        for i, (t, q) in enumerate(zip(self.ts, quality)):
+            if t is not None and q == au.Q_MISSING:  # a time field we could not read
+                self.extras[i] = {**(self.extras[i] or {}), "_bad_ts": str(t)}
+                issues[i] = ["bad_time"]
         cols = list(zip(*self.rows))
         lines, offsets, hashes = zip(*self.meta)
         n = len(self.rows)
@@ -169,6 +172,16 @@ class JsonBatch:
         }
         for c, values in zip(COLUMNS, cols):
             text = pa.array([None if v is None else str(v) for v in values], pa.string())
-            arrays[c] = au.to_int(text) if c in INT_COLS else text
-        arrays["extra"] = pa.array(self.extras, pa.string())
-        return pa.table(arrays, schema=SCHEMA), au.batch_info(ts, valid, quality)
+            if c in INT_COLS:
+                arrays[c] = au.to_int(text)
+                for i, v in au.lost_values(text, arrays[c]):
+                    self.extras[i] = {**(self.extras[i] or {}), "_bad_" + c: v}
+                    if "bad_number" not in (issues[i] or []):
+                        issues[i] = (issues[i] or []) + ["bad_number"]
+            else:
+                arrays[c] = text
+        arrays["parse_issue"] = pa.array([",".join(i) if i else None for i in issues], pa.string())
+        arrays["extra"] = pa.array([au.dumps(e) if e else None for e in self.extras], pa.string())
+        info = au.batch_info(ts, valid, quality)
+        info["issues"] = dict(Counter(x for i in issues if i for x in i))
+        return pa.table(arrays, schema=SCHEMA), info

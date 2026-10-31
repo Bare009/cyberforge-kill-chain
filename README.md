@@ -24,9 +24,11 @@ killchain/          Python package, one sub-package per pipeline stage
   attack/           ATT&CK catalogue and kill chain stage order
   detect/           YAML rule engine
   correlate/        incident builder
+  enrich/           local context and threat intel
   graph/            attack paths and reach-next
   score/            risk score
-  report/           plain-English reports
+  agents/           LLM narrator, triage opinion, Q&A, rule writer
+  report/           template reports when no LLM is reachable
   api/              FastAPI app
   eval/             scoring against the ground-truth manifest
   live/             live mode
@@ -82,7 +84,8 @@ Columns in both tables:
 | `ts_quality` | `ok`, `stuck`, `backwards`, `eventtime_mismatch`, `date_missing`, `missing`, `tz_assumed` |
 | `source`, `line`, `byte_offset` | file name, 1-based line number, 0-based byte offset of the line start |
 | `line_hash` | 64-bit BLAKE2b of the raw line, for duplicate checks |
-| `extra` | JSON object with every key that has no column of its own |
+| `parse_issue` | empty for clean lines; otherwise `truncated_binary_tail`, `stray_text`, `duplicate_key`, `bad_number` or `bad_time` (comma-separated) |
+| `extra` | JSON object with every key that has no column of its own, plus what a flagged line would otherwise lose (`_dropped_bytes`, `_stray`, `_dup_<key>`, `_bad_<column>`) |
 
 `line` and `byte_offset` use the same conventions as the organisers' manifest
 (`at: [line, byte, stream]`), so detections can be scored against it exactly.
@@ -105,7 +108,7 @@ Found in `firex-10G.log`, the organisers' 6.5 GB file:
 |---|---|---|
 | 0 to 2.03 GB | 3.85 M FortiGate lines, 7 days, in time order | parsed, `ts_quality=ok` |
 | 2.03 to 4.82 GB | 5.28 M lines whose clock is stuck at the window end (2026-10-30 08:48:25.999999 +0530) | parsed, `ts_quality=stuck`; detection rules must skip these rows |
-| 4.82 to 6.54 GB | 1.73 GB of random bytes | rejected as `binary`, reported as one junk range |
+| 4.82 to 6.54 GB | 1,602 Debian `.deb` packages appended to the log | rejected as `binary`, reported as one junk range; the last text line, cut off by the first package, is kept with `parse_issue=truncated_binary_tail` |
 
 Other details:
 
@@ -122,17 +125,27 @@ Windows 11, 16 logical CPUs, 14 workers, file in the OS cache:
 
 | Run | Wall time | Peak RSS (all processes) |
 |---|---|---|
+| full `firex-10G.log` (6.54 GB, 15.8 M lines, 9.1 M rows) | 55 s | 4.5 GB |
 | first 512 MB (1.02 M lines) | 5.1 s, of which about 3 s is worker start-up | 3.7 GB |
-| 64 MB across the stuck-clock boundary | 3.0 s | 1.6 GB |
 
-Steady state is 37.5 µs of CPU per FortiGate line per worker, about 370,000
-lines per second with 14 workers.
+Peak memory depends on the number of workers, not on the file size. Output for
+the full file is 497 MB of Parquet.
 
 ### Check a run
 
 ```powershell
 python tools\verify_parse.py data\parsed\firex-10G firewall 2000
+python tools\audit_parse.py data\raw\firex-10G.log data\parsed\firex-10G 30000
+python tools\test_parser_edges.py
 ```
 
-This re-reads sampled rows from the source file at `byte_offset` and checks the
-line hash, the line number (by recounting newlines) and the main columns.
+- `verify_parse.py` re-reads sampled rows from the source file at `byte_offset`
+  and checks the line hash, the line number and the main columns.
+- `audit_parse.py` checks independently of the parser's code: a full-file scan
+  counts every line, line numbers and offsets are checked over the whole table,
+  every column of a random sample is compared with a separate tokenizer,
+  timestamps are recomputed, and the stuck-clock flags are compared with the
+  frozen value. Results go to `_audit.json`. On `firex-10G.log`: 0 lines lost,
+  0 mismatches in 1.35 M field checks.
+- `test_parser_edges.py` parses a small file with every damaged-line case and
+  checks the flags and the values kept in `extra`.

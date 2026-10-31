@@ -84,7 +84,7 @@ SCHEMA = pa.schema(
         ("line_hash", pa.int64()),
     ]
     + [(name, pa.int64() if kind == "int" else pa.string()) for _, name, kind in FIELDS]
-    + [("extra", pa.string())]
+    + [("parse_issue", pa.string()), ("extra", pa.string())]
 )
 
 
@@ -94,6 +94,22 @@ def _unq(v: bytes) -> str:
     return v.decode("utf-8", "replace")
 
 
+def _binary_start(raw: bytes) -> Optional[int]:
+    """Offset of the first control byte or invalid UTF-8 sequence, or None."""
+    m = au.CTRL_RE.search(raw)
+    cut = m.start() if m else None
+    try:
+        raw.decode("utf-8")
+    except UnicodeDecodeError as e:
+        cut = e.start if cut is None else min(cut, e.start)
+    return cut
+
+
+def _covered(pairs: List[Tuple[bytes, bytes]]) -> int:
+    """Bytes a line has when it is exactly these key=value pairs joined by single spaces."""
+    return sum(len(k) + len(v) for k, v in pairs) + 2 * len(pairs) - 1 if pairs else 0
+
+
 class FortiGateBatch:
     stream = "firewall"
     schema = SCHEMA
@@ -101,22 +117,52 @@ class FortiGateBatch:
     def __init__(self) -> None:
         self.rows: List[tuple] = []
         self.meta: List[Tuple[int, int, int]] = []
-        self.extras: List[Optional[str]] = []
+        self.extras: List[Optional[dict]] = []
+        self.issues: List[Optional[List[str]]] = []
         self.unknown_keys: Counter = Counter()
 
     def __len__(self) -> int:
         return len(self.rows)
 
     def add(self, raw: bytes, line_no: int, offset: int, line_hash: int) -> None:
-        d = dict(KV_RE.findall(raw))
+        pairs = KV_RE.findall(raw)
+        issues: List[str] = []
+        extra: dict = {}
+        # Fast path: a clean ASCII line made only of key=value pairs and single spaces.
+        if not raw.isascii() or au.CTRL_RE.search(raw) or _covered(pairs) != len(raw):
+            cut = _binary_start(raw)
+            if cut is not None:
+                # Text that runs into binary data (e.g. a line cut off by a file
+                # appended after it): keep the pairs before the first bad byte.
+                # Cut back to the last space: bytes between it and the first bad
+                # byte belong to the binary data, not to a field.
+                space = raw.rfind(b" ", 0, cut)
+                cut = space if space > 0 else cut
+                pairs = KV_RE.findall(raw[:cut])
+                issues.append("truncated_binary_tail")
+                extra["_dropped_bytes"] = len(raw) - cut
+            rest = KV_RE.sub(b"", raw if cut is None else raw[:cut]).strip(b" ")
+            if rest and rest.replace(b" ", b""):
+                issues.append("stray_text")
+                extra["_stray"] = rest.decode("utf-8", "replace")[:500]
+        d = dict(pairs)
+        if len(d) != len(pairs):
+            issues.append("duplicate_key")
+            seen: dict = {}
+            for k, v in pairs:
+                seen.setdefault(k, []).append(v)
+            for k, vs in seen.items():
+                if len(vs) > 1:  # the last value wins the column; keep the others
+                    extra["_dup_" + k.decode("ascii", "replace")] = [_unq(v) for v in vs[:-1]]
         self.rows.append(tuple(map(d.get, _KEYS)))
         self.meta.append((line_no, offset, line_hash))
         other = d.keys() - _KNOWN
         if other:
             self.unknown_keys.update(k.decode("ascii", "replace") for k in other)
-            self.extras.append(au.dumps({k.decode("ascii", "replace"): _unq(d[k]) for k in sorted(other)}))
-        else:
-            self.extras.append(None)
+            for k in sorted(other):
+                extra[k.decode("ascii", "replace")] = _unq(d[k])
+        self.extras.append(extra or None)
+        self.issues.append(issues or None)
 
     def to_table(self, source: str, tq: au.TimeQuality, default_tz: int) -> Tuple[pa.Table, dict]:
         cols = list(zip(*self.rows))
@@ -136,7 +182,21 @@ class FortiGateBatch:
             "line_hash": pa.array(hashes, pa.int64()),
         }
         for (_, name, kind), values in zip(FIELDS, cols[4:]):
-            arrays[name] = au.int_array(values) if kind == "int" else au.unquote(au.str_array(values))
-        arrays["extra"] = pa.array(self.extras, pa.string())
+            if kind == "int":
+                text = au.unquote(au.str_array(values))
+                arrays[name] = au.to_int(text)
+                # A number column holding something that is not a number: keep the text.
+                for i, v in au.lost_values(text, arrays[name]):
+                    self.extras[i] = {**(self.extras[i] or {}), "_bad_" + name: v}
+                    self.issues[i] = (self.issues[i] or []) + ["bad_number"]
+            else:
+                arrays[name] = au.unquote(au.str_array(values))
+        for i, iss in enumerate(self.issues):  # 'bad_number' may repeat per column
+            if iss and len(iss) != len(set(iss)):
+                self.issues[i] = list(dict.fromkeys(iss))
+        arrays["parse_issue"] = pa.array([",".join(i) if i else None for i in self.issues], pa.string())
+        arrays["extra"] = pa.array([au.dumps(e) if e else None for e in self.extras], pa.string())
         table = pa.table(arrays, schema=SCHEMA)
-        return table, au.batch_info(ts, valid, quality)
+        info = au.batch_info(ts, valid, quality)
+        info["issues"] = dict(Counter(x for i in self.issues if i for x in i))
+        return table, info

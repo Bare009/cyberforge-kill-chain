@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, Sequence, Tuple
+from typing import Any, List, Optional, Sequence, Tuple
 
 import numpy as np
 import pyarrow as pa
@@ -84,6 +84,19 @@ def to_int(s: pa.Array) -> pa.Array:
 
 def int_array(values: Sequence[Optional[bytes]]) -> pa.Array:
     return to_int(unquote(str_array(values)))
+
+
+CTRL_RE = re.compile(rb"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def lost_values(text: pa.Array, ints: pa.Array) -> List[Tuple[int, str]]:
+    """(row, original text) where a number column got a non-empty value that is not an integer."""
+    lost = pc.and_(pc.and_(pc.is_valid(text), pc.not_equal(text, "")), pc.is_null(ints))
+    lost = pc.fill_null(lost, False)
+    if not pc.any(lost).as_py():
+        return []
+    idx = np.flatnonzero(lost.to_numpy(zero_copy_only=False))
+    return [(int(i), text[int(i)].as_py()) for i in idx]
 
 
 def _np_int(arr: pa.Array) -> Tuple[np.ndarray, np.ndarray]:

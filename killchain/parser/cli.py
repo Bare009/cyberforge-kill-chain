@@ -153,17 +153,23 @@ def aggregate(results: List[Dict[str, Any]], files: List[Dict[str, Any]], wall: 
     streams: Dict[str, Dict[str, Any]] = {}
     unknown: Dict[str, Counter] = {}
     samples: Dict[str, List[Dict[str, Any]]] = {}
+    issue_samples: Dict[str, List[Dict[str, Any]]] = {}
     junk: List[List[Any]] = []
     small = {"ranges": 0, "bytes": 0}
     for r in results:
         classes.update(r["lines_by_class"])
         for s, v in r["streams"].items():
-            st = streams.setdefault(s, {"rows": 0, "quality": Counter(), "min_ok": None, "max_ok": None})
+            st = streams.setdefault(s, {"rows": 0, "quality": Counter(), "issues": Counter(),
+                                        "min_ok": None, "max_ok": None})
             st["rows"] += v["rows"]
             st["quality"].update(v["quality"])
+            st["issues"].update(v.get("issues", {}))
             for k, pick in (("min_ok", min), ("max_ok", max)):
                 if v[k] is not None:
                     st[k] = v[k] if st[k] is None else pick(st[k], v[k])
+        for s, items in r.get("issue_samples", {}).items():
+            bucket = issue_samples.setdefault(s, [])
+            bucket.extend(items[: max(0, 10 - len(bucket))])
         for s, c in r["unknown_keys"].items():
             unknown.setdefault(s, Counter()).update(c)
         for reason, items in r["samples"].items():
@@ -193,9 +199,11 @@ def aggregate(results: List[Dict[str, Any]], files: List[Dict[str, Any]], wall: 
         "lines_by_class": dict(classes.most_common()),
         "streams": {
             s: {"rows": v["rows"], "ts_quality": dict(v["quality"].most_common()),
+                "parse_issues": dict(v["issues"].most_common()),
                 "first_ok_utc": _iso(v["min_ok"]), "last_ok_utc": _iso(v["max_ok"])}
             for s, v in streams.items()
         },
+        "parse_issue_samples": issue_samples,
         "junk_ranges": [{"source": s, "start": a, "end": b, "bytes": b - a, "lines": n} for s, a, b, n in junk][:200],
         "junk_small": small,
         "unknown_keys": {s: dict(c.most_common(100)) for s, c in unknown.items()},
@@ -294,8 +302,8 @@ def main(argv: Optional[List[str]] = None) -> None:
           f"peak RSS {stats['peak_rss_mb']} MB")
     print("lines:", ", ".join(f"{k}={v:,}" for k, v in stats["lines_by_class"].items()))
     for s, v in stats["streams"].items():
-        print(f"{s}: rows={v['rows']:,} ts_quality={v['ts_quality']} good time range "
-              f"{v['first_ok_utc']} .. {v['last_ok_utc']}")
+        print(f"{s}: rows={v['rows']:,} ts_quality={v['ts_quality']} parse_issues={v['parse_issues'] or 'none'} "
+              f"good time range {v['first_ok_utc']} .. {v['last_ok_utc']}")
     if stats["junk_ranges"]:
         top = sorted(stats["junk_ranges"], key=lambda j: -j["bytes"])[:3]
         print("largest junk ranges:", "; ".join(f"{j['source']} bytes {j['start']:,}-{j['end']:,} "

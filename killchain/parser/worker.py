@@ -100,8 +100,9 @@ def parse_range(task: Dict[str, Any]) -> Dict[str, Any]:
     tqs = {s: au.TimeQuality(task["stuck_run"], task["backwards_secs"]) for s in batches}
     writers: Dict[str, pq.ParquetWriter] = {}
     unknown: Dict[str, Counter] = {s: Counter() for s in batches}
-    streams: Dict[str, Dict[str, Any]] = {s: {"rows": 0, "quality": Counter(), "min_ok": None, "max_ok": None}
-                                          for s in batches}
+    streams: Dict[str, Dict[str, Any]] = {s: {"rows": 0, "quality": Counter(), "issues": Counter(),
+                                              "min_ok": None, "max_ok": None} for s in batches}
+    issue_samples: Dict[str, List[Dict[str, Any]]] = {}
     lines_by_class: Counter = Counter()
     samples: Dict[str, List[Dict[str, Any]]] = {}
     junk = _Junk()
@@ -121,6 +122,13 @@ def parse_range(task: Dict[str, Any]) -> Dict[str, Any]:
         st = streams[stream]
         st["rows"] += table.num_rows
         st["quality"].update(info["quality"])
+        if info.get("issues"):
+            st["issues"].update(info["issues"])
+            flagged = table.filter(table["parse_issue"].is_valid()).select(["line", "byte_offset", "parse_issue"])
+            for r in flagged.slice(0, SAMPLES_PER_REASON).to_pylist():
+                bucket = issue_samples.setdefault(stream, [])
+                if len(bucket) < 10:
+                    bucket.append(r)
         if "min_ok" in info:
             st["min_ok"] = info["min_ok"] if st["min_ok"] is None else min(st["min_ok"], info["min_ok"])
             st["max_ok"] = info["max_ok"] if st["max_ok"] is None else max(st["max_ok"], info["max_ok"])
@@ -129,7 +137,8 @@ def parse_range(task: Dict[str, Any]) -> Dict[str, Any]:
 
     def reject(reason: str, raw: bytes, line_no: int, offset: int, length: int) -> None:
         lines_by_class["rejected:" + reason] += 1
-        junk.add(offset, length + 1)
+        # +1 for the newline, except on a last line that has none
+        junk.add(offset, min(length + 1, end - offset))
         bucket = samples.setdefault(reason, [])
         if len(bucket) < SAMPLES_PER_REASON:
             bucket.append({"line": line_no, "byte": offset, "head": repr(raw[:160])})
@@ -190,7 +199,7 @@ def parse_range(task: Dict[str, Any]) -> Dict[str, Any]:
                         reject(reason, raw, line_no, offset, length)
                 elif not raw.strip():
                     lines_by_class["blank"] += 1
-                    junk.extend(offset, length + 1)
+                    junk.extend(offset, min(length + 1, end - offset))
                 else:
                     stripped = raw.lstrip(b" \t\xef\xbb\xbf")
                     if stripped is not raw and stripped.startswith(FG_PREFIX):
@@ -215,7 +224,9 @@ def parse_range(task: Dict[str, Any]) -> Dict[str, Any]:
         "lines": line_no - task["base_line"],
         "bytes": end - start,
         "lines_by_class": dict(lines_by_class),
-        "streams": {s: {**v, "quality": dict(v["quality"])} for s, v in streams.items() if v["rows"]},
+        "streams": {s: {**v, "quality": dict(v["quality"]), "issues": dict(v["issues"])}
+                    for s, v in streams.items() if v["rows"]},
+        "issue_samples": issue_samples,
         "unknown_keys": {s: dict(c) for s, c in unknown.items() if c},
         "samples": samples,
         "junk": junk.result(),
