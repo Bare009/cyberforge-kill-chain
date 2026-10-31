@@ -78,8 +78,9 @@ def test_cli_lists_stages():
     assert "parse      ready" in out.stdout and "correlate  ready" in out.stdout
     assert "chain      ready" in out.stdout and "reach      ready" in out.stdout
     assert "score      ready" in out.stdout and "report     ready" in out.stdout
-    assert "bundle     planned (P11)" in out.stdout
-    bad = subprocess.run([sys.executable, "-m", "killchain", "bundle"], cwd=ROOT, capture_output=True, text=True)
+    assert "bundle     ready" in out.stdout and "run        ready" in out.stdout
+    assert "serve      planned (P11)" in out.stdout
+    bad = subprocess.run([sys.executable, "-m", "killchain", "serve"], cwd=ROOT, capture_output=True, text=True)
     assert bad.returncode == 2 and "P11" in bad.stderr
 
 

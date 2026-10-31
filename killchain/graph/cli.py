@@ -154,14 +154,15 @@ def compute_reach(run: Path, con: Any, edges: Any, hosts: Any, net: Dict[str, An
     members = pl.read_parquet(run / "incident_alerts.parquet")
     chains = json.loads((run / "chains.json").read_text(encoding="utf-8"))["incidents"]
     alerts_json = json.loads((run / "alerts.json").read_text(encoding="utf-8"))
-    il = pl.read_parquet(run / "incident_lines.parquet").select("incident_number", "source", "line").unique()
+    # keyed by incident_id: bundle renumbers incident_lines.parquet to the risk order
+    il = pl.read_parquet(run / "incident_lines.parquet").select("incident_id", "source", "line").unique()
     con.register("incident_lines_v", il)
-    joined = con.sql("SELECT DISTINCT il.incident_number, e.src_ip, e.dst_ip, e.user, e.log_desc "
+    joined = con.sql("SELECT DISTINCT il.incident_id, e.src_ip, e.dst_ip, e.user, e.log_desc "
                      "FROM incident_lines_v il JOIN events e ON e.source = il.source AND e.line = il.line").pl()
     con.unregister("incident_lines_v")
-    rows_by: Dict[int, List[Dict[str, Any]]] = {}
+    rows_by: Dict[str, List[Dict[str, Any]]] = {}
     for r in joined.iter_rows(named=True):
-        rows_by.setdefault(int(r["incident_number"]), []).append(r)
+        rows_by.setdefault(r["incident_id"], []).append(r)
 
     g = access_digraph(edges)
     by_id = {c["incident_id"]: c for c in chains}
@@ -169,7 +170,7 @@ def compute_reach(run: Path, con: Any, edges: Any, hosts: Any, net: Dict[str, An
     for r in incidents.sort("incident_number").iter_rows(named=True):
         c = by_id[r["incident_id"]]
         base = files.assemble(r, c)
-        nxt, graph, fh = reach_next(base, c["graph"], g, hosts, rows_by.get(base["incident_number"], []), net, settings)
+        nxt, graph, fh = reach_next(base, c["graph"], g, hosts, rows_by.get(r["incident_id"], []), net, settings)
         bundle.append(files.assemble(r, {**c, "graph": graph}, nxt))
         reach_rows.append({"incident_id": r["incident_id"], "incident_number": base["incident_number"],
                            "footholds": fh, "next": nxt, "graph": graph})

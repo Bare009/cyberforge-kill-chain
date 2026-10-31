@@ -13,11 +13,7 @@ import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-PLANNED = {
-    "enrich": "P9",
-    "agents": "P10b", "bundle": "P11", "serve": "P11",
-    "run": "P13", "live": "P15",
-}
+PLANNED = {"serve": "P11", "live": "P15"}
 
 
 def cmd_parse(rest: List[str]) -> int:
@@ -100,10 +96,36 @@ def cmd_report(rest: List[str]) -> int:
     return report_main(rest)
 
 
+def cmd_enrich(rest: List[str]) -> int:
+    from .enrich.__main__ import main as enrich_main
+
+    return enrich_main(rest)
+
+
+def cmd_agents(rest: List[str]) -> int:
+    from .agents.__main__ import main as agents_main
+
+    return agents_main(rest)
+
+
+def cmd_bundle(rest: List[str]) -> int:
+    from .bundle.__main__ import main as bundle_main
+
+    return bundle_main(rest)
+
+
+def cmd_run(rest: List[str]) -> int:
+    from .run.cli import main as run_main
+
+    return run_main(rest)
+
+
 COMMANDS: Dict[str, Callable[[List[str]], int]] = {"parse": cmd_parse, "db": cmd_db, "eval": cmd_eval,
                                                    "detect": cmd_detect, "correlate": cmd_correlate,
                                                    "chain": cmd_chain, "reach": cmd_reach,
-                                                   "score": cmd_score, "report": cmd_report}
+                                                   "score": cmd_score, "report": cmd_report,
+                                                   "enrich": cmd_enrich, "agents": cmd_agents,
+                                                   "bundle": cmd_bundle, "run": cmd_run}
 
 
 def main(argv: Optional[List[str]] = None) -> int:

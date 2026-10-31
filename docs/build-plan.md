@@ -857,6 +857,13 @@ against FR-5, FR-6, B-1, B-2, B-3; screenshots for the README.
 - Re-run `eval score`; fix misses by changing rules, never the evaluation.
 - Failure modes to test: empty file, truncated file, no stuck region, only
   binary, no network, no LLM key.
+- Status: development half done (Track A item 3). `python -m killchain run`
+  (`killchain/run/`) runs every stage, writes the `pipeline` record into
+  `run_summary.json` and `pipeline.json`, and has `--reuse-parsed` and
+  `--from STAGE`; every failure mode above is covered by `tests/test_run.py`
+  on small synthetic logs. On firex-10G (`--offline --no-llm`): exit 0,
+  187 s, peak 6.2 GB, metrics unchanged. The 50 GB tier run is deferred
+  by the user.
 
 ### P14. Docker, README, demo (1 day, T0, both)
 

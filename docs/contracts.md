@@ -36,7 +36,10 @@ data/runs/<run>/                      (examples/sample-run/ has the same layout)
   alerts.parquet                      same, for queries
   alert_evidence.parquet              every evidence line of every alert
   evidence_sample.json                (sample only) the evidence rows as JSON
-  run_summary.json                    stage timings, memory, counts, data quality
+  run_summary.json                    stage timings, memory, counts, data quality; `pipeline` key from
+                                      `python -m killchain run` (see below)
+  pipeline.json                       (track A, run) the same `pipeline` record
+  logs/<stage>.log                    (track A, run) each stage's output from `python -m killchain run`
   incidents.parquet                   (track A) correlation output, read by the bundle step
   incident_alerts.parquet             (track A) correlation output, read by the bundle step
   unexplained.parquet                 (track A) correlation output, read by the bundle step
@@ -78,6 +81,16 @@ threat intel and reports in and writes the bundle-only files above. It never cha
 It binds `enrichment.json` to incidents by value; a run served without the bundle step needs
 `python -m killchain.enrich` re-run after `score`, because enrich's per-incident lists use the numbers
 of the moment.
+
+`python -m killchain run` runs all of these in order (parse, db prepare, detect, correlate, chain, reach,
+score, report, enrich, narrate, bundle). After bundle it adds one top-level key, `pipeline`, to
+`run_summary.json` and changes no other key; the same record is in `pipeline.json`. The record holds
+`version`, `name`, `input` (`path`, `bytes`), `parsed_dir`, `run_dir`, `options`, `machine`, `started_at`,
+`finished_at`, `status` (`ok`, `ok_with_warnings`, `failed`, `no_events`), `exit_code`, `wall_secs`,
+`peak_rss_mb`, `warnings`, `notes`, `error`, and `stages`: a list in run order, each with `name`, `status`
+(`ok`, `degraded`, `failed`, `skipped`), `reason`, `exit_code`, `wall_secs`, `peak_rss_mb`, `counts`,
+`command`, `log` and `tail` (last output lines of a failed stage). Bundle rebuilds `run_summary.json`, so a
+rebundle drops the `pipeline` key; readers that need it after a rebundle use `pipeline.json`.
 
 ## Contract B: alert
 

@@ -17,6 +17,7 @@ each one.
 | 3c. Risk score and template report (B-1, B-2) | done (P10): `killchain.score`, `killchain.report`; `python -m killchain score --run <run> [N]` (fixed weights severity 0.25, stage 0.20, breadth 0.10, success 0.15, asset 0.15, reach 0.10, threat intel 0.05; each part stored with a `detail`; incidents renumbered 1..N by risk) and `python -m killchain report --run <run> [N]` (Markdown: summary, risk table, numbered chain with IST times, gaps, reach next, entities, threat intel, 5 evidence lines per step, actions per tactic); breadth is full at 3 or more distinct tactics, else tactics / 6 (Track A item 2); on firex-10G 25 incidents: critical 3, high 17, medium 5; chain A #1 89.8, chain B #2 82.3, large one-way transfer #3 81.5, lone port scan #24 45.8; R24 step text names the malware (`JS/Nemucod.A!tr.dldr`); threat intel 0 for every incident (offline enrich: 58 indicators, all `unknown`); 25 template reports (73,066 characters); 0 contract errors; score 0.05 s, report 0.04 s; recall 100%, labels 100%, attack paths 25/25 (multi-step 4/4), false alarms 0% |
 | 4. API and UI (FR-7) | in progress: `killchain.api` (health, incidents, path), `web/` scaffold |
 | 5. Scoring harness against the ground-truth manifest | planned |
+| 6. One-command run (P13) | done: `python -m killchain run --input <log> [--name N] [--offline] [--no-llm] [--reuse-parsed] [--from STAGE]` (see [Full run](#full-run)); exit codes 0 done, 1 a required stage failed, 2 usage or input error, 3 no events in the input; on firex-10G with `--offline --no-llm`: 187 s end to end with a cold file cache (parse 88.6 s, prepare 58.7 s, detect 16.4 s, the other stages 1.6-4.6 s each), peak 6.2 GB (during prepare); 25 incidents, recall 100%, labels 100%, attack paths 25/25 (multi-step 4/4), false alarms 0%; the 50 GB tier run is still to do |
 
 Requirements and targets: `docs/requirements.md`. Pipeline and stage
 contracts: `docs/architecture.md`. What the organisers' data looks like:
@@ -259,6 +260,51 @@ python -m killchain eval score --run data\runs\firex-10G --api http://localhost:
   were rebuilt in order, false alarms (with `eval/reviewed.yml` for incidents
   confirmed real or false by hand), and alerts per rule split into truth hits
   and background. Everything is also in `metrics.json`.
+
+## Full run
+
+One command runs every stage on one log file:
+
+```powershell
+python -m killchain run --input data\raw\firex-10G.log --name firex-10G --offline --no-llm
+python -m killchain run --input data\raw\firex-10G.log --reuse-parsed     # keep the earlier parse (and events.duckdb)
+python -m killchain run --input data\raw\firex-10G.log --from score       # rerun score .. bundle only
+```
+
+Stage order: parse → db prepare → detect → correlate → chain → reach → score →
+report → enrich → narrate → bundle. Each stage runs as its own process; its
+output is printed with a `[stage]` prefix and kept in `<run>/logs/<stage>.log`.
+Paths are `<data>/parsed/<name>` and `<data>/runs/<name>` (`--data-dir`,
+default `data`; `--name` defaults to the file name without extension).
+
+| Flag | Does |
+|---|---|
+| `--offline` | enrich uses the cache and local context only; the narrator is skipped |
+| `--no-llm` | the narrator is skipped; incidents keep their template reports |
+| `--reuse-parsed` | skips parse when `<data>/parsed/<name>` was parsed from the same file (same path and size; else exit 2), and db prepare when `events.duckdb` is newer than that parse |
+| `--from STAGE` | skips the stages before STAGE and reuses their outputs (needs an earlier parse) |
+| `--workers N`, `--ti-cache FILE` | passed to the parser and to enrich |
+
+Enrich and the narrator are optional: when one fails (or enrich's lookups fail
+because the network is down) the run records a warning and goes on, since
+bundle works without their files. The narrator runs only when `LLM_ENABLED=true`
+and `.env` has an LLM key; with LLM on and no key it is skipped with a warning.
+Any other failed stage stops the run.
+
+| Exit | Meaning |
+|---|---|
+| 0 | done (status `ok`, or `ok_with_warnings`) |
+| 1 | a required stage failed; its last 20 output lines are printed and kept in the record |
+| 2 | usage or input error (not a file, bad name, `--reuse-parsed` mismatch, `--from` without a parse); nothing is written |
+| 3 | the input holds no events (empty, or no line is a FortiGate or JSON event, e.g. only binary) |
+
+The run's record (per stage: status, reason, exit code, wall time, peak memory,
+counts, command, log) goes under the `pipeline` key of `<run>/run_summary.json`,
+added after bundle so every bundle field stays as bundle wrote it, and to
+`<run>/pipeline.json`. Bundle rebuilds `run_summary.json` from scratch, so a
+later `python -m killchain.bundle` drops the `pipeline` key; `pipeline.json`
+keeps it. Peak memory per stage is the summed RSS of the run process and the
+stage's processes, so it includes the orchestrator itself.
 
 ## Bundle
 
