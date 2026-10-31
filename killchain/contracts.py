@@ -9,8 +9,9 @@ pipeline (track A) and the API (track B) can rely on the shapes.
 
 Change (agreed with the user for both tracks, optional and backward-compatible):
 a step may carry `supporting` (a list of SUPPORT entries: anomaly alerts attached
-to that rule step), and a graph edge may carry `supporting` (bool). Bundles
-without these keys, such as examples/sample-run/, stay valid.
+to that rule step), a graph edge may carry `supporting` (bool), and a risk part
+may carry `detail` (string: why it has its value). Bundles without these keys,
+such as examples/sample-run/, stay valid.
 """
 
 from __future__ import annotations
@@ -210,6 +211,8 @@ def validate_incident(inc: Dict[str, Any], where: str = "incident") -> List[str]
             e.append(f"{where}.risk_parts.{k}: needs numbers value, weight, points")
         elif not 0 <= p["value"] <= 1:
             e.append(f"{where}.risk_parts.{k}.value: must be 0-1")
+        if isinstance(p, dict) and "detail" in p and not isinstance(p["detail"], str):
+            e.append(f"{where}.risk_parts.{k}.detail: expected a string")
     if all(isinstance(p, dict) and isinstance(p.get("points"), NUM) for p in inc["risk_parts"].values()):
         total = sum(p["points"] for p in inc["risk_parts"].values())
         if abs(total - inc["risk_score"]) > 0.5:

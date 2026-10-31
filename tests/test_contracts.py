@@ -100,6 +100,14 @@ def test_supporting_optional_and_checked(bundle):
         lambda i, a: i["graph"]["edges"][0].update(supporting="yes"))
 
 
+def test_risk_part_detail_optional_string(bundle):
+    inc = copy.deepcopy(bundle[0])
+    inc["risk_parts"]["severity"]["detail"] = "x"
+    assert validate_incident(inc) == []
+    inc["risk_parts"]["severity"]["detail"] = 3
+    assert any("risk_parts.severity.detail: expected a string" in e for e in validate_incident(inc))
+
+
 def test_alert_ranges(bundle):
     a = copy.deepcopy(bundle[2][0])
     a["severity"], a["confidence"], a["technique"] = 9, 1.5, "1110"

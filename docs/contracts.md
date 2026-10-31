@@ -48,6 +48,10 @@ data/runs/<run>/                      (examples/sample-run/ has the same layout)
   access_hosts.parquet                (track A) every internal IP in the logs with zone, role, /24, event count
   reach.json                          (track A) footholds, reach next and merged path graph per incident
   reach/_stats.json                   (track A) reach stage timings and counts
+  score.json                          (track A) per incident_id: number_before, incident_number, risk score,
+                                      band and parts; threat_intel_source (enrichment.json or null), offline
+  score/_stats.json                   (track A) score stage timings, bands
+  report/_stats.json                  (track A) report stage timings, markdown size
   enrichment.json                     (track B, enrich) threat intel per entity, read by score and bundle
   report.json                         (track B, narrator) {incidents: {incident_id: {source, markdown, triage}}}
   unexplained.json                    (bundle) anomaly alerts in no incident, alert rows plus reason, group_id
@@ -58,12 +62,21 @@ data/runs/<run>/                      (examples/sample-run/ has the same layout)
                                       the API serves metrics.json at GET /metrics
 ```
 
+Stage order: `detect → correlate → chain → reach → score → report`, then the bundle step.
 `python -m killchain chain` writes provisional `incidents/<n>.json`, `index.json` and `alerts.json` (with
 `incident_number` filled); their risk, threat intel, report and reach next fields are contract-valid
 placeholders. `python -m killchain reach` then rewrites them with the real reach next and the path graph
-merged with reach nodes and edges (and score, later, with the risk score). The P11 bundle step
+merged with reach nodes and edges. `chain` and `reach` reset risk and report to placeholders, so `score`
+and `report` run after them. `python -m killchain score` fills the risk fields and renumbers the bundle
+by risk (`incidents/<n>.json`, `index.json`, `alerts.json`: bundle numbers = risk rank). The
+intermediates (`incidents.parquet`, `incident_alerts.parquet`, `chains.json`, `reach.json`,
+`incident_lines.parquet`) keep correlate's numbers; join on `incident_id` (`score.json` maps the two).
+`python -m killchain report` writes the template report. The P11 bundle step
 (`python -m killchain.bundle --run <run>`) runs last and is the final writer of these files: it merges
 threat intel and reports in and writes the bundle-only files above. It never changes detection fields.
+It binds `enrichment.json` to incidents by value; a run served without the bundle step needs
+`python -m killchain.enrich` re-run after `score`, because enrich's per-incident lists use the numbers
+of the moment.
 
 ## Contract B: alert
 
@@ -103,7 +116,7 @@ role` (`trigger` | `window` | `context`). Every member line is listed.
 | `title` | string | |
 | `risk_score` | number 0-100 | sum of `risk_parts[*].points` |
 | `risk_band` | `critical` \| `high` \| `medium` \| `low` | ≥ 75, ≥ 50, ≥ 25, below |
-| `risk_parts` | object | `severity, stage, breadth, success, asset, reach, threat_intel`, each `{value 0-1, weight, points}` |
+| `risk_parts` | object | `severity, stage, breadth, success, asset, reach, threat_intel`, each `{value 0-1, weight, points}` and an optional `detail` (string: why the part has its value); see "Risk score" below |
 | `severity` | int 1-5 | highest alert severity |
 | `ts_start`, `ts_end`, `ts_start_ist`, `ts_end_ist` | times | |
 | `merged` | `{alerts, events}` | raw alerts and events merged into the incident (B-3) |
@@ -144,8 +157,8 @@ nearest start, then the lower `n`. An alert id appears at most once across all
 steps and supporting entries, and every supporting `alert_id` is in
 `alerts.json`.
 
-`supporting` and the edge flag below were added after day 1 as optional,
-backward-compatible fields, agreed with the user for both tracks.
+`supporting`, the edge flag below and the risk part `detail` were added after
+day 1 as optional, backward-compatible fields, agreed with the user for both tracks.
 `examples/sample-run/` predates them and stays valid.
 
 ### Graph
@@ -174,10 +187,39 @@ backward-compatible fields, agreed with the user for both tracks.
 `suspicious`, `no-reports`, `unknown`), `reputation` 0-1, `providers[]`
 (`provider`, `available`, `malicious`, `score`, `tags`, `detail`).
 
+### Risk score (`risk_score`, `risk_band`, `risk_parts`)
+
+Written by `python -m killchain score` (`killchain/score/risk.py`). Fixed weights; each part is
+`{value 0-1 (4 dp), weight, points = round(value × weight × 100, 2), detail}`, `risk_score` = sum of the
+points (1 dp). "Steps" are the numbered `chain[]` steps; supporting anomalies do not raise stage,
+breadth or success.
+
+| Part | Weight | Value |
+|---|---|---|
+| `severity` | 0.25 | incident `severity` / 5 (highest alert severity) |
+| `stage` | 0.20 | highest step `stage_no` / 14 |
+| `breadth` | 0.10 | distinct step tactics / 6, capped at 1 |
+| `success` | 0.15 | 1 when any step got through, else 0 |
+| `asset` | 0.15 | highest `importance` among graph nodes of kind `internal_host`, `server` or `firewall` without a `reach` key; 0 when none |
+| `reach` | 0.10 | important reachable hosts (importance ≥ 0.75: server, DMZ, management) / 3, capped at 1; observed count 1, inferred 0.5 |
+| `threat_intel` | 0.05 | highest `reputation` among `enrichment.json` entities whose value is in the incident (entities, step and supporting `src`/`dst`) and whose verdict is not `unknown`; 0 when none match; 0 when `enrichment.json` is missing (the `detail` says so) |
+
+Bands: `critical` ≥ 75, `high` ≥ 50, `medium` ≥ 25, else `low`. Incidents are numbered 1..N by
+`(-risk_score, ts_start, incident_id)`. Threat intel is matched by value, never by enrich's incident
+numbers, so renumbering cannot misplace it.
+
 ### Report (`report`)
 
 `source` (`ai` | `template`), `markdown`, `triage` (`verdict`: `looks_real` |
 `likely_noise`, `confidence`, `reasons[]`, nullable while there is no LLM).
+
+`python -m killchain report` writes `source: template`, `triage: null` and `report_source: template`.
+The template markdown has these sections, in order: `## Summary` (one sentence), `## Risk` (score and
+the parts table with each `detail`), `## Attack chain` (numbered steps with IST times, supporting
+anomalies as sub-bullets), `## Gaps`, `## Reach next`, `## Entities`, `## Threat intel`, `## Evidence`
+(up to 5 lines per step with line and byte offset), `## Recommended actions` (one per tactic, in chain
+order). It is built only from the incident's facts and stays the fallback when the narrator
+(`source: ai`) is not available.
 
 ## `index.json`
 

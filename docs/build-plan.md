@@ -656,6 +656,14 @@ uses `--offline` with the cache from an earlier run).
 | Reach next | 0.10 | observed important reachable hosts / 3, capped (inferred counts half) |
 | Threat intel | 0.05 | highest entity reputation; 0 offline |
 
+As built (`killchain/score/risk.py`, `docs/contracts.md` "Risk score"):
+- steps are the numbered steps; supporting anomalies do not raise stage, breadth or success;
+- asset: graph nodes of kind internal host, server or firewall, ignoring reach nodes;
+- reach: "important" = importance ≥ 0.75 (server, DMZ, management);
+- threat intel: matched by entity value in `enrichment.json` (verdict not `unknown`); 0 when the file is
+  missing; offline cache answers count;
+- each part stores a `detail` sentence; ties go by first time, then `incident_id`.
+
 Incidents sorted by score and numbered 1..N (ties by first time). After tuning,
 the two chains should rank 1 and 2. **Manual work (M10):** agree the weights.
 
@@ -1081,7 +1089,7 @@ Our aim: all "great". Measured so far: parsing 55 s at 4.5 GB.
 - [x] P7 numbered chains and path graphs
 - [x] P8 access graph and reach next for every incident
 - [ ] P9 threat-intel engine (7 providers) online, offline and cached; Threat Intel page
-- [ ] P10 risk score and template report
+- [x] P10 risk score and template report
 - [ ] P10b narrator, triage opinion, Q&A, rule writer, all with guards and caches
 - [ ] P11 bundle and API, p95 < 500 ms
 - [ ] P12 React UI: Dashboard, Incidents, Incident page with attack path graph, MITRE (as in AI-SOC), Alerts, Threat Intel, Rules, Live, Evaluation, System

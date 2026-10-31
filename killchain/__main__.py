@@ -15,7 +15,7 @@ from typing import Callable, Dict, List, Optional
 
 PLANNED = {
     "enrich": "P9",
-    "score": "P10", "report": "P10", "agents": "P10b", "bundle": "P11", "serve": "P11",
+    "agents": "P10b", "bundle": "P11", "serve": "P11",
     "run": "P13", "live": "P15",
 }
 
@@ -88,9 +88,22 @@ def cmd_reach(rest: List[str]) -> int:
     return reach_main(rest)
 
 
+def cmd_score(rest: List[str]) -> int:
+    from .score.cli import main as score_main
+
+    return score_main(rest)
+
+
+def cmd_report(rest: List[str]) -> int:
+    from .report.cli import main as report_main
+
+    return report_main(rest)
+
+
 COMMANDS: Dict[str, Callable[[List[str]], int]] = {"parse": cmd_parse, "db": cmd_db, "eval": cmd_eval,
                                                    "detect": cmd_detect, "correlate": cmd_correlate,
-                                                   "chain": cmd_chain, "reach": cmd_reach}
+                                                   "chain": cmd_chain, "reach": cmd_reach,
+                                                   "score": cmd_score, "report": cmd_report}
 
 
 def main(argv: Optional[List[str]] = None) -> int:
