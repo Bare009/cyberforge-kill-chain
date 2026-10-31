@@ -19,6 +19,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--host", default="127.0.0.1", help="use 0.0.0.0 inside Docker")
     ap.add_argument("--port", type=int, default=8000)
     ap.add_argument("--log-level", default="info")
+    ap.add_argument("--no-watch", action="store_true",
+                    help="do not reload the bundle when its files change (live mode needs the watcher)")
     args = ap.parse_args(argv)
 
     logging.basicConfig(level=args.log_level.upper(), format="%(levelname)s %(name)s: %(message)s")
@@ -29,7 +31,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     from .bundle import BundleError
 
     try:
-        app = create_app(args.run, raw_dir=args.raw_dir)
+        app = create_app(args.run, raw_dir=args.raw_dir, watch=not args.no_watch)
     except BundleError as exc:
         print(f"cannot load the run: {exc}", file=sys.stderr)
         return 2

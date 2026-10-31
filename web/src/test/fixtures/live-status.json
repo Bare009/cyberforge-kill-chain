@@ -1,0 +1,17 @@
+{
+ "run": "firex-10G",
+ "watching": false,
+ "interval_s": 2.0,
+ "version": 0,
+ "reloads": 0,
+ "loaded_at": "2026-10-31T19:22:49Z",
+ "last_error": null,
+ "process_state": "not started",
+ "process": null,
+ "counts": {
+  "incidents": 25,
+  "alerts": 57
+ },
+ "how_to_start": "python -m killchain live --run <run> --input <log>  (or: docker compose --profile live up)",
+ "events": []
+}

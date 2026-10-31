@@ -8,6 +8,7 @@ import { RiskBandBadge, RiskBar, SeverityText, TacticChips, TiVerdictBadge, Tria
 import { useIncidents, type IncidentFilters } from '@/hooks/useIncidents'
 import { apiErrorMessage } from '@/lib/api'
 import { TACTIC_ORDER, formatIst, formatSpan, tacticLabel } from '@/lib/killchain'
+import { useLiveStore } from '@/store/useLiveStore'
 import type { IndexRow } from '@/types/incident'
 
 /** Filters live in the URL so links like /incidents?technique=T1190 (from the MITRE page) work. */
@@ -26,6 +27,7 @@ function StatCard({ label, value, icon, loading }: { label: string; value: strin
 }
 
 function IncidentRow({ row }: { row: IndexRow }) {
+  const live = useLiveStore((s) => s.changed[row.incident_number])
   return (
     <Link
       to={`/incidents/${row.incident_number}`}
@@ -37,6 +39,12 @@ function IncidentRow({ row }: { row: IndexRow }) {
       <div className="min-w-0 space-y-1.5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="truncate text-sm font-semibold text-slate-900">{row.title}</span>
+          {live && (
+            <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-700"
+              title={`Changed by live mode at ${live}`}>
+              Live
+            </span>
+          )}
           <RiskBandBadge band={row.risk_band} />
           <TriageBadge verdict={row.triage_verdict} />
           <TiVerdictBadge verdict={row.ti_verdict} />

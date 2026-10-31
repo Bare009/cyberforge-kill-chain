@@ -5,8 +5,9 @@ Built so far (P11): /health, /incidents, /incidents/{id}, /incidents/{id}/path
 mitre.py); /incidents/{id}/events (evidence.py) and /entities/{value}
 (entities.py) (day 3); /ti/status, /ti/indicators, /ti/indicators/{value},
 POST /ti/lookup (ti.py) (day 4); /dashboard/summary, /alerts, /unexplained,
-/rules, /rules/{id} (views.py) and /incidents/{id}/report (day 5). The other
-endpoints of docs/build-plan.md P11 are added page by page.
+/rules, /rules/{id} (views.py) and /incidents/{id}/report (day 5);
+POST /incidents/{id}/ask, /rules/draft|test|save (agents.py); /live/status,
+/live/stream (live.py); /metrics, /system (system.py) (day 6).
 """
 
 from __future__ import annotations
@@ -28,6 +29,9 @@ from .ti import TiStore
 from .ti import router as ti_router
 from .agents import Agents
 from .agents import router as agents_router
+from .live import LiveWatcher
+from .live import router as live_router
+from .system import router as system_router
 from .views import RuleStore
 from .views import router as views_router
 from killchain.enrich.settings import CACHE_PATH
@@ -92,7 +96,7 @@ def llm_status(b: RunBundle, cache: Path) -> Dict[str, Any]:
 def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[str, Path]] = None, *,
                ti_cache: Optional[Union[str, Path]] = None, ti_offline: Optional[bool] = None,
                ti_client: Any = None, llm_cache: Optional[Union[str, Path]] = None,
-               llm_client: Any = None) -> FastAPI:
+               llm_client: Any = None, watch: bool = False, watch_interval: float = 1.0) -> FastAPI:
     """Build the app for one run: a folder path or a run name (see resolve_run_dir).
 
     `raw_dir` is where the raw logs named in the evidence are (default
@@ -100,6 +104,8 @@ def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[s
     `ti_cache` is the threat-intel SQLite cache (default data/cache/ti.sqlite),
     `ti_offline` keeps on-demand lookups off the network (default
     KILLCHAIN_TI_OFFLINE), and `ti_client` replaces the HTTP client (tests).
+    `watch` starts the live watcher: the bundle is reloaded when its files change
+    (the CLI turns it on; tests call app.state.live.poll() instead).
     """
     run_dir = Path(run) if isinstance(run, Path) else resolve_run_dir(run)
     bundle = load_bundle(run_dir)
@@ -109,21 +115,38 @@ def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[s
         description="Incidents, numbered attack chains, attack paths and reach next for one analysed run.",
         version="0.1.0",
     )
-    app.state.bundle = bundle
-    app.state.mitre = MitreStore(bundle.alerts)
-    app.state.evidence = EvidenceStore(run_dir, bundle.incidents, Path(raw_dir) if raw_dir else default_raw_dir())
-    app.state.ti = TiStore(bundle, Path(ti_cache) if ti_cache else CACHE_PATH, offline=ti_offline,
-                           otx_client=ti_client)
-    app.state.rules = RuleStore(bundle)
+    raw = Path(raw_dir) if raw_dir else default_raw_dir()
+    ti_cache_path = Path(ti_cache) if ti_cache else CACHE_PATH
+
+    def attach(b: RunBundle) -> RunBundle:
+        """Make `b` the bundle every endpoint serves (start-up, and each live reload)."""
+        state = {
+            "mitre": MitreStore(b.alerts),
+            "evidence": EvidenceStore(run_dir, b.incidents, raw),
+            "ti": TiStore(b, ti_cache_path, offline=ti_offline, otx_client=ti_client),
+            "rules": RuleStore(b),
+        }
+        for k, v in state.items():          # built first, then swapped in together
+            setattr(app.state, k, v)
+        app.state.bundle = b
+        app.state.dashboard = None          # rebuilt on the next request (needs the TI status)
+        return b
+
+    attach(bundle)
     from killchain.agents.settings import CACHE_PATH as LLM_CACHE
 
     app.state.llm_cache = Path(llm_cache) if llm_cache else LLM_CACHE
     app.state.agents = Agents(run_dir, app.state.llm_cache, http_client=llm_client)
-    app.state.dashboard = None              # built on first request (needs the TI status)
+    app.state.live = LiveWatcher(run_dir, reload=lambda: attach(load_bundle(run_dir)),
+                                 get_bundle=lambda: app.state.bundle, interval=watch_interval)
+    if watch:
+        app.state.live.start()
     app.include_router(mitre_router)
     app.include_router(ti_router)
     app.include_router(views_router)
     app.include_router(agents_router)
+    app.include_router(live_router)
+    app.include_router(system_router)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(
         CORSMiddleware,

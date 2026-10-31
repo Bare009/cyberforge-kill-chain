@@ -1,0 +1,377 @@
+{
+ "run": "firex-10G",
+ "run_dir": "/app/data/runs/firex-10G",
+ "sample": false,
+ "bundled_at": "2026-10-31T18:32:33Z",
+ "stages": {
+  "parse": {
+   "wall_secs": 141.21,
+   "peak_rss_mb": 1596,
+   "workers": 4,
+   "bytes": 6543120032,
+   "lines": 15848040
+  },
+  "chain": {
+   "wall_secs": 0.17,
+   "peak_rss_mb": 60,
+   "incidents": 25,
+   "steps": 32,
+   "contract_errors": 0
+  },
+  "correlate": {
+   "wall_secs": 0.3,
+   "peak_rss_mb": 81,
+   "alerts": 57,
+   "incidents": 25,
+   "unexplained": 1
+  },
+  "detect": {
+   "wall_secs": 13.36,
+   "peak_rss_mb": 1016,
+   "rules": 35,
+   "alerts": 57,
+   "evidence_lines": 44623,
+   "layers": {
+    "rule": 32,
+    "anomaly": 25
+   }
+  },
+  "reach": {
+   "wall_secs": 0.59,
+   "peak_rss_mb": 208,
+   "incidents": 25,
+   "contract_errors": 0
+  },
+  "report": {
+   "wall_secs": 0.03,
+   "peak_rss_mb": 60,
+   "incidents": 25,
+   "contract_errors": 0
+  },
+  "score": {
+   "wall_secs": 0.03,
+   "peak_rss_mb": 60,
+   "incidents": 25,
+   "contract_errors": 0
+  },
+  "enrich": {
+   "wall_secs": 0.01,
+   "indicators": 57,
+   "lookups": 0,
+   "cache_hits": 22,
+   "failures": 0
+  },
+  "bundle": {
+   "wall_secs": 1.13,
+   "peak_rss_mb": 140,
+   "alerts": 57,
+   "incidents": 25,
+   "unexplained": 1,
+   "contract_errors": 0,
+   "indicators": 46
+  }
+ },
+ "totals": {
+  "processing_secs": 156.83,
+  "peak_rss_mb": 1596
+ },
+ "counts": {
+  "alerts": 57,
+  "alerts_by_layer": {
+   "rule": 32,
+   "anomaly": 25
+  },
+  "alerts_in_incidents": 56,
+  "unexplained": 1,
+  "incidents": 25,
+  "incidents_by_band": {
+   "critical": 2,
+   "high": 17,
+   "medium": 6,
+   "low": 0
+  },
+  "critical_incidents": 2,
+  "steps": 32,
+  "evidence_lines": 44622,
+  "first_alert": "2026-10-23T10:52:40.250512Z",
+  "last_alert": "2026-10-29T08:09:56.684253Z"
+ },
+ "warnings": [
+  "7 indicator(s) in the incidents have no threat intel (e.g. 10.10.20.11); rerun enrich",
+  "11 indicator(s) in enrichment.json are in no incident now and were left out"
+ ],
+ "contract_errors": [],
+ "contract_error_count": 0,
+ "data_quality": {
+  "lines": 15848040,
+  "bytes": 6543120032,
+  "events": 9125383,
+  "events_good_time": 3848247,
+  "events_frozen_clock": 5277136,
+  "ts_quality": {
+   "stuck": 5277136,
+   "ok": 3848247
+  },
+  "exact_duplicate_rows": 812235,
+  "rejected_lines": 6695042,
+  "lines_by_class": {
+   "firewall": 9125383,
+   "rejected:binary": 6666048,
+   "rejected:unknown_format": 28801,
+   "blank": 27615,
+   "rejected:bad_json": 193
+  },
+  "junk_bytes": 1727444613,
+  "junk_ranges": [
+   {
+    "source": "firex-10G.log",
+    "start": 4815675419,
+    "end": 6543120032,
+    "bytes": 1727444613,
+    "lines": 6695042
+   }
+  ],
+  "parse_issues": {
+   "truncated_binary_tail": 1
+  },
+  "first_good_ts": "2026-10-23T03:18:26+00:00",
+  "last_good_ts": "2026-10-30T03:18:25.959831+00:00",
+  "note": "Frozen-clock rows keep their line numbers but are left out of time-window rules; junk ranges are binary data appended to the log and are not parsed."
+ },
+ "threat_intel": {
+  "source": "ti.json",
+  "generated_at": "2026-10-31T18:30:29Z",
+  "offline": true,
+  "providers": {
+   "local": "ok",
+   "otx": "offline"
+  },
+  "indicators": 46,
+  "verdicts": {
+   "unknown": 24,
+   "no-reports": 22
+  },
+  "last_run": {
+   "lookups": 0,
+   "cache_hits": 22,
+   "failures": 0,
+   "skipped_private": 35,
+   "wall_secs": 0.01
+  },
+  "cache": {
+   "otx": {
+    "answers": 23,
+    "fresh": 23
+   }
+  },
+  "on_demand_per_minute": 20,
+  "note": "The data set's addresses and domains are synthetic: most come back with no reports, and a hit may be unrelated history of a reused real address. External reputation never changes which incidents or steps exist."
+ },
+ "llm": {
+  "enabled": false,
+  "configured": [],
+  "reports": 0,
+  "ai_reports": 0,
+  "template_reports": 25,
+  "budget": []
+ },
+ "evidence": {
+  "origin": "alert_evidence.parquet",
+  "raw_dir": "/app/data/raw",
+  "logs": [
+   {
+    "source": "firex-10G.log",
+    "available": false
+   }
+  ]
+ },
+ "rules_dir": "/app/rules",
+ "rule_test_sandbox": true,
+ "files": [
+  {
+   "name": "access_graph.parquet",
+   "files": 1,
+   "bytes": 11186,
+   "modified": "2026-10-31T17:28:39Z"
+  },
+  {
+   "name": "access_hosts.parquet",
+   "files": 1,
+   "bytes": 6018,
+   "modified": "2026-10-31T17:28:39Z"
+  },
+  {
+   "name": "alert_evidence.parquet",
+   "files": 1,
+   "bytes": 461195,
+   "modified": "2026-10-31T17:14:09Z"
+  },
+  {
+   "name": "alerts.json",
+   "files": 1,
+   "bytes": 65972,
+   "modified": "2026-10-31T18:32:33Z"
+  },
+  {
+   "name": "alerts.parquet",
+   "files": 1,
+   "bytes": 24187,
+   "modified": "2026-10-31T17:14:09Z"
+  },
+  {
+   "name": "bundle/",
+   "files": 1,
+   "bytes": 199,
+   "modified": "2026-10-31T18:32:33Z"
+  },
+  {
+   "name": "chain/",
+   "files": 1,
+   "bytes": 248,
+   "modified": "2026-10-31T18:30:25Z"
+  },
+  {
+   "name": "chains.json",
+   "files": 1,
+   "bytes": 170562,
+   "modified": "2026-10-31T18:30:25Z"
+  },
+  {
+   "name": "correlate/",
+   "files": 1,
+   "bytes": 418,
+   "modified": "2026-10-31T17:48:40Z"
+  },
+  {
+   "name": "detect/",
+   "files": 1,
+   "bytes": 6550,
+   "modified": "2026-10-31T17:14:09Z"
+  },
+  {
+   "name": "enrichment.json",
+   "files": 1,
+   "bytes": 68523,
+   "modified": "2026-10-31T18:30:29Z"
+  },
+  {
+   "name": "events.duckdb",
+   "files": 1,
+   "bytes": 816590848,
+   "modified": "2026-10-31T17:48:32Z"
+  },
+  {
+   "name": "incident_alerts.parquet",
+   "files": 1,
+   "bytes": 5527,
+   "modified": "2026-10-31T17:48:40Z"
+  },
+  {
+   "name": "incident_lines.parquet",
+   "files": 1,
+   "bytes": 499420,
+   "modified": "2026-10-31T18:32:33Z"
+  },
+  {
+   "name": "incidents/",
+   "files": 25,
+   "bytes": 504979,
+   "modified": "2026-10-31T18:32:33Z"
+  },
+  {
+   "name": "incidents.parquet",
+   "files": 1,
+   "bytes": 12156,
+   "modified": "2026-10-31T17:48:40Z"
+  },
+  {
+   "name": "index.json",
+   "files": 1,
+   "bytes": 15777,
+   "modified": "2026-10-31T18:32:33Z"
+  },
+  {
+   "name": "metrics.json",
+   "files": 1,
+   "bytes": 14505,
+   "modified": "2026-10-31T19:15:27Z"
+  },
+  {
+   "name": "reach/",
+   "files": 1,
+   "bytes": 461,
+   "modified": "2026-10-31T18:32:16Z"
+  },
+  {
+   "name": "reach.json",
+   "files": 1,
+   "bytes": 129155,
+   "modified": "2026-10-31T18:32:16Z"
+  },
+  {
+   "name": "report/",
+   "files": 1,
+   "bytes": 180,
+   "modified": "2026-10-31T18:32:27Z"
+  },
+  {
+   "name": "run_summary.json",
+   "files": 1,
+   "bytes": 3484,
+   "modified": "2026-10-31T18:32:33Z"
+  },
+  {
+   "name": "score/",
+   "files": 1,
+   "bytes": 231,
+   "modified": "2026-10-31T18:32:21Z"
+  },
+  {
+   "name": "score.json",
+   "files": 1,
+   "bytes": 30273,
+   "modified": "2026-10-31T18:32:21Z"
+  },
+  {
+   "name": "ti.json",
+   "files": 1,
+   "bytes": 59990,
+   "modified": "2026-10-31T18:32:33Z"
+  },
+  {
+   "name": "truth.parquet",
+   "files": 1,
+   "bytes": 138686,
+   "modified": "2026-10-31T19:15:02Z"
+  },
+  {
+   "name": "unexplained.json",
+   "files": 1,
+   "bytes": 1229,
+   "modified": "2026-10-31T18:32:33Z"
+  },
+  {
+   "name": "unexplained.parquet",
+   "files": 1,
+   "bytes": 1884,
+   "modified": "2026-10-31T17:48:40Z"
+  }
+ ],
+ "api": {
+  "started_at": "2026-10-31T19:22:48Z",
+  "uptime_s": 2,
+  "loaded_at": "2026-10-31T19:22:49Z",
+  "reloads": 0,
+  "watching": false,
+  "versions": {
+   "python": "3.12.0",
+   "fastapi": "0.111.1",
+   "duckdb": "2.0.0",
+   "polars": "1.38.1",
+   "pyarrow": "16.1.0",
+   "openai": "3.42.0",
+   "httpx": "0.27.0"
+  },
+  "platform": "Linux"
+ }
+}

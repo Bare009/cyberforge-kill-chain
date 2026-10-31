@@ -1,0 +1,795 @@
+{
+ "available": true,
+ "run": "firex-10G",
+ "generated_at": "2026-10-31T19:15:27Z",
+ "truth": "silver (truth.parquet)",
+ "targets": {
+  "detection_recall": {
+   "label": "Detection recall",
+   "unit": "share",
+   "meaning": "planted attack lines covered by an alert",
+   "good": 0.7,
+   "great": 0.9,
+   "higher_is_better": true
+  },
+  "label_accuracy": {
+   "label": "Label accuracy",
+   "unit": "share",
+   "meaning": "covered lines with the right ATT&CK technique (exact, parent or accepted alternate)",
+   "good": 0.6,
+   "great": 0.85,
+   "higher_is_better": true
+  },
+  "attack_path_rebuilt": {
+   "label": "Attack paths rebuilt",
+   "unit": "share",
+   "meaning": "planted incidents found as one incident with every step, in order",
+   "good": 0.5,
+   "great": 1.0,
+   "higher_is_better": true
+  },
+  "false_alarm_share": {
+   "label": "False alarms",
+   "unit": "share",
+   "meaning": "our incidents with no planted lines (minus those reviewed as real)",
+   "good": 0.3,
+   "great": 0.1,
+   "higher_is_better": false
+  },
+  "processing_secs": {
+   "label": "Processing time",
+   "unit": "seconds",
+   "meaning": "sum of every stage's wall time",
+   "good": 10800,
+   "great": 3600,
+   "higher_is_better": false
+  },
+  "peak_rss_mb": {
+   "label": "Peak memory",
+   "unit": "MB",
+   "meaning": "largest peak memory of any stage",
+   "good": 16384,
+   "great": 8192,
+   "higher_is_better": false
+  },
+  "open_time_p95_ms": {
+   "label": "Investigation speed",
+   "unit": "ms",
+   "meaning": "p95 of GET /incidents/{n}/path",
+   "good": 2000,
+   "great": 500,
+   "higher_is_better": false
+  }
+ },
+ "metrics": {
+  "detection_recall": 1.0,
+  "label_accuracy": 1.0,
+  "attack_path_rebuilt": 1.0,
+  "false_alarm_share": 0.0,
+  "processing_secs": 156.82,
+  "peak_rss_mb": 1596,
+  "open_time_p95_ms": 3.246000000217464
+ },
+ "grades": {
+  "detection_recall": "great",
+  "label_accuracy": "great",
+  "attack_path_rebuilt": "great",
+  "false_alarm_share": "great",
+  "processing_secs": "great",
+  "peak_rss_mb": "great",
+  "open_time_p95_ms": "great"
+ },
+ "detail": {
+  "truth_lines": 32200,
+  "covered_lines": 32200,
+  "rule_lines": 32200,
+  "anomaly_only_lines": 0,
+  "truth_incidents": 25,
+  "incidents_found": 25,
+  "label_exact": 0.9925465838509316,
+  "label_parent": 0.9925465838509316,
+  "label_any": 1.0,
+  "rule_layer_recall": 1.0,
+  "rule_layer_label_accuracy": 1.0,
+  "anomaly_only_by_incident": [],
+  "anomaly_only_incidents": 0,
+  "anomaly_only_false": 0,
+  "anomaly_alerts": 25,
+  "anomaly_background_alerts": 0,
+  "our_incidents": 25,
+  "incidents_without_truth": 0,
+  "confirmed_false": 0,
+  "unreviewed": [],
+  "multi_step_rebuilt": "4/4",
+  "incidents_spanning_truth": [],
+  "open_time_p50_ms": 1.7743999997037463
+ },
+ "per_incident": [
+  {
+   "incident_id": 1,
+   "incident_name": "brute-force-burst",
+   "class": "easy",
+   "lines": 2000,
+   "found": 2000,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 2,
+   "incident_name": "port-scan",
+   "class": "easy",
+   "lines": 1024,
+   "found": 1024,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 3,
+   "incident_name": "known-bad-destination",
+   "class": "easy",
+   "lines": 60,
+   "found": 60,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 4,
+   "incident_name": "malware-download",
+   "class": "easy",
+   "lines": 12,
+   "found": 12,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 5,
+   "incident_name": "admin-login-odd-hour",
+   "class": "easy",
+   "lines": 3,
+   "found": 3,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 6,
+   "incident_name": "slow-credential-stuffing",
+   "class": "medium",
+   "lines": 90,
+   "found": 90,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 7,
+   "incident_name": "successful-login-after-failures",
+   "class": "medium",
+   "lines": 30,
+   "found": 30,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 8,
+   "incident_name": "impossible-travel",
+   "class": "medium",
+   "lines": 4,
+   "found": 4,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 9,
+   "incident_name": "lateral-movement",
+   "class": "medium",
+   "lines": 180,
+   "found": 180,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 10,
+   "incident_name": "dns-tunnel",
+   "class": "medium",
+   "lines": 1500,
+   "found": 1500,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 11,
+   "incident_name": "c2-beaconing",
+   "class": "hard",
+   "lines": 1612,
+   "found": 1612,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 12,
+   "incident_name": "staged-exfiltration",
+   "class": "hard",
+   "lines": 2000,
+   "found": 2000,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 13,
+   "incident_name": "insider-drift",
+   "class": "hard",
+   "lines": 2400,
+   "found": 2400,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 14,
+   "incident_name": "logging-disabled-around-a-change",
+   "class": "hard",
+   "lines": 3,
+   "found": 3,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 15,
+   "incident_name": "rogue-admin-account",
+   "class": "hard",
+   "lines": 3,
+   "found": 3,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 16,
+   "incident_name": "sql-injection",
+   "class": "easy",
+   "lines": 220,
+   "found": 220,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 17,
+   "incident_name": "cross-site-scripting",
+   "class": "easy",
+   "lines": 60,
+   "found": 60,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 18,
+   "incident_name": "path-traversal",
+   "class": "easy",
+   "lines": 80,
+   "found": 80,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 19,
+   "incident_name": "command-injection",
+   "class": "medium",
+   "lines": 55,
+   "found": 55,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 20,
+   "incident_name": "web-shell-in-use",
+   "class": "hard",
+   "lines": 120,
+   "found": 120,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 21,
+   "incident_name": "syn-flood",
+   "class": "easy",
+   "lines": 9000,
+   "found": 9000,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 22,
+   "incident_name": "http-flood",
+   "class": "medium",
+   "lines": 6001,
+   "found": 6001,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 23,
+   "incident_name": "dns-amplification",
+   "class": "medium",
+   "lines": 4000,
+   "found": 4000,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 28,
+   "incident_name": "chain-web-to-domain-admin",
+   "class": "insane",
+   "lines": 940,
+   "found": 940,
+   "recall": 1.0
+  },
+  {
+   "incident_id": 29,
+   "incident_name": "chain-ransomware-precursor",
+   "class": "insane",
+   "lines": 803,
+   "found": 803,
+   "recall": 1.0
+  }
+ ],
+ "per_class": [
+  {
+   "class": "easy",
+   "lines": 12459,
+   "found": 12459,
+   "recall": 1.0
+  },
+  {
+   "class": "hard",
+   "lines": 6138,
+   "found": 6138,
+   "recall": 1.0
+  },
+  {
+   "class": "insane",
+   "lines": 1743,
+   "found": 1743,
+   "recall": 1.0
+  },
+  {
+   "class": "medium",
+   "lines": 11860,
+   "found": 11860,
+   "recall": 1.0
+  }
+ ],
+ "paths": [
+  {
+   "incident_id": 1,
+   "incident_name": "brute-force-burst",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 22,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 2,
+   "incident_name": "port-scan",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 23,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 3,
+   "incident_name": "known-bad-destination",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 20,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 4,
+   "incident_name": "malware-download",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 24,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 5,
+   "incident_name": "admin-login-odd-hour",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 18,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 6,
+   "incident_name": "slow-credential-stuffing",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 21,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 7,
+   "incident_name": "successful-login-after-failures",
+   "steps": 2,
+   "ordered": true,
+   "our_incident": 6,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 8,
+   "incident_name": "impossible-travel",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 17,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 9,
+   "incident_name": "lateral-movement",
+   "steps": 2,
+   "ordered": true,
+   "our_incident": 4,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 10,
+   "incident_name": "dns-tunnel",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 15,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 11,
+   "incident_name": "c2-beaconing",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 14,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 12,
+   "incident_name": "staged-exfiltration",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 2,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 13,
+   "incident_name": "insider-drift",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 3,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 14,
+   "incident_name": "logging-disabled-around-a-change",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 9,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 15,
+   "incident_name": "rogue-admin-account",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 10,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 16,
+   "incident_name": "sql-injection",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 11,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 17,
+   "incident_name": "cross-site-scripting",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 25,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 18,
+   "incident_name": "path-traversal",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 13,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 19,
+   "incident_name": "command-injection",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 12,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 20,
+   "incident_name": "web-shell-in-use",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 5,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 21,
+   "incident_name": "syn-flood",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 19,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 22,
+   "incident_name": "http-flood",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 7,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 23,
+   "incident_name": "dns-amplification",
+   "steps": 1,
+   "ordered": false,
+   "our_incident": 16,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 28,
+   "incident_name": "chain-web-to-domain-admin",
+   "steps": 4,
+   "ordered": true,
+   "our_incident": 1,
+   "rebuilt": true,
+   "reason": "ok"
+  },
+  {
+   "incident_id": 29,
+   "incident_name": "chain-ransomware-precursor",
+   "steps": 3,
+   "ordered": true,
+   "our_incident": 8,
+   "rebuilt": true,
+   "reason": "ok"
+  }
+ ],
+ "per_rule": [
+  {
+   "rule_id": "A01-rare-event",
+   "alerts": 6,
+   "layer": "anomaly",
+   "truth_lines": 14,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "A02-first-seen-admin-pair",
+   "alerts": 1,
+   "layer": "anomaly",
+   "truth_lines": 2400,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "A03-first-seen-user-country",
+   "alerts": 4,
+   "layer": "anomaly",
+   "truth_lines": 8,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "A04-outlier-sessions",
+   "alerts": 3,
+   "layer": "anomaly",
+   "truth_lines": 537,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "A05-outlier-destinations",
+   "alerts": 3,
+   "layer": "anomaly",
+   "truth_lines": 1153,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "A08-outlier-bytes-out",
+   "alerts": 2,
+   "layer": "anomaly",
+   "truth_lines": 360,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "A09-denied-then-allowed",
+   "alerts": 1,
+   "layer": "anomaly",
+   "truth_lines": 241,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "A10-lopsided-pair",
+   "alerts": 3,
+   "layer": "anomaly",
+   "truth_lines": 3240,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "A11-too-regular",
+   "alerts": 2,
+   "layer": "anomaly",
+   "truth_lines": 2212,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R01-admin-bruteforce",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 2000,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R02-port-scan",
+   "alerts": 2,
+   "layer": "rule",
+   "truth_lines": 1264,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R03-telnet-to-botnet",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 60,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R04-malware-double-extension",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 12,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R05-admin-login-odd-hour",
+   "alerts": 2,
+   "layer": "rule",
+   "truth_lines": 4,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R06-slow-credential-stuffing",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 90,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R07-success-after-failures",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 30,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R08-impossible-travel",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 4,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R09-lateral-movement",
+   "alerts": 2,
+   "layer": "rule",
+   "truth_lines": 2308,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R10-dns-tunnel",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 1500,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R11-beaconing",
+   "alerts": 2,
+   "layer": "rule",
+   "truth_lines": 2012,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R12-large-lopsided-transfer",
+   "alerts": 3,
+   "layer": "rule",
+   "truth_lines": 3000,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R13-insider-drift",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 2400,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R14-logging-disabled",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 3,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R15-rogue-admin",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 3,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R16-web-sql-injection",
+   "alerts": 2,
+   "layer": "rule",
+   "truth_lines": 280,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R17-web-xss",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 60,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R18-web-path-traversal",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 80,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R19-web-command-injection",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 55,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R20-web-shell",
+   "alerts": 2,
+   "layer": "rule",
+   "truth_lines": 160,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R21-syn-flood",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 9000,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R22-http-flood",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 6001,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R23-dns-amplification",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 4000,
+   "background_alerts": 0
+  },
+  {
+   "rule_id": "R24-malware-detected-not-blocked",
+   "alerts": 1,
+   "layer": "rule",
+   "truth_lines": 3,
+   "background_alerts": 0
+  }
+ ]
+}

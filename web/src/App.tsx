@@ -11,7 +11,11 @@ import { ThreatIntel } from '@/pages/ThreatIntel'
 import { Dashboard } from '@/pages/Dashboard'
 import { Alerts } from '@/pages/Alerts'
 import { Rules } from '@/pages/Rules'
-import { NotFound, Placeholder } from '@/pages/Placeholder'
+import { Live } from '@/pages/Live'
+import { Evaluation } from '@/pages/Evaluation'
+import { System } from '@/pages/System'
+import { NotFound } from '@/pages/Placeholder'
+import { LiveListener } from '@/components/live/LiveListener'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,7 +25,7 @@ const queryClient = new QueryClient({
   },
 })
 
-// Routes from docs/build-plan.md P12. Placeholders are replaced page by page.
+// Routes from docs/build-plan.md P12; every page is built.
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -36,41 +40,15 @@ export default function App() {
               <Route path="alerts" element={<Alerts />} />
               <Route path="threat-intel" element={<ThreatIntel />} />
               <Route path="rules" element={<Rules />} />
-              <Route
-                path="live"
-                element={
-                  <Placeholder
-                    title="Live"
-                    planned="day 6"
-                    description="Live-mode switch, tail position, new alerts and changed incidents as they arrive."
-                  />
-                }
-              />
-              <Route
-                path="evaluation"
-                element={
-                  <Placeholder
-                    title="Evaluation"
-                    planned="day 6"
-                    description="The seven PRD metrics against Good and Great, per-incident and per-rule tables."
-                  />
-                }
-              />
-              <Route
-                path="system"
-                element={
-                  <Placeholder
-                    title="System"
-                    planned="day 6"
-                    description="Pipeline stages with time and memory, data quality, threat-intel and LLM status."
-                  />
-                }
-              />
+              <Route path="live" element={<Live />} />
+              <Route path="evaluation" element={<Evaluation />} />
+              <Route path="system" element={<System />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
           <CommandPalette />
           <Toaster />
+          <LiveListener />
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
