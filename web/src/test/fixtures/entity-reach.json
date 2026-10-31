@@ -1,0 +1,29 @@
+{
+ "value": "10.10.20.31",
+ "kind": "server",
+ "label": "10.10.20.31",
+ "zone": "server",
+ "importance": 0.75,
+ "enrichment": null,
+ "incidents": [
+  {
+   "incident_number": 1,
+   "title": "Web attack chain from 32.127.48.11 against the portal",
+   "risk_score": 76.5,
+   "risk_band": "critical",
+   "ts_start_ist": "2026-10-29 01:51:23",
+   "tactics": [
+    "reconnaissance",
+    "initial-access",
+    "persistence",
+    "exfiltration"
+   ],
+   "roles": [
+    "reachable next"
+   ],
+   "steps": []
+  }
+ ],
+ "alerts": [],
+ "alerts_total": 0
+}

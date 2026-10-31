@@ -52,6 +52,21 @@ class RunBundle:
         return self.by_hash.get(ident)
 
 
+def default_data_dir() -> Path:
+    """KILLCHAIN_DATA_DIR (relative paths are taken from the repo root), else <repo>/data."""
+    data_dir = Path(os.environ.get("KILLCHAIN_DATA_DIR") or REPO_ROOT / "data")
+    return data_dir if data_dir.is_absolute() else REPO_ROOT / data_dir
+
+
+def default_raw_dir() -> Path:
+    """Where the raw logs named in evidence rows are: KILLCHAIN_RAW_DIR, else <data dir>/raw."""
+    raw = os.environ.get("KILLCHAIN_RAW_DIR")
+    if raw:
+        p = Path(raw)
+        return p if p.is_absolute() else REPO_ROOT / p
+    return default_data_dir() / "raw"
+
+
 def resolve_run_dir(run: Optional[str] = None) -> Path:
     """Find a run folder from a path or a run name.
 
@@ -63,9 +78,7 @@ def resolve_run_dir(run: Optional[str] = None) -> Path:
     direct = Path(name)
     if direct.is_dir():
         return direct.resolve()
-    data_dir = Path(os.environ.get("KILLCHAIN_DATA_DIR") or REPO_ROOT / "data")
-    if not data_dir.is_absolute():
-        data_dir = REPO_ROOT / data_dir
+    data_dir = default_data_dir()
     for cand in (data_dir / "runs" / name, REPO_ROOT / "examples" / name):
         if cand.is_dir():
             return cand.resolve()

@@ -255,6 +255,15 @@ Swagger UI: `http://localhost:<port>/docs`.
 | `GET /mitre/catalogue` | the ATT&CK release behind the matrix, with MITRE's attribution |
 | `GET /mitre/matrix` | tactic x technique alert counts (same shape as AI-SOC); `preset` `24h`/`7d`/`30d`/`90d` counts back from the run's last alert, or `start`+`end`; filters `severity`, `status` (`open` = not in an incident, `correlated`), `source` (`rule`, `anomaly`) |
 | `GET /mitre/techniques/{id}` | one technique: trend by IST day, sub-techniques, alerts per rule and target, recent alerts with their incident |
+| `GET /incidents/{id}/events` | evidence lines in time order, with the raw log text read at `byte_offset`; `step`, `offset`, `limit` (max 200); per-step line counts |
+| `GET /entities/{value}` | every incident (with the value's role and steps) and alert involving an IP, host, account or domain, plus its threat intel |
+
+Evidence comes from `alert_evidence.parquet` in the run (every member line),
+else `evidence_sample.json`, else each step's `line_sample`. The raw text is
+read from the log named in each row, inside `--raw-dir` (default
+`KILLCHAIN_RAW_DIR`, else `data/raw`); only plain file names in that folder
+are opened. Without the log the lines are listed with line numbers and byte
+offsets and `raw_available` is false.
 
 The MITRE endpoints run DuckDB `GROUP BY` queries over the run's alerts
 (`killchain/api/mitre.py`). The other endpoints in `docs/build-plan.md` P11

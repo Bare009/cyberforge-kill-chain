@@ -12,3 +12,10 @@ python -c "import json; from fastapi.testclient import TestClient; from killchai
 |---|---|
 | `mitre-matrix.json` | `GET /mitre/matrix` |
 | `mitre-technique-T1190.json` | `GET /mitre/techniques/T1190` |
+| `events-all.json` | `GET /incidents/1/events` (raw text read from `data/raw/firex-10G.log`) |
+| `events-step2.json` | `GET /incidents/1/events?step=2` |
+| `entity-attacker.json` | `GET /entities/32.127.48.11` |
+| `entity-reach.json` | `GET /entities/10.10.20.31` |
+
+The day-3 fixtures were made the same way with the raw log in `data/raw/`;
+add their names and paths to the list in the command above to regenerate.

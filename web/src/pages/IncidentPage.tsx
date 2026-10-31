@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 import { AlertCircle, ArrowLeft, Construction } from 'lucide-react'
@@ -8,6 +8,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { RiskBandBadge, SeverityText, TacticChips, TiVerdictBadge, TriageBadge } from '@/components/incident/badges'
 import { AttackTimeline } from '@/components/incident/AttackTimeline'
+import { EntityDrawer } from '@/components/incident/EntityDrawer'
+import { EvidenceTab } from '@/components/incident/EvidenceTab'
+import { ReachNext } from '@/components/incident/ReachNext'
+import { AttackPathGraph } from '@/components/path/AttackPathGraph'
 import { IncidentTechniques } from '@/components/incident/IncidentTechniques'
 import { RiskBreakdown } from '@/components/incident/RiskBreakdown'
 import { MarkdownReport } from '@/components/reports/MarkdownReport'
@@ -20,10 +24,10 @@ import type { Incident } from '@/types/incident'
 /** Tabs in the order of docs/build-plan.md P12; `planned` ones are filled on later days. */
 const TABS = [
   { id: 'timeline', label: 'Timeline' },
-  { id: 'path', label: 'Attack path', planned: 'day 3: left-to-right graph of hosts, accounts and domains with numbered edges' },
-  { id: 'reach', label: 'Reach next', planned: 'day 3: hosts the attacker can reach next, observed and inferred' },
+  { id: 'path', label: 'Attack path' },
+  { id: 'reach', label: 'Reach next' },
   { id: 'intel', label: 'Threat intel', planned: 'day 4: provider results for every IP and domain' },
-  { id: 'evidence', label: 'Evidence', planned: 'day 3: the raw log lines behind each step, with line numbers' },
+  { id: 'evidence', label: 'Evidence' },
   { id: 'report', label: 'Report' },
   { id: 'ask', label: 'Ask', planned: 'day 6: questions about this incident, answered from its evidence' },
   { id: 'attack', label: 'ATT&CK' },
@@ -50,7 +54,37 @@ function PlannedTab({ text }: { text: string }) {
   )
 }
 
-function IncidentHeader({ inc }: { inc: Incident }) {
+function EntityChips({ inc, onEntity }: { inc: Incident; onEntity: (v: string) => void }) {
+  const groups: [string, string[]][] = [
+    ['IPs', inc.entities.ips],
+    ['Hosts', inc.entities.hosts.filter((h) => !inc.entities.ips.includes(h))],
+    ['Accounts', inc.entities.users],
+    ['Domains', inc.entities.domains],
+  ]
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {groups
+        .filter(([, values]) => values.length > 0)
+        .map(([label, values]) => (
+          <div key={label} className="flex flex-wrap items-center gap-1">
+            <span className="text-[11px] uppercase tracking-wider text-slate-500">{label}</span>
+            {values.map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => onEntity(v)}
+                className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[11px] text-slate-700 hover:border-blue-300 hover:text-blue-700"
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+        ))}
+    </div>
+  )
+}
+
+function IncidentHeader({ inc, onEntity }: { inc: Incident; onEntity: (v: string) => void }) {
   const summary = reportSummary(inc.report.markdown)
   return (
     <Card>
@@ -71,6 +105,7 @@ function IncidentHeader({ inc }: { inc: Incident }) {
           {summary && <p className="text-sm leading-relaxed text-slate-700">{summary}</p>}
           <p className="font-mono text-xs text-slate-500">{inc.chain_text}</p>
           <TacticChips tactics={inc.tactics} />
+          <EntityChips inc={inc} onEntity={onEntity} />
           <div className="grid grid-cols-2 gap-4 pt-1 sm:grid-cols-4">
             <Fact label="Severity">
               <SeverityText severity={inc.severity} />
@@ -142,14 +177,29 @@ export function IncidentPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { data: inc, isLoading, isError, error, refetch } = useIncident(id)
 
+  const [entity, setEntity] = useState<string | null>(null)
+
   const requested = searchParams.get('tab')
   const tab: TabId = TABS.some((t) => t.id === requested) ? (requested as TabId) : 'timeline'
-  const setTab = (next: string) => {
+  const stepParam = Number(searchParams.get('step'))
+  const evidenceStep = Number.isInteger(stepParam) && stepParam >= 1 ? stepParam : null
+  const pageParam = Number(searchParams.get('page'))
+  const evidencePage = Number.isInteger(pageParam) && pageParam >= 1 ? pageParam - 1 : 0
+
+  /** Change the tab and, for the evidence tab, its step and page; everything lives in the URL. */
+  const go = (next: string, step: number | null = null, page = 0) => {
     const sp = new URLSearchParams(searchParams)
     if (next === 'timeline') sp.delete('tab')
     else sp.set('tab', next)
+    sp.delete('step')
+    sp.delete('page')
+    if (next === 'evidence') {
+      if (step != null) sp.set('step', String(step))
+      if (page > 0) sp.set('page', String(page + 1))
+    }
     setSearchParams(sp, { replace: true })
   }
+  const setTab = (next: string) => go(next)
 
   const back = (
     <Link to="/incidents" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
@@ -192,7 +242,8 @@ export function IncidentPage() {
   return (
     <div className="space-y-4">
       {back}
-      <IncidentHeader inc={inc} />
+      <IncidentHeader inc={inc} onEntity={setEntity} />
+      <EntityDrawer value={entity} onClose={() => setEntity(null)} />
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="h-auto flex-wrap justify-start">
@@ -205,6 +256,31 @@ export function IncidentPage() {
 
         <TabsContent value="timeline">
           <AttackTimeline chain={inc.chain} gaps={inc.gaps} />
+        </TabsContent>
+        <TabsContent value="path">
+          <Card>
+            <CardContent className="p-4">
+              <AttackPathGraph
+                graph={inc.graph}
+                chain={inc.chain}
+                fileName={`incident-${inc.incident_number}-attack-path`}
+                onNodeClick={setEntity}
+                onStepClick={(n) => go('evidence', n)}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="reach">
+          <ReachNext next={inc.next} nodes={inc.graph.nodes} onEntity={setEntity} />
+        </TabsContent>
+        <TabsContent value="evidence">
+          <EvidenceTab
+            incidentNumber={inc.incident_number}
+            chain={inc.chain}
+            step={evidenceStep}
+            page={evidencePage}
+            onChange={(s, p) => go('evidence', s, p)}
+          />
         </TabsContent>
         <TabsContent value="report">
           <ReportTab inc={inc} />

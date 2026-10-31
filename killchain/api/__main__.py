@@ -15,6 +15,7 @@ from typing import List, Optional
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m killchain.api", description="Serve a run bundle over HTTP.")
     ap.add_argument("--run", help="run folder or run name (data/runs/<name> or examples/<name>)")
+    ap.add_argument("--raw-dir", help="folder with the raw logs named in the evidence (default KILLCHAIN_RAW_DIR, else data/raw)")
     ap.add_argument("--host", default="127.0.0.1", help="use 0.0.0.0 inside Docker")
     ap.add_argument("--port", type=int, default=8000)
     ap.add_argument("--log-level", default="info")
@@ -28,7 +29,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     from .bundle import BundleError
 
     try:
-        app = create_app(args.run)
+        app = create_app(args.run, raw_dir=args.raw_dir)
     except BundleError as exc:
         print(f"cannot load the run: {exc}", file=sys.stderr)
         return 2

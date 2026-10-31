@@ -37,7 +37,7 @@ saying when they are planned.
 |---|---|---|
 | `/` | Dashboard | placeholder (day 5) |
 | `/incidents` | Incident list | built: worst first, risk bar, tactic chips in kill chain order, merged alerts and events, IST times, filters in the URL (`q`, `tactic`, `technique`, `entity`, `severity`) |
-| `/incidents/:id` | Incident page | header (summary, risk parts, merged counts) and tabs; Timeline (numbered chain and gaps), Report and ATT&CK built; Attack path, Reach next, Evidence (day 3), Threat intel (day 4), Ask (day 6) say when they arrive. `?tab=` opens a tab |
+| `/incidents/:id` | Incident page | header (summary, risk parts, merged counts, clickable entities) and tabs: Timeline (numbered chain and gaps), Attack path (graph below), Reach next (ranked hosts, observed vs inferred, how each is reached, likely next tactics), Evidence (raw log lines per step with line numbers, paged; `?tab=evidence&step=2&page=3`), Report, ATT&CK. Threat intel (day 4) and Ask (day 6) say when they arrive. Clicking an entity opens the entity drawer (its incidents, alerts, threat intel) |
 | `/mitre` | ATT&CK matrix | ported from AI-SOC; `?technique=T1190` opens a technique; links go to `/incidents?...` and `/alerts?...` |
 | `/alerts` | Alerts | placeholder (day 5) |
 | `/threat-intel` | Threat Intel | placeholder (day 4) |
@@ -66,3 +66,20 @@ links point at our incident and alert lists.
 
 Not copied yet: `Dashboard`, `Alerts`, `SystemHealth`, `ThreatIntelPanel`,
 `ExecutiveTiles`. Each is ported when its page is built.
+
+## Attack path graph
+
+`components/path/AttackPathGraph.tsx` draws the incident's graph with
+react-force-graph-2d (as AI-SOC's correlation graph) but with a fixed
+left-to-right layout from `lib/pathGraph.ts`: the source of step 1 on the
+left, each target one column to the right, reach-next nodes after the node
+they are reached from. Node colours follow AI-SOC's entity colours (attacker
+rose, server green, internal host cyan, account violet, domain amber); size is
+the asset's importance. Edges are labelled with the step number and coloured
+by tactic; parallel steps between the same two nodes fan out. Reach-next nodes
+and edges are dashed. Play highlights steps 1..N in order; the numbered
+buttons jump to a step. Click a node for the entity drawer, an edge for that
+step's evidence. PNG exports the canvas.
+
+In tests the canvas library is replaced by `src/test/forceGraphStub.tsx`,
+which renders nodes and edges as buttons with the same callbacks.

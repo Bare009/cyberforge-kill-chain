@@ -2,7 +2,9 @@
 
 Built so far (P11): /health, /incidents, /incidents/{id}, /incidents/{id}/path
 (day 1); /mitre/catalogue, /mitre/matrix, /mitre/techniques/{id} (day 2, in
-mitre.py). The other endpoints of docs/build-plan.md P11 are added page by page.
+mitre.py); /incidents/{id}/events (evidence.py) and /entities/{value}
+(entities.py) (day 3). The other endpoints of docs/build-plan.md P11 are added
+page by page.
 """
 
 from __future__ import annotations
@@ -15,7 +17,9 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from .bundle import RunBundle, load_bundle, resolve_run_dir
+from .bundle import RunBundle, default_raw_dir, load_bundle, resolve_run_dir
+from .entities import entity_view
+from .evidence import EvidenceStore
 from .mitre import MitreStore
 from .mitre import router as mitre_router
 
@@ -52,8 +56,12 @@ def _entity_values(inc: Dict[str, Any]) -> List[str]:
     return [v for k in ("ips", "hosts", "users", "domains") for v in (ents.get(k) or [])]
 
 
-def create_app(run: Optional[Union[str, Path]] = None) -> FastAPI:
-    """Build the app for one run: a folder path or a run name (see resolve_run_dir)."""
+def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[str, Path]] = None) -> FastAPI:
+    """Build the app for one run: a folder path or a run name (see resolve_run_dir).
+
+    `raw_dir` is where the raw logs named in the evidence are (default
+    KILLCHAIN_RAW_DIR, else data/raw); without them evidence has no raw text.
+    """
     run_dir = Path(run) if isinstance(run, Path) else resolve_run_dir(run)
     bundle = load_bundle(run_dir)
 
@@ -64,6 +72,7 @@ def create_app(run: Optional[Union[str, Path]] = None) -> FastAPI:
     )
     app.state.bundle = bundle
     app.state.mitre = MitreStore(bundle.alerts)
+    app.state.evidence = EvidenceStore(run_dir, bundle.incidents, Path(raw_dir) if raw_dir else default_raw_dir())
     app.include_router(mitre_router)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(
@@ -144,5 +153,32 @@ def create_app(run: Optional[Union[str, Path]] = None) -> FastAPI:
         if data is None:
             raise HTTPException(status_code=500, detail=f"incident {n} has no path view; see /health contract errors")
         return Response(content=data, media_type=JSON)
+
+    @app.get("/incidents/{ident}/events", tags=["incidents"])
+    def get_events(
+        ident: str,
+        request: Request,
+        step: Optional[int] = Query(None, ge=1, description="only this chain step"),
+        offset: int = Query(0, ge=0),
+        limit: int = Query(50, ge=1, le=200),
+    ) -> Dict[str, Any]:
+        """Evidence lines behind the chain, in time order, with the raw log text read at byte_offset."""
+        b = _bundle(request)
+        n = _incident_number(b, ident)
+        ev: EvidenceStore = request.app.state.evidence
+        try:
+            out = ev.lines(n, step, offset, limit)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=str(exc.args[0])) from exc
+        out["steps"] = [{"step": s, "lines": c} for s, c in ev.counts_by_step(n)]
+        return out
+
+    @app.get("/entities/{value}", tags=["entities"])
+    def get_entity(value: str, request: Request) -> Dict[str, Any]:
+        """Every incident and alert involving an IP, host, account or domain, plus its threat intel."""
+        view = entity_view(_bundle(request), value)
+        if view is None:
+            raise HTTPException(status_code=404, detail=f"{value} does not appear in run {_bundle(request).run}")
+        return view
 
     return app

@@ -1,0 +1,269 @@
+{
+ "incident_number": 1,
+ "step": 2,
+ "total": 20,
+ "offset": 0,
+ "limit": 50,
+ "origin": "evidence_sample.json",
+ "raw_available": true,
+ "lines": [
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212670,
+   "byte_offset": 1695392653,
+   "ts": "2026-10-28T20:37:10.515776Z",
+   "ts_ist": "2026-10-29 02:07:10",
+   "raw": "date=2026-10-29 time=02:07:10 eventtime=1793239630515776000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=50524 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=1878350487 proto=6 action=\"detected\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/product.php?id=1%27%20OR%20%271%27%3D%271\" crscore=50 sentbyte=1263 rcvdbyte=1832 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212681,
+   "byte_offset": 1695398474,
+   "ts": "2026-10-28T20:37:14.639896Z",
+   "ts_ist": "2026-10-29 02:07:14",
+   "raw": "date=2026-10-29 time=02:07:14 eventtime=1793239634639896000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=55198 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=331063870 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/search?q=%27%20UNION%20SELECT%20null%2Cusername%2Cpassword%20FROM%20users--\" crscore=50 sentbyte=1162 rcvdbyte=1340 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212693,
+   "byte_offset": 1695404854,
+   "ts": "2026-10-28T20:37:18.764016Z",
+   "ts_ist": "2026-10-29 02:07:18",
+   "raw": "date=2026-10-29 time=02:07:18 eventtime=1793239638764016000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=45350 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=3619148401 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/login?u=admin%27--&p=x\" crscore=50 sentbyte=1442 rcvdbyte=2607 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212699,
+   "byte_offset": 1695407957,
+   "ts": "2026-10-28T20:37:22.570896Z",
+   "ts_ist": "2026-10-29 02:07:22",
+   "raw": "date=2026-10-29 time=02:07:22 eventtime=1793239642570896000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=53544 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=4133021977 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/report?year=2026%3B%20WAITFOR%20DELAY%20%2700%3A00%3A05%27--\" crscore=50 sentbyte=1270 rcvdbyte=2356 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212712,
+   "byte_offset": 1695415187,
+   "ts": "2026-10-28T20:37:26.695016Z",
+   "ts_ist": "2026-10-29 02:07:26",
+   "raw": "date=2026-10-29 time=02:07:26 eventtime=1793239646695016000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=59321 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=2445286925 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/api/v1/order?id=1%20AND%20(SELECT%20*%20FROM%20(SELECT(SLEEP(5)))a)\" crscore=50 sentbyte=1511 rcvdbyte=1634 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212722,
+   "byte_offset": 1695420523,
+   "ts": "2026-10-28T20:37:30.501896Z",
+   "ts_ist": "2026-10-29 02:07:30",
+   "raw": "date=2026-10-29 time=02:07:30 eventtime=1793239650501896000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=54732 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=835900260 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/item?sku=1%27%20AND%20extractvalue(1%2Cconcat(0x7e%2Cdatabase()))--\" crscore=50 sentbyte=1374 rcvdbyte=1834 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212734,
+   "byte_offset": 1695427029,
+   "ts": "2026-10-28T20:37:34.626016Z",
+   "ts_ist": "2026-10-29 02:07:34",
+   "raw": "date=2026-10-29 time=02:07:34 eventtime=1793239654626016000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=46851 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=214618967 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/cart?id=-1%20UNION%20ALL%20SELECT%20NULL%2C%40%40version%2CNULL--\" crscore=50 sentbyte=1021 rcvdbyte=3705 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212744,
+   "byte_offset": 1695432686,
+   "ts": "2026-10-28T20:37:38.750136Z",
+   "ts_ist": "2026-10-29 02:07:38",
+   "raw": "date=2026-10-29 time=02:07:38 eventtime=1793239658750136000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=59806 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=3219547688 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/product.php?id=1%27%20OR%20%271%27%3D%271\" crscore=50 sentbyte=1530 rcvdbyte=1290 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212753,
+   "byte_offset": 1695437525,
+   "ts": "2026-10-28T20:37:42.557016Z",
+   "ts_ist": "2026-10-29 02:07:42",
+   "raw": "date=2026-10-29 time=02:07:42 eventtime=1793239662557016000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=53469 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=929446687 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/search?q=%27%20UNION%20SELECT%20null%2Cusername%2Cpassword%20FROM%20users--\" crscore=50 sentbyte=1158 rcvdbyte=2978 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212764,
+   "byte_offset": 1695443581,
+   "ts": "2026-10-28T20:37:46.681136Z",
+   "ts_ist": "2026-10-29 02:07:46",
+   "raw": "date=2026-10-29 time=02:07:46 eventtime=1793239666681136000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=59244 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=2139191874 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/login?u=admin%27--&p=x\" crscore=50 sentbyte=1110 rcvdbyte=3109 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212774,
+   "byte_offset": 1695449057,
+   "ts": "2026-10-28T20:37:50.488016Z",
+   "ts_ist": "2026-10-29 02:07:50",
+   "raw": "date=2026-10-29 time=02:07:50 eventtime=1793239670488016000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=52300 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=2003692147 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/report?year=2026%3B%20WAITFOR%20DELAY%20%2700%3A00%3A05%27--\" crscore=50 sentbyte=831 rcvdbyte=3301 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212785,
+   "byte_offset": 1695455271,
+   "ts": "2026-10-28T20:37:54.612136Z",
+   "ts_ist": "2026-10-29 02:07:54",
+   "raw": "date=2026-10-29 time=02:07:54 eventtime=1793239674612136000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=52154 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=555265749 proto=6 action=\"detected\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/api/v1/order?id=1%20AND%20(SELECT%20*%20FROM%20(SELECT(SLEEP(5)))a)\" crscore=50 sentbyte=865 rcvdbyte=1381 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212795,
+   "byte_offset": 1695460172,
+   "ts": "2026-10-28T20:37:58.736256Z",
+   "ts_ist": "2026-10-29 02:07:58",
+   "raw": "date=2026-10-29 time=02:07:58 eventtime=1793239678736256000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=59712 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=3538814617 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/item?sku=1%27%20AND%20extractvalue(1%2Cconcat(0x7e%2Cdatabase()))--\" crscore=50 sentbyte=1483 rcvdbyte=3469 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212805,
+   "byte_offset": 1695465859,
+   "ts": "2026-10-28T20:38:02.543136Z",
+   "ts_ist": "2026-10-29 02:08:02",
+   "raw": "date=2026-10-29 time=02:08:02 eventtime=1793239682543136000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=47366 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=610852228 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/cart?id=-1%20UNION%20ALL%20SELECT%20NULL%2C%40%40version%2CNULL--\" crscore=50 sentbyte=1364 rcvdbyte=3528 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212817,
+   "byte_offset": 1695472447,
+   "ts": "2026-10-28T20:38:06.667256Z",
+   "ts_ist": "2026-10-29 02:08:06",
+   "raw": "date=2026-10-29 time=02:08:06 eventtime=1793239686667256000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=53341 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=3747562225 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/product.php?id=1%27%20OR%20%271%27%3D%271\" crscore=50 sentbyte=402 rcvdbyte=685 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212825,
+   "byte_offset": 1695476790,
+   "ts": "2026-10-28T20:38:10.474136Z",
+   "ts_ist": "2026-10-29 02:08:10",
+   "raw": "date=2026-10-29 time=02:08:10 eventtime=1793239690474136000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=51027 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=2189051997 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/search?q=%27%20UNION%20SELECT%20null%2Cusername%2Cpassword%20FROM%20users--\" crscore=50 sentbyte=1698 rcvdbyte=1302 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212835,
+   "byte_offset": 1695482483,
+   "ts": "2026-10-28T20:38:14.598256Z",
+   "ts_ist": "2026-10-29 02:08:14",
+   "raw": "date=2026-10-29 time=02:08:14 eventtime=1793239694598256000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=57128 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=2068881699 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/login?u=admin%27--&p=x\" crscore=50 sentbyte=1233 rcvdbyte=3436 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212845,
+   "byte_offset": 1695488148,
+   "ts": "2026-10-28T20:38:18.722376Z",
+   "ts_ist": "2026-10-29 02:08:18",
+   "raw": "date=2026-10-29 time=02:08:18 eventtime=1793239698722376000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=42753 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=2030381950 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/report?year=2026%3B%20WAITFOR%20DELAY%20%2700%3A00%3A05%27--\" crscore=50 sentbyte=1700 rcvdbyte=1044 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212852,
+   "byte_offset": 1695492207,
+   "ts": "2026-10-28T20:38:22.529256Z",
+   "ts_ist": "2026-10-29 02:08:22",
+   "raw": "date=2026-10-29 time=02:08:22 eventtime=1793239702529256000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=44079 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=2601831370 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/api/v1/order?id=1%20AND%20(SELECT%20*%20FROM%20(SELECT(SLEEP(5)))a)\" crscore=50 sentbyte=822 rcvdbyte=2776 sentpkt=4 rcvdpkt=5"
+  },
+  {
+   "step": 2,
+   "alert_id": "d923a363ee17ec67",
+   "technique": "T1190",
+   "role": "window",
+   "source": "firex-10G.log",
+   "line": 3212863,
+   "byte_offset": 1695498219,
+   "ts": "2026-10-28T20:38:26.653376Z",
+   "ts_ist": "2026-10-29 02:08:26",
+   "raw": "date=2026-10-29 time=02:08:26 eventtime=1793239706653376000 tz=\"+0530\" devname=\"FGT60FTK00000000\" devid=\"FGT60FTK00000000\" logid=\"0419016384\" type=\"utm\" subtype=\"ips\" level=\"alert\" vd=\"root\" srcip=32.127.48.11 srcport=59760 srcintf=\"wan1\" srcintfrole=\"wan\" dstip=10.10.20.20 dstport=443 dstintf=\"internal2\" dstintfrole=\"dmz\" sessionid=88535894 proto=6 action=\"dropped\" service=\"HTTPS\" srccountry=\"Singapore\" dstcountry=\"Reserved\" attack=\"HTTP.URI.SQL.Injection\" attackid=15621 severity=\"critical\" hostname=\"portal.corp.local\" url=\"/item?sku=1%27%20AND%20extractvalue(1%2Cconcat(0x7e%2Cdatabase()))--\" crscore=50 sentbyte=1180 rcvdbyte=3425 sentpkt=4 rcvdpkt=5"
+  }
+ ],
+ "steps": [
+  {
+   "step": 1,
+   "lines": 20
+  },
+  {
+   "step": 2,
+   "lines": 20
+  },
+  {
+   "step": 3,
+   "lines": 20
+  },
+  {
+   "step": 4,
+   "lines": 20
+  }
+ ]
+}

@@ -78,8 +78,8 @@ describe('Incident page', () => {
   })
 
   it('says when a tab is planned for a later day', async () => {
-    open('/incidents/1?tab=path')
-    expect(await screen.findByText(/Not built yet. Planned for day 3/)).toBeInTheDocument()
+    open('/incidents/1?tab=intel')
+    expect(await screen.findByText(/Not built yet. Planned for day 4/)).toBeInTheDocument()
   })
 
   it('says when the incident does not exist', async () => {
