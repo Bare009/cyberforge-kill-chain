@@ -11,7 +11,7 @@ each one.
 | 1c. Evaluation: silver truth (25 incidents) and the PRD metrics | done: `killchain.eval` |
 | 2. Detection rules with ATT&CK labels (FR-2, FR-3, B-4) | next |
 | 3. Incidents, attack paths, reach-next (FR-4 to FR-6) | planned |
-| 4. API and UI (FR-7) | planned |
+| 4. API and UI (FR-7) | in progress: `killchain.api` (health, incidents, path), `web/` scaffold |
 | 5. Scoring harness against the ground-truth manifest | planned |
 
 Requirements and targets: `docs/requirements.md`. Pipeline and stage
@@ -227,3 +227,30 @@ python -m killchain eval score --run data\runs\firex-10G --api http://localhost:
   were rebuilt in order, false alarms (with `eval/reviewed.yml` for incidents
   confirmed real or false by hand), and alerts per rule split into truth hits
   and background. Everything is also in `metrics.json`.
+
+## API
+
+Serves one run bundle (`docs/contracts.md`) over HTTP, no login. Every file
+is loaded once at start-up, so a request is a dictionary lookup.
+
+```powershell
+python -m killchain.api --run sample-run --port 8000   # the committed sample
+python -m killchain.api --run data\runs\firex-10G      # a pipeline run
+```
+
+`--run` takes a folder or a run name, looked up in `data/runs/<name>` and then
+`examples/<name>`; without it, `KILLCHAIN_RUN` or `sample-run` is used. Use
+`--host 0.0.0.0` inside Docker. If port 8000 is taken (Splunk uses it), pick
+another with `--port` and set `VITE_API_URL` in `web/.env` to match.
+Swagger UI: `http://localhost:<port>/docs`.
+
+| Endpoint | Returns |
+|---|---|
+| `GET /health` | run name, counts, contract problems found while loading |
+| `GET /incidents` | incidents worst first; filters `severity` (minimum), `tactic`, `technique` (a parent matches its sub-techniques), `entity`, `q`, `limit`, `offset` |
+| `GET /incidents/{id}` | the full incident; `id` is the number or the stable hash |
+| `GET /incidents/{id}/path` | numbered chain, attack path graph, reach next |
+
+The other endpoints in `docs/build-plan.md` P11 are added as their pages are
+built. `GET /incidents/1/path` on the sample: p50 20 ms, p95 27 ms over HTTP
+from PowerShell on Windows (target p95 < 500 ms).
