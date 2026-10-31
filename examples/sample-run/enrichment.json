@@ -1,0 +1,256 @@
+{
+ "generated_at": "2026-10-31T16:41:19Z",
+ "offline": false,
+ "providers": {
+  "local": "ok",
+  "otx": "ok"
+ },
+ "summary": {
+  "indicators": 4,
+  "sendable": 1,
+  "lookups": 1,
+  "cache_hits": 0,
+  "failures": 0,
+  "skipped_private": 3,
+  "providers": {
+   "local": "ok",
+   "otx": "ok"
+  },
+  "errors": [],
+  "wall_secs": 3.54,
+  "verdicts": {
+   "unknown": 3,
+   "no-reports": 1
+  }
+ },
+ "entities": {
+  "10.10.20.20": {
+   "kind": "ip",
+   "zone": "dmz",
+   "verdict": "unknown",
+   "reputation": 0.0,
+   "providers": [
+    {
+     "provider": "local",
+     "available": true,
+     "malicious": false,
+     "score": null,
+     "tags": [
+      "internal (dmz)"
+     ],
+     "detail": {
+      "zone": "dmz",
+      "role": "web-portal",
+      "importance": 0.75,
+      "sendable": false,
+      "not_sent_because": "private, reserved or own address",
+      "incidents": [
+       1
+      ],
+      "steps": {
+       "1": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "alerts": 4,
+      "rules": [
+       "fw-exfil-volume",
+       "fw-recon-port-sweep",
+       "fw-web-shell",
+       "fw-web-sqli"
+      ],
+      "first_seen": "2026-10-28T20:21:23.449932Z",
+      "last_seen": "2026-10-29T07:08:54.468885Z"
+     },
+     "fetched_at": "2026-10-31T16:41:15Z"
+    }
+   ],
+   "tags": [
+    "internal (dmz)"
+   ],
+   "flags": [],
+   "sendable": false,
+   "incidents": [
+    1
+   ]
+  },
+  "10.10.20.31": {
+   "kind": "ip",
+   "zone": "server",
+   "verdict": "unknown",
+   "reputation": 0.0,
+   "providers": [
+    {
+     "provider": "local",
+     "available": true,
+     "malicious": false,
+     "score": null,
+     "tags": [
+      "internal (server)"
+     ],
+     "detail": {
+      "zone": "server",
+      "role": "server",
+      "importance": 0.75,
+      "sendable": false,
+      "not_sent_because": "private, reserved or own address",
+      "incidents": [
+       1
+      ],
+      "steps": {},
+      "alerts": 0,
+      "rules": [],
+      "first_seen": null,
+      "last_seen": null
+     },
+     "fetched_at": "2026-10-31T16:41:15Z"
+    }
+   ],
+   "tags": [
+    "internal (server)"
+   ],
+   "flags": [],
+   "sendable": false,
+   "incidents": [
+    1
+   ]
+  },
+  "32.127.48.11": {
+   "kind": "ip",
+   "zone": "internet",
+   "verdict": "no-reports",
+   "reputation": 0.0,
+   "providers": [
+    {
+     "provider": "local",
+     "available": true,
+     "malicious": false,
+     "score": null,
+     "tags": [
+      "external"
+     ],
+     "detail": {
+      "zone": "internet",
+      "role": null,
+      "importance": null,
+      "sendable": true,
+      "not_sent_because": null,
+      "incidents": [
+       1
+      ],
+      "steps": {
+       "1": [
+        1,
+        2,
+        3,
+        4
+       ]
+      },
+      "alerts": 4,
+      "rules": [
+       "fw-exfil-volume",
+       "fw-recon-port-sweep",
+       "fw-web-shell",
+       "fw-web-sqli"
+      ],
+      "first_seen": "2026-10-28T20:21:23.449932Z",
+      "last_seen": "2026-10-29T07:08:54.468885Z"
+     },
+     "fetched_at": "2026-10-31T16:41:15Z"
+    },
+    {
+     "provider": "otx",
+     "available": true,
+     "malicious": false,
+     "score": 0.0,
+     "tags": [],
+     "detail": {
+      "pulse_count": 0,
+      "pulses": [],
+      "tags": [],
+      "malware_families": [],
+      "adversaries": [],
+      "allow_listed": false,
+      "validation": [],
+      "country": "United States of America",
+      "country_code": "US",
+      "asn": "AS7018 att services inc",
+      "otx_url": "https://otx.alienvault.com/indicator/ip/32.127.48.11"
+     },
+     "fetched_at": "2026-10-31T16:41:19Z"
+    }
+   ],
+   "tags": [
+    "external"
+   ],
+   "flags": [],
+   "sendable": true,
+   "incidents": [
+    1
+   ]
+  },
+  "portal.corp.local": {
+   "kind": "domain",
+   "zone": "dmz",
+   "verdict": "unknown",
+   "reputation": 0.0,
+   "providers": [
+    {
+     "provider": "local",
+     "available": true,
+     "malicious": false,
+     "score": null,
+     "tags": [
+      "internal domain"
+     ],
+     "detail": {
+      "zone": "dmz",
+      "role": null,
+      "importance": null,
+      "sendable": false,
+      "not_sent_because": "internal domain",
+      "incidents": [
+       1
+      ],
+      "steps": {
+       "1": [
+        2,
+        3,
+        4
+       ]
+      },
+      "tld": "local",
+      "dynamic_dns": null,
+      "unusual_tld": false,
+      "first_label": "portal",
+      "first_label_length": 6,
+      "first_label_entropy": 2.58,
+      "random_looking": false,
+      "alerts": 3,
+      "rules": [
+       "fw-exfil-volume",
+       "fw-web-shell",
+       "fw-web-sqli"
+      ],
+      "first_seen": "2026-10-28T20:37:10.515776Z",
+      "last_seen": "2026-10-29T07:08:54.468885Z"
+     },
+     "fetched_at": "2026-10-31T16:41:15Z"
+    }
+   ],
+   "tags": [
+    "internal domain"
+   ],
+   "flags": [],
+   "sendable": false,
+   "incidents": [
+    1
+   ]
+  }
+ },
+ "steps": {},
+ "note": "The data set's addresses and domains are synthetic: most come back with no reports, and a hit may be unrelated history of a reused real address. External reputation never changes which incidents or steps exist."
+}

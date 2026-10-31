@@ -7,6 +7,7 @@ import { Toaster } from '@/components/Toaster'
 import { Mitre } from '@/pages/Mitre'
 import { Incidents } from '@/pages/Incidents'
 import { IncidentPage } from '@/pages/IncidentPage'
+import { ThreatIntel } from '@/pages/ThreatIntel'
 import { NotFound, Placeholder } from '@/pages/Placeholder'
 
 const queryClient = new QueryClient({
@@ -48,16 +49,7 @@ export default function App() {
                   />
                 }
               />
-              <Route
-                path="threat-intel"
-                element={
-                  <Placeholder
-                    title="Threat Intel"
-                    planned="day 4"
-                    description="Indicators with verdicts and provider results, plus an on-demand lookup."
-                  />
-                }
-              />
+              <Route path="threat-intel" element={<ThreatIntel />} />
               <Route
                 path="rules"
                 element={

@@ -129,6 +129,9 @@ export interface ProviderResult {
   score: number | null
   tags: string[]
   detail: Record<string, unknown>
+  /** Added by the threat-intel engine. */
+  fetched_at?: string
+  error?: string
 }
 
 export interface Enrichment {
@@ -137,6 +140,11 @@ export interface Enrichment {
   verdict: TiVerdict
   reputation: number
   providers: ProviderResult[]
+  /** Added by the threat-intel engine (killchain/enrich). */
+  tags?: string[]
+  flags?: string[]
+  /** False for private, reserved, own and internal values, which are never sent outside. */
+  sendable?: boolean
 }
 
 export interface RiskPart {

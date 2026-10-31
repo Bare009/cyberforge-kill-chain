@@ -9,6 +9,7 @@ import eventsAll from '@/test/fixtures/events-all.json'
 import eventsStep2 from '@/test/fixtures/events-step2.json'
 import entityAttacker from '@/test/fixtures/entity-attacker.json'
 import entityReach from '@/test/fixtures/entity-reach.json'
+import enrichedIncident from '@/test/fixtures/incident-1-enriched.json'
 import { IncidentPage } from './IncidentPage'
 
 vi.mock('react-force-graph-2d', () => import('@/test/forceGraphStub'))
@@ -155,6 +156,32 @@ describe('Incident page, evidence tab', () => {
     open('/incidents/1?tab=evidence')
     expect(await screen.findByText(/raw log is not on the API server/)).toBeInTheDocument()
     expect(screen.getByText('firex-10G.log @ byte 1694144963')).toBeInTheDocument()
+  })
+})
+
+describe('Incident page, threat intel tab', () => {
+  beforeEach(() => {
+    get.mockReset()
+    get.mockImplementation((url: string, config?: { params?: Record<string, unknown> }) =>
+      url === '/incidents/1' ? Promise.resolve({ data: enrichedIncident }) : fakeApi(url, config)
+    )
+  })
+
+  it('shows a card per entity, the checked one first, private ones kept local', async () => {
+    open('/incidents/1?tab=intel')
+    const cards = await screen.findAllByLabelText(/^Threat intel for /)
+    expect(cards.map((c) => c.getAttribute('aria-label'))[0]).toBe('Threat intel for 32.127.48.11')
+    expect(cards).toHaveLength(4)
+    expect(within(cards[0]).getByText('checked outside')).toBeInTheDocument()
+    const portal = cards.find((c) => c.getAttribute('aria-label') === 'Threat intel for portal.corp.local')!
+    expect(within(portal).getByText(/kept local: internal domain/)).toBeInTheDocument()
+  })
+
+  it('opens an entity in the drawer from its card', async () => {
+    open('/incidents/1?tab=intel')
+    const cards = await screen.findAllByLabelText(/^Threat intel for /)
+    await userEvent.click(within(cards[0]).getByRole('button', { name: '32.127.48.11' }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 })
 

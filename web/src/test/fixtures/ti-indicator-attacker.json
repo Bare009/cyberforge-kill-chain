@@ -1,0 +1,83 @@
+{
+ "value": "32.127.48.11",
+ "kind": "ip",
+ "zone": "internet",
+ "verdict": "no-reports",
+ "reputation": 0.0,
+ "flagged_by": [],
+ "answered_by": [
+  "otx"
+ ],
+ "sendable": true,
+ "pulses": 0,
+ "tags": [
+  "external"
+ ],
+ "flags": [],
+ "incidents": [
+  {
+   "incident_number": 1,
+   "title": "Web attack chain from 32.127.48.11 against the portal"
+  }
+ ],
+ "providers": [
+  {
+   "provider": "local",
+   "available": true,
+   "malicious": false,
+   "score": null,
+   "tags": [
+    "external"
+   ],
+   "detail": {
+    "zone": "internet",
+    "role": null,
+    "importance": null,
+    "sendable": true,
+    "not_sent_because": null,
+    "incidents": [
+     1
+    ],
+    "steps": {
+     "1": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    "alerts": 4,
+    "rules": [
+     "fw-exfil-volume",
+     "fw-recon-port-sweep",
+     "fw-web-shell",
+     "fw-web-sqli"
+    ],
+    "first_seen": "2026-10-28T20:21:23.449932Z",
+    "last_seen": "2026-10-29T07:08:54.468885Z"
+   },
+   "fetched_at": "2026-10-31T16:41:15Z"
+  },
+  {
+   "provider": "otx",
+   "available": true,
+   "malicious": false,
+   "score": 0.0,
+   "tags": [],
+   "detail": {
+    "pulse_count": 0,
+    "pulses": [],
+    "tags": [],
+    "malware_families": [],
+    "adversaries": [],
+    "allow_listed": false,
+    "validation": [],
+    "country": "United States of America",
+    "country_code": "US",
+    "asn": "AS7018 att services inc",
+    "otx_url": "https://otx.alienvault.com/indicator/ip/32.127.48.11"
+   },
+   "fetched_at": "2026-10-31T16:41:19Z"
+  }
+ ]
+}

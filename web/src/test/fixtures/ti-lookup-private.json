@@ -1,0 +1,59 @@
+{
+ "kind": "ip",
+ "zone": "dmz",
+ "verdict": "unknown",
+ "reputation": 0.0,
+ "providers": [
+  {
+   "provider": "local",
+   "available": true,
+   "malicious": false,
+   "score": null,
+   "tags": [
+    "internal (dmz)"
+   ],
+   "detail": {
+    "zone": "dmz",
+    "role": "web-portal",
+    "importance": 0.75,
+    "sendable": false,
+    "not_sent_because": "private, reserved or own address",
+    "incidents": [
+     1
+    ],
+    "steps": {
+     "1": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    "alerts": 4,
+    "rules": [
+     "fw-exfil-volume",
+     "fw-recon-port-sweep",
+     "fw-web-shell",
+     "fw-web-sqli"
+    ],
+    "first_seen": "2026-10-28T20:21:23.449932Z",
+    "last_seen": "2026-10-29T07:08:54.468885Z"
+   },
+   "fetched_at": "2026-10-31T16:45:52Z"
+  }
+ ],
+ "tags": [
+  "internal (dmz)"
+ ],
+ "flags": [],
+ "sendable": false,
+ "incidents": [
+  {
+   "incident_number": 1,
+   "title": "Web attack chain from 32.127.48.11 against the portal"
+  }
+ ],
+ "value": "10.10.20.20",
+ "in_run": true,
+ "not_sent_because": "private, reserved or own address"
+}

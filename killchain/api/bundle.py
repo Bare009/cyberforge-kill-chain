@@ -43,6 +43,8 @@ class RunBundle:
     path_bytes: Dict[int, bytes] = field(default_factory=dict)
     # contract problems found while loading; the API still serves the run
     errors: List[str] = field(default_factory=list)
+    # <run>/enrichment.json from the threat-intel engine, merged into the incidents; None when absent
+    enrichment: Optional[Dict[str, Any]] = None
 
     def resolve(self, ident: str) -> Optional[int]:
         """An incident's number from its number ("12") or its stable hash."""
@@ -112,6 +114,29 @@ def path_view(inc: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+_VERDICT_RANK = {"known-malicious": 3, "suspicious": 2, "no-reports": 1, "unknown": 0}
+_CONTRACT_ENRICHMENT_KEYS = ("kind", "zone", "verdict", "reputation", "providers", "tags", "flags", "sendable")
+
+
+def apply_enrichment(inc: Dict[str, Any], n: int, doc: Dict[str, Any]) -> Optional[str]:
+    """Merge the engine's results into one incident (in place); returns the incident's worst verdict.
+
+    The incident's `enrichment` becomes the engine's result for every entity
+    of the incident, and each step gets the flags of its source and target.
+    Detection fields (chain, risk score, ...) are not touched.
+    """
+    ents = {v: e for v, e in doc["entities"].items() if n in (e.get("incidents") or [])}
+    if not ents:
+        return None
+    inc["enrichment"] = {v: {k: e[k] for k in _CONTRACT_ENRICHMENT_KEYS if k in e} for v, e in ents.items()}
+    flags = (doc.get("steps") or {}).get(str(n)) or {}
+    for s in inc.get("chain") or []:
+        extra = flags.get(str(s.get("n"))) or []
+        if extra:
+            s["enrichment_flags"] = list(dict.fromkeys([*(s.get("enrichment_flags") or []), *extra]))
+    return max((e["verdict"] for e in ents.values()), key=lambda v: _VERDICT_RANK.get(v, 0))
+
+
 def load_bundle(run_dir: Path) -> RunBundle:
     run_dir = Path(run_dir)
     if not run_dir.is_dir():
@@ -127,6 +152,12 @@ def load_bundle(run_dir: Path) -> RunBundle:
     if not isinstance(alerts, list):
         raise BundleError(f"{run_dir / 'alerts.json'}: needs a list")
 
+    enrich_path = run_dir / "enrichment.json"
+    enrichment = _read_json(enrich_path) if enrich_path.exists() else None
+    if enrichment is not None and not isinstance(enrichment.get("entities"), dict):
+        log.warning("%s has no 'entities' object; ignored", enrich_path)
+        enrichment = None
+
     errors: List[str] = []
     incidents: Dict[int, Dict[str, Any]] = {}
     for row in index["incidents"]:
@@ -135,6 +166,8 @@ def load_bundle(run_dir: Path) -> RunBundle:
             errors.append(f"index.json: row without an integer incident_number: {row.get('incident_id')!r}")
             continue
         inc = _read_json(run_dir / "incidents" / f"{n}.json")
+        if enrichment is not None:
+            row["ti_verdict"] = apply_enrichment(inc, n, enrichment)
         errors += validate_incident(inc, f"incidents/{n}.json")
         incidents[n] = inc
     for i, a in enumerate(alerts):
@@ -149,6 +182,7 @@ def load_bundle(run_dir: Path) -> RunBundle:
         alerts=alerts,
         run_summary=summary,
         errors=errors,
+        enrichment=enrichment,
     )
     for n, inc in incidents.items():
         if isinstance(inc.get("incident_id"), str):

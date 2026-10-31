@@ -1,0 +1,92 @@
+{
+ "total": 4,
+ "source": "enrichment.json",
+ "indicators": [
+  {
+   "value": "32.127.48.11",
+   "kind": "ip",
+   "zone": "internet",
+   "verdict": "no-reports",
+   "reputation": 0.0,
+   "flagged_by": [],
+   "answered_by": [
+    "otx"
+   ],
+   "sendable": true,
+   "pulses": 0,
+   "tags": [
+    "external"
+   ],
+   "flags": [],
+   "incidents": [
+    {
+     "incident_number": 1,
+     "title": "Web attack chain from 32.127.48.11 against the portal"
+    }
+   ]
+  },
+  {
+   "value": "10.10.20.20",
+   "kind": "ip",
+   "zone": "dmz",
+   "verdict": "unknown",
+   "reputation": 0.0,
+   "flagged_by": [],
+   "answered_by": [],
+   "sendable": false,
+   "pulses": null,
+   "tags": [
+    "internal (dmz)"
+   ],
+   "flags": [],
+   "incidents": [
+    {
+     "incident_number": 1,
+     "title": "Web attack chain from 32.127.48.11 against the portal"
+    }
+   ]
+  },
+  {
+   "value": "10.10.20.31",
+   "kind": "ip",
+   "zone": "server",
+   "verdict": "unknown",
+   "reputation": 0.0,
+   "flagged_by": [],
+   "answered_by": [],
+   "sendable": false,
+   "pulses": null,
+   "tags": [
+    "internal (server)"
+   ],
+   "flags": [],
+   "incidents": [
+    {
+     "incident_number": 1,
+     "title": "Web attack chain from 32.127.48.11 against the portal"
+    }
+   ]
+  },
+  {
+   "value": "portal.corp.local",
+   "kind": "domain",
+   "zone": "dmz",
+   "verdict": "unknown",
+   "reputation": 0.0,
+   "flagged_by": [],
+   "answered_by": [],
+   "sendable": false,
+   "pulses": null,
+   "tags": [
+    "internal domain"
+   ],
+   "flags": [],
+   "incidents": [
+    {
+     "incident_number": 1,
+     "title": "Web attack chain from 32.127.48.11 against the portal"
+    }
+   ]
+  }
+ ]
+}

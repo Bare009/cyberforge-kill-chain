@@ -3,8 +3,9 @@
 Built so far (P11): /health, /incidents, /incidents/{id}, /incidents/{id}/path
 (day 1); /mitre/catalogue, /mitre/matrix, /mitre/techniques/{id} (day 2, in
 mitre.py); /incidents/{id}/events (evidence.py) and /entities/{value}
-(entities.py) (day 3). The other endpoints of docs/build-plan.md P11 are added
-page by page.
+(entities.py) (day 3); /ti/status, /ti/indicators, /ti/indicators/{value},
+POST /ti/lookup (ti.py) (day 4). The other endpoints of docs/build-plan.md P11
+are added page by page.
 """
 
 from __future__ import annotations
@@ -22,6 +23,9 @@ from .entities import entity_view
 from .evidence import EvidenceStore
 from .mitre import MitreStore
 from .mitre import router as mitre_router
+from .ti import TiStore
+from .ti import router as ti_router
+from killchain.enrich.settings import CACHE_PATH
 
 # The Vite dev server and the Docker web container (P14).
 DEFAULT_CORS = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080"
@@ -56,11 +60,16 @@ def _entity_values(inc: Dict[str, Any]) -> List[str]:
     return [v for k in ("ips", "hosts", "users", "domains") for v in (ents.get(k) or [])]
 
 
-def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[str, Path]] = None) -> FastAPI:
+def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[str, Path]] = None, *,
+               ti_cache: Optional[Union[str, Path]] = None, ti_offline: Optional[bool] = None,
+               ti_client: Any = None) -> FastAPI:
     """Build the app for one run: a folder path or a run name (see resolve_run_dir).
 
     `raw_dir` is where the raw logs named in the evidence are (default
     KILLCHAIN_RAW_DIR, else data/raw); without them evidence has no raw text.
+    `ti_cache` is the threat-intel SQLite cache (default data/cache/ti.sqlite),
+    `ti_offline` keeps on-demand lookups off the network (default
+    KILLCHAIN_TI_OFFLINE), and `ti_client` replaces the HTTP client (tests).
     """
     run_dir = Path(run) if isinstance(run, Path) else resolve_run_dir(run)
     bundle = load_bundle(run_dir)
@@ -73,7 +82,10 @@ def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[s
     app.state.bundle = bundle
     app.state.mitre = MitreStore(bundle.alerts)
     app.state.evidence = EvidenceStore(run_dir, bundle.incidents, Path(raw_dir) if raw_dir else default_raw_dir())
+    app.state.ti = TiStore(bundle, Path(ti_cache) if ti_cache else CACHE_PATH, offline=ti_offline,
+                           otx_client=ti_client)
     app.include_router(mitre_router)
+    app.include_router(ti_router)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(
         CORSMiddleware,
@@ -97,6 +109,8 @@ def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[s
             },
             "contract_errors": len(b.errors),
             "data_quality": b.run_summary.get("data_quality"),
+            "threat_intel": {k: v for k, v in request.app.state.ti.status().items()
+                             if k in ("source", "offline", "providers", "indicators", "generated_at")},
         }
 
     @app.get("/incidents", tags=["incidents"])

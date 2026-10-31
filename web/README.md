@@ -37,10 +37,10 @@ saying when they are planned.
 |---|---|---|
 | `/` | Dashboard | placeholder (day 5) |
 | `/incidents` | Incident list | built: worst first, risk bar, tactic chips in kill chain order, merged alerts and events, IST times, filters in the URL (`q`, `tactic`, `technique`, `entity`, `severity`) |
-| `/incidents/:id` | Incident page | header (summary, risk parts, merged counts, clickable entities) and tabs: Timeline (numbered chain and gaps), Attack path (graph below), Reach next (ranked hosts, observed vs inferred, how each is reached, likely next tactics), Evidence (raw log lines per step with line numbers, paged; `?tab=evidence&step=2&page=3`), Report, ATT&CK. Threat intel (day 4) and Ask (day 6) say when they arrive. Clicking an entity opens the entity drawer (its incidents, alerts, threat intel) |
+| `/incidents/:id` | Incident page | header (summary, risk parts, merged counts, clickable entities) and tabs: Timeline (numbered chain and gaps), Attack path (graph below), Reach next (ranked hosts, observed vs inferred, how each is reached, likely next tactics), Evidence (raw log lines per step with line numbers, paged; `?tab=evidence&step=2&page=3`), Report, Threat intel (each entity's local context and OTX answer, or why it was kept local), ATT&CK. Ask (day 6) says when it arrives. Clicking an entity opens the entity drawer (its incidents, alerts, threat intel) |
 | `/mitre` | ATT&CK matrix | ported from AI-SOC; `?technique=T1190` opens a technique; links go to `/incidents?...` and `/alerts?...` |
 | `/alerts` | Alerts | placeholder (day 5) |
-| `/threat-intel` | Threat Intel | placeholder (day 4) |
+| `/threat-intel` | Threat Intel | built: provider status, last enrich run, on-demand lookup box, indicator table with verdict, kind and "checked outside" filters |
 | `/rules` | Rules | placeholder (day 5) |
 | `/live` | Live | placeholder (day 6) |
 | `/evaluation` | Evaluation | placeholder (day 6) |

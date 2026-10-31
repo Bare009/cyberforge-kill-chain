@@ -7,6 +7,7 @@ import { useEntity } from '@/hooks/useIncidents'
 import { apiErrorMessage } from '@/lib/api'
 import { formatIst } from '@/lib/killchain'
 import { NODE_KIND_LABEL } from '@/lib/pathGraph'
+import { providerHighlights, providerLabel } from '@/lib/threatIntel'
 import { formatExactTime } from '@/lib/utils'
 import type { NodeKind } from '@/types/incident'
 
@@ -60,13 +61,16 @@ export function EntityDrawer({ value, onClose }: Props) {
                   </div>
                   <ul className="space-y-0.5 text-xs text-slate-600">
                     {data.enrichment.providers.map((p) => (
-                      <li key={p.provider} className="flex flex-wrap gap-1.5">
-                        <span className="font-medium text-slate-800">{p.provider}</span>
-                        <span>{!p.available ? 'not checked' : p.malicious ? 'flagged' : 'no reports'}</span>
-                        {p.tags.length > 0 && <span className="text-slate-400">{p.tags.join(', ')}</span>}
+                      <li key={p.provider}>
+                        <span className="font-medium text-slate-800">{providerLabel(p.provider)}</span>
+                        {p.malicious && <span className="ml-1 font-semibold text-red-700">flagged</span>}
+                        <span className="text-slate-500">: {providerHighlights(p).join(' · ')}</span>
                       </li>
                     ))}
                   </ul>
+                  <Link to={`/threat-intel?q=${encodeURIComponent(data.value)}`} onClick={onClose} className="text-xs text-blue-600 hover:underline">
+                    Open in Threat Intel
+                  </Link>
                 </div>
               ) : (
                 <p className="text-xs text-slate-500">Not looked up for this run.</p>

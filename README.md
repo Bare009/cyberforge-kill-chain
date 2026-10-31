@@ -258,6 +258,10 @@ Swagger UI: `http://localhost:<port>/docs`.
 | `GET /mitre/techniques/{id}` | one technique: trend by IST day, sub-techniques, alerts per rule and target, recent alerts with their incident |
 | `GET /incidents/{id}/events` | evidence lines in time order, with the raw log text read at `byte_offset`; `step`, `offset`, `limit` (max 200); per-step line counts |
 | `GET /entities/{value}` | every incident (with the value's role and steps) and alert involving an IP, host, account or domain, plus its threat intel |
+| `GET /ti/status` | threat intel providers, when the run was enriched, verdict counts, cache stats |
+| `GET /ti/indicators` | every indicator in the run with its verdict; filters `q`, `verdict`, `kind`, `sendable`, `limit` |
+| `GET /ti/indicators/{value}` | one indicator: local context and the OTX answer |
+| `POST /ti/lookup` | look up any IP, domain, URL or hash (`{"value": ...}`); private and internal values are kept local; 20 per minute, then 429 with `Retry-After` |
 
 Evidence comes from `alert_evidence.parquet` in the run (every member line),
 else `evidence_sample.json`, else each step's `line_sample`. The raw text is
@@ -265,6 +269,26 @@ read from the log named in each row, inside `--raw-dir` (default
 `KILLCHAIN_RAW_DIR`, else `data/raw`); only plain file names in that folder
 are opened. Without the log the lines are listed with line numbers and byte
 offsets and `raw_available` is false.
+
+Threat intel comes from `<run>/enrichment.json`, written by the enrich step
+below, and is merged into the incidents at start-up (entity verdicts, step
+flags, `ti_verdict` in the list). It never changes the risk score.
+
+### Threat intel (enrich)
+
+```powershell
+python -m killchain.enrich --run sample-run             # live OTX, needs OTX_API_KEY in .env
+python -m killchain.enrich --run sample-run --offline   # local context only
+```
+
+Providers are local context (zones and roles from `config/ti.yaml`, alerts
+and incidents in the run) and AlienVault OTX. Private, reserved and
+documentation addresses, internal domains (`.local`, `.corp`, ...) and
+internal URLs are never sent outside. Answers are cached in
+`data/cache/ti.sqlite`. OTX score = min(pulses / 5, 1); allow-listed values
+score 0. Verdicts: known-malicious (score ≥ 0.8), suspicious (≥ 0.4 or
+flagged), no-reports, unknown (not checked). Without a key, or with
+`KILLCHAIN_TI_OFFLINE=1`, only local context is used.
 
 The MITRE endpoints run DuckDB `GROUP BY` queries over the run's alerts
 (`killchain/api/mitre.py`). The other endpoints in `docs/build-plan.md` P11

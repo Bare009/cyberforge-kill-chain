@@ -10,6 +10,7 @@ import { RiskBandBadge, SeverityText, TacticChips, TiVerdictBadge, TriageBadge }
 import { AttackTimeline } from '@/components/incident/AttackTimeline'
 import { EntityDrawer } from '@/components/incident/EntityDrawer'
 import { EvidenceTab } from '@/components/incident/EvidenceTab'
+import { IncidentIntel } from '@/components/incident/IncidentIntel'
 import { ReachNext } from '@/components/incident/ReachNext'
 import { AttackPathGraph } from '@/components/path/AttackPathGraph'
 import { IncidentTechniques } from '@/components/incident/IncidentTechniques'
@@ -26,7 +27,7 @@ const TABS = [
   { id: 'timeline', label: 'Timeline' },
   { id: 'path', label: 'Attack path' },
   { id: 'reach', label: 'Reach next' },
-  { id: 'intel', label: 'Threat intel', planned: 'day 4: provider results for every IP and domain' },
+  { id: 'intel', label: 'Threat intel' },
   { id: 'evidence', label: 'Evidence' },
   { id: 'report', label: 'Report' },
   { id: 'ask', label: 'Ask', planned: 'day 6: questions about this incident, answered from its evidence' },
@@ -272,6 +273,9 @@ export function IncidentPage() {
         </TabsContent>
         <TabsContent value="reach">
           <ReachNext next={inc.next} nodes={inc.graph.nodes} onEntity={setEntity} />
+        </TabsContent>
+        <TabsContent value="intel">
+          <IncidentIntel inc={inc} onEntity={setEntity} />
         </TabsContent>
         <TabsContent value="evidence">
           <EvidenceTab

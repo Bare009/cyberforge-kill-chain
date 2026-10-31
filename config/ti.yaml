@@ -1,0 +1,61 @@
+# Threat-intel engine (docs/build-plan.md P9). Keys come from .env, never from here.
+# Only OTX and local context are built; other providers can be added as
+# killchain/enrich/providers/<name>.py with a section below.
+
+workers: 4                # lookups in parallel
+timeout_s: 5              # per request
+retries: 2                # on 429 / 5xx / timeout, with backoff
+backoff_s: [1, 3]
+
+# Verdict from the highest provider score (reputation 0-1).
+verdict:
+  known_malicious: 0.8
+  suspicious: 0.4         # any provider flagging the indicator also makes it at least suspicious
+
+providers:
+  otx:
+    enabled: true
+    key_env: OTX_API_KEY
+    base_url: https://otx.alienvault.com/api/v1
+    ttl_hours: 6          # cache lifetime of an answer
+    min_interval_s: 0.25  # at most 4 requests a second
+    daily_cap: 2000       # well under OTX's free limit; protects the key
+    pulses_for_full_score: 5   # score = min(pulses / 5, 1)
+  local:
+    enabled: true         # in-log context, no network
+
+# On-demand lookups from the UI (POST /ti/lookup).
+on_demand:
+  per_minute: 20
+
+# Local context.
+domains:
+  internal_suffixes: [.local, .corp, .lan, .internal, .intranet, .localdomain, .home.arpa]
+  dynamic_dns_suffixes:
+    - duckdns.org
+    - no-ip.org
+    - no-ip.com
+    - no-ip.biz
+    - noip.me
+    - ddns.net
+    - dynu.com
+    - dynu.net
+    - hopto.org
+    - zapto.org
+    - sytes.net
+    - serveftp.com
+    - servebeer.com
+    - myftp.biz
+    - redirectme.net
+    - freedns.afraid.org
+    - mooo.com
+    - dyndns.org
+    - dynv6.net
+    - ngrok.io
+    - ngrok-free.app
+    - trycloudflare.com
+  unusual_tlds: [top, xyz, tk, ml, ga, cf, gq, click, icu, buzz, work, zip, mov, cyou, rest, monster, cam, sbs, cfd, quest, bond, lol]
+  # The leftmost label looks generated when it is at least this long and this
+  # varied (Shannon entropy in bits per character).
+  random_label_min_length: 9
+  random_label_min_entropy: 3.2

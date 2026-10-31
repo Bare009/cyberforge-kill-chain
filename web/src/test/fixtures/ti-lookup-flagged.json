@@ -1,0 +1,131 @@
+{
+ "kind": "ip",
+ "zone": "internet",
+ "verdict": "known-malicious",
+ "reputation": 1.0,
+ "providers": [
+  {
+   "provider": "local",
+   "available": true,
+   "malicious": false,
+   "score": null,
+   "tags": [
+    "external"
+   ],
+   "detail": {
+    "zone": "internet",
+    "role": null,
+    "importance": null,
+    "sendable": true,
+    "not_sent_because": null,
+    "incidents": [],
+    "steps": {},
+    "alerts": 0,
+    "rules": [],
+    "first_seen": null,
+    "last_seen": null
+   },
+   "fetched_at": "2026-10-31T16:45:52Z"
+  },
+  {
+   "provider": "otx",
+   "available": true,
+   "malicious": true,
+   "score": 1.0,
+   "tags": [
+    "7 pulses",
+    "c2",
+    "cobalt strike"
+   ],
+   "detail": {
+    "pulse_count": 7,
+    "pulses": [
+     {
+      "id": "6a0c0ffee",
+      "name": "Cobalt Strike C2 servers Oct 2026",
+      "created": "2026-10-20T08:00:00",
+      "modified": null,
+      "tags": [
+       "cobalt strike",
+       "c2"
+      ],
+      "url": "https://otx.alienvault.com/pulse/6a0c0ffee"
+     },
+     {
+      "id": "6a1c0ffee",
+      "name": "Beacon infrastructure",
+      "created": "2026-10-20T08:00:00",
+      "modified": null,
+      "tags": [
+       "cobalt strike",
+       "c2"
+      ],
+      "url": "https://otx.alienvault.com/pulse/6a1c0ffee"
+     },
+     {
+      "id": "6a2c0ffee",
+      "name": "C2 feed",
+      "created": "2026-10-20T08:00:00",
+      "modified": null,
+      "tags": [
+       "cobalt strike",
+       "c2"
+      ],
+      "url": "https://otx.alienvault.com/pulse/6a2c0ffee"
+     },
+     {
+      "id": "6a3c0ffee",
+      "name": "Team server list",
+      "created": "2026-10-20T08:00:00",
+      "modified": null,
+      "tags": [
+       "cobalt strike",
+       "c2"
+      ],
+      "url": "https://otx.alienvault.com/pulse/6a3c0ffee"
+     },
+     {
+      "id": "6a4c0ffee",
+      "name": "Red-team leftovers",
+      "created": "2026-10-20T08:00:00",
+      "modified": null,
+      "tags": [
+       "cobalt strike",
+       "c2"
+      ],
+      "url": "https://otx.alienvault.com/pulse/6a4c0ffee"
+     }
+    ],
+    "tags": [
+     "c2",
+     "cobalt strike"
+    ],
+    "malware_families": [
+     "Cobalt Strike"
+    ],
+    "adversaries": [],
+    "allow_listed": false,
+    "validation": [],
+    "country": "Russian Federation",
+    "country_code": null,
+    "asn": "AS12345 example hosting",
+    "otx_url": "https://otx.alienvault.com/indicator/ip/94.154.187.64"
+   },
+   "fetched_at": "2026-10-31T16:45:52Z"
+  }
+ ],
+ "tags": [
+  "external",
+  "7 pulses",
+  "c2",
+  "cobalt strike"
+ ],
+ "flags": [
+  "OTX: 7 pulses (Cobalt Strike)"
+ ],
+ "sendable": true,
+ "incidents": [],
+ "value": "94.154.187.64",
+ "in_run": false,
+ "not_sent_because": null
+}

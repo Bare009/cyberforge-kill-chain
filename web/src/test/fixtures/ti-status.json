@@ -1,0 +1,29 @@
+{
+ "source": "enrichment.json",
+ "generated_at": "2026-10-31T16:41:19Z",
+ "offline": false,
+ "providers": {
+  "local": "ok",
+  "otx": "ok"
+ },
+ "indicators": 4,
+ "verdicts": {
+  "unknown": 3,
+  "no-reports": 1
+ },
+ "last_run": {
+  "lookups": 1,
+  "cache_hits": 0,
+  "failures": 0,
+  "skipped_private": 3,
+  "wall_secs": 3.54
+ },
+ "cache": {
+  "otx": {
+   "answers": 1,
+   "fresh": 1
+  }
+ },
+ "on_demand_per_minute": 20,
+ "note": "The data set's addresses and domains are synthetic: most come back with no reports, and a hit may be unrelated history of a reused real address. External reputation never changes which incidents or steps exist."
+}
