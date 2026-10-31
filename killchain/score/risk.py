@@ -7,7 +7,7 @@ stage, breadth or success.
 
   severity      incident severity / 5 (highest alert severity)
   stage         highest step stage_no / 14
-  breadth       distinct step tactics / 6, capped at 1
+  breadth       1 at 3 or more distinct step tactics, else tactics / 6
   success       1 when any step got through
   asset         highest importance among path-graph nodes of kind internal_host, server or firewall that are
                 not reach nodes (no `reach` key); 0 when none
@@ -33,7 +33,8 @@ from ..graph.path import node_for
 PART_NAMES = {"severity": "Severity", "stage": "Stage reached", "breadth": "Breadth", "success": "Success",
               "asset": "Asset importance", "reach": "Reach next", "threat_intel": "Threat intel"}
 IMPORTANT = 0.75
-BREADTH_FULL = 6
+BREADTH_PER_TACTIC = 6
+BREADTH_FULL = 3
 REACH_FULL = 3
 ASSET_KINDS = ("internal_host", "server", "firewall")
 OFFLINE_NOTE = " (offline: cache and local context only)"
@@ -100,10 +101,13 @@ def risk_parts(inc: Dict[str, Any], net: Dict[str, Any], enrichment: Optional[Di
     else:
         parts["stage"] = _part("stage", 0, "no numbered step")
 
-    tactics = {s["tactic"] for s in steps}
-    parts["breadth"] = _part("breadth", min(len(tactics) / BREADTH_FULL, 1.0),
-                             f"{len(tactics)} distinct tactic{'s' if len(tactics) != 1 else ''} "
-                             f"(full marks at {BREADTH_FULL})")
+    n_tac = len({s["tactic"] for s in steps})
+    if n_tac >= BREADTH_FULL:
+        parts["breadth"] = _part("breadth", 1.0, f"{n_tac} distinct tactics (full marks at {BREADTH_FULL} or more)")
+    else:
+        parts["breadth"] = _part("breadth", n_tac / BREADTH_PER_TACTIC,
+                                 f"{n_tac} distinct tactic{'s' if n_tac != 1 else ''} "
+                                 f"(one sixth each; full marks at {BREADTH_FULL} or more)")
 
     ok = [s for s in steps if s.get("success")]
     parts["success"] = _part("success", 1.0 if ok else 0.0,

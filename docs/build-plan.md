@@ -545,7 +545,7 @@ follow.
 | `controls` | account → `10.10.99.1` from `Admin login successful` | 1.0 (the firewall controls every zone) |
 | `admin_port` | allowed internal → internal session on 22, 135, 445, 3389, 5985, 5986 | 0.8 |
 | `allowed_flow` | any allowed internal → internal session, other ports | 0.4 |
-| `zone_neighbour` | inferred: hosts in the same server or DMZ subnet as a compromised host, from `config/network.yaml` | 0.2, labelled **inferred** |
+| `zone_neighbour` | inferred: hosts in the same server, DMZ or desktop /24 as a compromised host, from `config/network.yaml` | 0.2, labelled **inferred** |
 | Windows edges (`logs_on`, `admin_on`, `member_of`) | only if a Windows log arrives | 0.9 |
 
 Why widened [measured]: internal-to-internal admin-port traffic is only 2,580
@@ -556,6 +556,9 @@ alone would leave reach next empty for most incidents.
 1. Start from compromised nodes: targets of successful steps (`success =
    true`), the source host for internal attackers, accounts that logged in.
 2. Breadth-first search, 2 hops, skipping nodes already in the incident.
+   Hosts reached at hop 2 through an inferred neighbour are also inferred, so
+   an infected desktop's reach to servers through its neighbours is labelled
+   inferred and counts half in the risk score.
 3. Rank = importance(target) × edge strength × (1.0 for hop 1, 0.5 for hop 2)
    × log(1 + edge count). Importance from `network.yaml`: mgmt 1.0, server and
    DMZ 0.75, IoT 0.5, desktop 0.25.
@@ -649,7 +652,7 @@ uses `--offline` with the cache from an earlier run).
 |---|---|---|
 | Severity | 0.25 | max alert severity / 5 |
 | Stage reached | 0.20 | max `stage_no` / 14 |
-| Breadth | 0.10 | distinct tactics / 6, capped |
+| Breadth | 0.10 | distinct tactics / 6; full marks at 3 or more |
 | Success | 0.15 | 1 if any step got through |
 | Asset importance | 0.15 | highest importance of hosts touched |
 | Reach next | 0.10 | observed important reachable hosts / 3, capped (inferred counts half) |
@@ -657,14 +660,18 @@ uses `--offline` with the cache from an earlier run).
 
 As built (`killchain/score/risk.py`, `docs/contracts.md` "Risk score"):
 - steps are the numbered steps; supporting anomalies do not raise stage, breadth or success;
+- breadth: 1 at 3 or more distinct tactics (a real multi-stage chain), else one sixth per tactic;
 - asset: graph nodes of kind internal host, server or firewall, ignoring reach nodes;
-- reach: "important" = importance ≥ 0.75 (server, DMZ, management);
+- reach: "important" = importance ≥ 0.75 (server, DMZ, management); desktop footholds get inferred
+  same-/24 neighbours (P8);
 - threat intel: matched by entity value in `enrichment.json` (verdict not `unknown`); 0 when the file is
   missing; offline cache answers count;
 - each part stores a `detail` sentence; ties go by first time, then `incident_id`.
 
-Incidents sorted by score and numbered 1..N (ties by first time). After tuning,
-the two chains should rank 1 and 2. **Manual work (M10):** agree the weights.
+Incidents sorted by score and numbered 1..N (ties by first time). Measured
+after tuning (track A item 2, firex-10G): chain A #1 (89.8), chain B #2
+(82.3), next is the large one-way transfer to 7.93.184.183 (81.5).
+**Manual work (M10):** agree the weights.
 
 **Template report (B-2, always built):** SUMMARY (one sentence), CHAIN (Step 1
 ... Step N), REACH NEXT, EVIDENCE (5 lines per step with line numbers),

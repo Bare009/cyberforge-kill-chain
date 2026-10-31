@@ -198,7 +198,7 @@ breadth or success.
 |---|---|---|
 | `severity` | 0.25 | incident `severity` / 5 (highest alert severity) |
 | `stage` | 0.20 | highest step `stage_no` / 14 |
-| `breadth` | 0.10 | distinct step tactics / 6, capped at 1 |
+| `breadth` | 0.10 | 1 when there are 3 or more distinct step tactics, else distinct step tactics / 6 |
 | `success` | 0.15 | 1 when any step got through, else 0 |
 | `asset` | 0.15 | highest `importance` among graph nodes of kind `internal_host`, `server` or `firewall` without a `reach` key; 0 when none |
 | `reach` | 0.10 | important reachable hosts (importance ≥ 0.75: server, DMZ, management) / 3, capped at 1; observed count 1, inferred 0.5 |

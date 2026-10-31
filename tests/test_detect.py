@@ -53,6 +53,14 @@ def build_lines():
         L.append(line(T0 + timedelta(hours=h, minutes=len(L) % 7),
                       'srcip=4.4.4.4 dstip=10.10.20.20 dstport=443 action="dropped" attack="HTTP.URI.SQL.Injection"',
                       "ips", "utm"))
+    # malware detected but not blocked, 3 times (482-484), and one blocked detection from another host (485)
+    for i in range(3):
+        L.append(line(T0 + timedelta(hours=10, minutes=3 * i),
+                      'srcip=10.10.10.118 dstip=7.154.5.35 action="detected" virus="JS/Nemucod.A!tr.dldr" '
+                      'hostname="kjhsdf.duckdns.org" url="/invoice/a.zip"', "virus", "utm"))
+    L.append(line(T0 + timedelta(hours=10, minutes=20),
+                  'srcip=10.10.10.50 dstip=7.154.5.35 action="blocked" virus="EICAR_TEST_FILE" '
+                  'hostname="kjhsdf.duckdns.org" url="/eicar.com"', "virus", "utm"))
     return L
 
 
@@ -179,6 +187,20 @@ def test_repo_rules_load():
         assert r.path.stem == r.id, f"{r.path.name}: file name should match id {r.id}"
         d = yaml.safe_load(r.path.read_text(encoding="utf-8"))
         assert d.get("tuning"), f"{r.path.name}: add a tuning note"
+
+
+def test_r24_names_the_malware(con):
+    path = ROOT / "rules" / "firewall" / "R24-malware-detected-not-blocked.yaml"
+    r = parse_rule(yaml.safe_load(path.read_text(encoding="utf-8")), path)
+    assert engine.check_rule(con, r) is None
+    alerts, _, _ = engine.run_rule(con, r)
+    assert alerts.height == 1
+    text = alerts["action_text"][0]
+    assert text == ("antivirus detected JS/Nemucod.A!tr.dldr on 10.10.10.118 from kjhsdf.duckdns.org 3 times "
+                    "but did not block it")
+    assert "{" not in text
+    for a in engine.alerts_json(alerts):
+        assert validate_alert(a) == [], validate_alert(a)
 
 
 def test_duplicate_ids(tmp_path):

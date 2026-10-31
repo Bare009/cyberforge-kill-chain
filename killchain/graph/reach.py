@@ -4,9 +4,10 @@
    discovery or impact: a scanned or flooded host is not taken), internal sources of steps and their
    supporting anomalies (internal attacker or infected host), and accounts
    with a successful admin login among the incident's evidence lines.
-2. Breadth-first search over the access graph (access.py) plus inferred zone_neighbour edges from server
-   and DMZ footholds to the other server and DMZ hosts in their /24, up to max_hops. Nodes already in the
-   incident are traversed but not reported, except a firewall management address reached over a
+2. Breadth-first search over the access graph (access.py) plus inferred zone_neighbour edges from server,
+   DMZ and desktop footholds to the other hosts of those zones in their /24 (config/reach.yaml
+   neighbour_zones), up to max_hops. A host reached through an inferred neighbour is inferred too. Nodes
+   already in the incident are traversed but not reported, except a firewall management address reached over a
    `controls` edge: the step shows the login, and reach next states what that login gives.
 3. Rank = importance(target) x strength(best edge in) x hop factor x ln(1 + max(count, 1)). The max keeps
    inferred edges (count 0) from ranking 0.
@@ -32,6 +33,7 @@ from .path import node_for
 
 FIREWALL_MGMT = "firewall-management"
 EMPTY = "No internal reach observed in the logs: {reason}."
+ZONE_WORDS = {"dmz": "DMZ"}
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
@@ -222,21 +224,26 @@ def reach_next(incident: Dict[str, Any], chain_graph: Dict[str, Any], edges: Any
 
     labels = [_node(f, net)["label"] for f in fh]
     obs_inside = any(h > 0 and observed.get(v) and v not in found for v, h in hop.items())
-    sentence = _sentence(rows, labels, fh, hop, net, obs_inside)
+    zones_text = _names([ZONE_WORDS.get(z, z) for z in settings["neighbour_zones"]], cap=len(zones))
+    fh_in_zones = any(_is_ip(f, net) and classify_ip(f, net)[1] in zones for f in fh)
+    sentence = _sentence(rows, labels, fh, hop, net, obs_inside, zones_text=zones_text, fh_in_zones=fh_in_zones)
     nxt = {"reachable": reachable, "sentence": sentence, "likely_tactics": tactics}
     return nxt, merge_graph(chain_graph, kept, net, settings), fh
 
 
 def _sentence(rows: List[Dict[str, Any]], labels: List[str], fh: List[str], hop: Dict[str, int],
-              net: Dict[str, Any], obs_inside: bool = False) -> str:
-    """obs_inside: connections were seen from the footholds, but only to hosts already in the incident."""
+              net: Dict[str, Any], obs_inside: bool = False, zones_text: str = "server and DMZ",
+              fh_in_zones: bool = False) -> str:
+    """obs_inside: connections were seen from the footholds, but only to hosts already in the incident.
+    zones_text: the neighbour zones in words; fh_in_zones: some IP foothold is in one of those zones."""
     fl = _names(labels)
     if not rows:
         if not fh:
             reason = "no successful step reached an internal host or signed in to an account"
         elif not any(h > 0 for h in hop.values()):
-            reason = (f"{fl} opened no allowed sessions to other internal hosts, and inferred neighbours are only "
-                      f"drawn for server and DMZ subnets")
+            reason = (f"{fl} opened no allowed sessions to other internal hosts, and "
+                      + ("no other host in its subnet appears in the logs" if fh_in_zones
+                         else f"inferred neighbours are only drawn for {zones_text} subnets"))
         else:
             reason = f"every host reachable from {fl} is already part of this incident"
         return EMPTY.format(reason=reason)
@@ -259,14 +266,29 @@ def _sentence(rows: List[Dict[str, Any]], labels: List[str], fh: List[str], hop:
         if inf:
             parts.append(f"{len(inf)} more {'are' if len(inf) != 1 else 'is'} inferred from the subnet.")
     elif inf:
-        m, top = len(inf), inf[0]
-        zs = [r["zone"] for r in inf]
-        zone = max(_unique(zs), key=zs.count)          # most common zone; ties go to the best-ranked host
         head = (f"Every connection seen from {fl} goes to hosts already in this incident" if obs_inside
                 else f"No internal connections from {fl} were observed")
-        parts.append(f"{head}; {m} host{'s' if m != 1 else ''} in the "
-                     f"same {zone} subnet (e.g. {top['label']}) "
-                     f"{'are the likely next targets' if m != 1 else 'is the likely next target'} (inferred).")
+        nb = [r for r in inf if r["best"]["kind"] == "zone_neighbour"]     # hop-1 subnet neighbours
+        far = [r for r in inf if r not in nb]                              # reached through a neighbour
+        if not far:
+            m, top = len(inf), inf[0]
+            zs = [r["zone"] for r in inf]
+            zone = max(_unique(zs), key=zs.count)          # most common zone; ties go to the best-ranked host
+            parts.append(f"{head}; {m} host{'s' if m != 1 else ''} in the "
+                         f"same {zone} subnet (e.g. {top['label']}) "
+                         f"{'are the likely next targets' if m != 1 else 'is the likely next target'} (inferred).")
+        elif nb:
+            zs = [r["zone"] for r in nb]
+            zone = max(_unique(zs), key=zs.count)
+            f0 = far[0]
+            parts.append(f"{head}; {len(nb)} host{'s' if len(nb) != 1 else ''} in the same {zone} subnet and "
+                         f"{len(far)} host{'s' if len(far) != 1 else ''} they connect to "
+                         f"(e.g. {f0['label']}, {f0['zone']}) are the likely next targets (inferred).")
+        else:
+            f0, m = far[0], len(far)
+            parts.append(f"{head}; {m} host{'s' if m != 1 else ''} reached through the same subnet "
+                         f"(e.g. {f0['label']}, {f0['zone']}) "
+                         f"{'are the likely next targets' if m != 1 else 'is the likely next target'} (inferred).")
     return " ".join(parts)
 
 

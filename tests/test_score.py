@@ -72,7 +72,7 @@ def test_parts_values_and_details():
     assert list(p) == list(files.RISK_WEIGHTS)
     assert (p["severity"]["value"], p["severity"]["detail"]) == (0.8, "highest alert severity 4 of 5")
     assert (p["stage"]["value"], p["stage"]["detail"]) == (0.9286, "furthest stage Exfiltration (13 of 14)")
-    assert (p["breadth"]["value"], p["breadth"]["detail"]) == (0.5, "3 distinct tactics (full marks at 6)")
+    assert (p["breadth"]["value"], p["breadth"]["detail"]) == (1.0, "3 distinct tactics (full marks at 3 or more)")
     assert (p["success"]["value"], p["success"]["detail"]) == (1.0, "step 1 got through")
     assert (p["asset"]["value"], p["asset"]["detail"]) == (0.75, f"portal ({PORTAL}) (dmz, importance 0.75)")
     assert (p["reach"]["value"], p["reach"]["detail"]) == (0.0, "no important host reachable next")
@@ -80,7 +80,7 @@ def test_parts_values_and_details():
     for k, x in p.items():
         assert x["weight"] == files.RISK_WEIGHTS[k]
         assert x["points"] == round(x["value"] * x["weight"] * 100, 2)
-    assert inc["risk_score"] == round(sum(x["points"] for x in p.values()), 1) == 69.8
+    assert inc["risk_score"] == round(sum(x["points"] for x in p.values()), 1) == 74.8
     assert inc["risk_band"] == "high"
     assert C.validate_incident(inc) == []
 
@@ -89,7 +89,7 @@ def test_blocked_and_single_step():
     inc = scored(make_inc(weak()))
     p = inc["risk_parts"]
     assert p["success"]["detail"] == "every step was blocked" and p["success"]["value"] == 0
-    assert p["breadth"]["detail"] == "1 distinct tactic (full marks at 6)"
+    assert p["breadth"]["detail"] == "1 distinct tactic (one sixth each; full marks at 3 or more)"
     assert p["asset"]["value"] == 0.25 and p["asset"]["detail"].startswith("10.10.10.50 (desktop")
 
 
@@ -104,7 +104,16 @@ def test_breadth_capped():
                "lateral-movement", "command-and-control"]
     xs = [al(f"t{i}", f"R{i:02d}-x", i * 10, tactic=t, src_ip=ATTACKER, dst_ip=PORTAL) for i, t in enumerate(tactics)]
     p = scored(make_inc(xs))["risk_parts"]["breadth"]
-    assert p["value"] == 1.0 and p["detail"] == "8 distinct tactics (full marks at 6)"
+    assert p["value"] == 1.0 and p["detail"] == "8 distinct tactics (full marks at 3 or more)"
+
+
+@pytest.mark.parametrize("n,value,points", [(1, 0.1667, 1.67), (2, 0.3333, 3.33), (3, 1.0, 10.0), (4, 1.0, 10.0)])
+def test_breadth_full_at_three(n, value, points):
+    tactics = ["reconnaissance", "initial-access", "execution", "exfiltration"][:n]
+    xs = [al(f"b{i}", f"R{i:02d}-x", i * 10, tactic=t, src_ip=ATTACKER, dst_ip=PORTAL) for i, t in enumerate(tactics)]
+    p = scored(make_inc(xs))["risk_parts"]["breadth"]
+    assert (p["value"], p["points"]) == (value, points)
+    assert p["detail"].endswith("full marks at 3 or more)")
 
 
 def test_reach_part():

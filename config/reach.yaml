@@ -7,7 +7,7 @@ max_hops: 2
 max_reachable: 10
 max_via: 3
 lines_per_edge: 5
-neighbour_zones: [server, dmz]
+neighbour_zones: [server, dmz, desktop]     # inferred neighbours: other hosts of these zones in the foothold's /24
 foothold_skip_tactics: [reconnaissance, discovery, impact]
 login_success_desc: ['Admin login successful']
 denied_actions: [deny, dropped, blocked]

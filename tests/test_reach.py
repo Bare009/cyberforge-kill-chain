@@ -246,12 +246,50 @@ def test_footholds_include_supporting():
     assert nxt["likely_tactics"] == rc.likely_tactics([9, 3])
 
 
-def test_desktop_foothold_gets_no_neighbours():
+def test_desktop_foothold_gets_inferred_neighbours():
     inc = incident([step(1, "10.10.10.118", "7.154.5.35", tactic="exfiltration")])
-    nxt, _, fh = run(inc, edges_df([]), hosts_df(["10.10.10.118", "10.10.10.119", "10.10.10.120"]))
-    assert fh == ["10.10.10.118"] and nxt["reachable"] == []
+    nxt, g, fh = run(inc, edges_df([]), hosts_df(["10.10.10.118", "10.10.10.119", "10.10.10.120"]),
+                     graph={"nodes": [], "edges": []})
+    assert fh == ["10.10.10.118"]
+    assert hostsof(nxt) == ["10.10.10.119", "10.10.10.120"]
+    for r in nxt["reachable"]:
+        assert (r["hop"], r["kind"], r["zone"]) == (1, "inferred", "desktop")
+        assert r["via"] == [{"from": "10.10.10.118", "edge": "zone_neighbour", "count": 0, "lines": []}]
+    assert nxt["sentence"] == ("No internal connections from 10.10.10.118 were observed; 2 hosts in the same desktop "
+                               "subnet (e.g. 10.10.10.119) are the likely next targets (inferred).")
+    assert {n["id"]: n.get("reach") for n in g["nodes"] if "reach" in n} == \
+        {"10.10.10.119": "inferred", "10.10.10.120": "inferred"}
+    assert [(x["kind"], x["label"]) for x in g["edges"]] == [("reach_inferred", "same desktop subnet (inferred)")] * 2
+
+
+def test_desktop_neighbour_leads_to_servers_inferred():
+    inc = incident([step(1, "10.10.10.118", "7.154.5.35", tactic="exfiltration")])
+    nxt, _, _ = run(inc, edges_df([("10.10.10.44", "10.10.20.10", "admin_port", 5)]),
+                    hosts_df(["10.10.10.118", "10.10.10.44", "10.10.20.10"]))
+    r0, r1 = nxt["reachable"]
+    assert (r0["host"], r0["hop"], r0["kind"]) == ("10.10.20.10", 2, "inferred")
+    assert (r0["via"][0]["from"], r0["via"][0]["edge"]) == ("10.10.10.44", "admin_port")
+    assert (r1["host"], r1["hop"], r1["kind"]) == ("10.10.10.44", 1, "inferred")
+    assert nxt["sentence"] == ("No internal connections from 10.10.10.118 were observed; 1 host in the same desktop "
+                               "subnet and 1 host they connect to (e.g. 10.10.20.10, server) are the likely next "
+                               "targets (inferred).")
+
+
+def test_lan_foothold_keeps_reason():
+    inc = incident([step(1, "32.127.48.11", "10.10.30.5")])
+    nxt, _, fh = run(inc, edges_df([]), hosts_df(["10.10.30.5", "10.10.30.6"]))
+    assert fh == ["10.10.30.5"] and nxt["reachable"] == []
+    assert nxt["sentence"] == ("No internal reach observed in the logs: 10.10.30.5 opened no allowed sessions to "
+                               "other internal hosts, and inferred neighbours are only drawn for server, DMZ and "
+                               "desktop subnets.")
+
+
+def test_lonely_desktop_reason():
+    inc = incident([step(1, "10.10.10.118", "7.154.5.35", tactic="exfiltration")])
+    nxt, _, _ = run(inc, edges_df([]), hosts_df(["10.10.10.118"]))
+    assert nxt["reachable"] == []
     assert nxt["sentence"] == ("No internal reach observed in the logs: 10.10.10.118 opened no allowed sessions to "
-                               "other internal hosts, and inferred neighbours are only drawn for server and DMZ subnets.")
+                               "other internal hosts, and no other host in its subnet appears in the logs.")
 
 
 def test_controls_exception():
@@ -446,4 +484,8 @@ def test_real_run_reach():
     inferred = [r for r in a["next"]["reachable"] if r["kind"] == "inferred"]
     assert inferred and all(r["host"].startswith("10.10.20.") and r["zone"] == "server" for r in inferred)
     b = next(i for i in bundle if any(s["src"] == "10.10.10.118" and s["rule_id"].startswith("R24") for s in i["chain"]))
-    assert b["next"]["reachable"] == [] and "opened no allowed sessions" in b["next"]["sentence"]
+    rb = b["next"]["reachable"]
+    assert rb and all(r["kind"] == "inferred" for r in rb)
+    assert all(r["zone"] == "desktop" and r["host"].startswith("10.10.10.") for r in rb if r["hop"] == 1)
+    assert all(r["via"][0]["from"].startswith("10.10.10.") for r in rb if r["hop"] == 2)
+    assert "(inferred)" in b["next"]["sentence"]
