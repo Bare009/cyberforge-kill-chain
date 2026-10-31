@@ -37,6 +37,9 @@ data/runs/<run>/                      (examples/sample-run/ has the same layout)
   alert_evidence.parquet              every evidence line of every alert
   evidence_sample.json                (sample only) the evidence rows as JSON
   run_summary.json                    stage timings, memory, counts, data quality
+  events.duckdb                       (track A internal) prepared event tables
+  truth.parquet, metrics.json         (track A) silver truth and evaluation result;
+                                      the API serves metrics.json at GET /metrics
 ```
 
 ## Contract B: alert

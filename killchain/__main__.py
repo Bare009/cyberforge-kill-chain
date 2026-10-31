@@ -16,7 +16,7 @@ from typing import Callable, Dict, List, Optional
 PLANNED = {
     "detect": "P3", "correlate": "P6", "chain": "P7", "reach": "P8", "enrich": "P9",
     "score": "P10", "report": "P10", "agents": "P10b", "bundle": "P11", "serve": "P11",
-    "eval": "P2", "run": "P13", "live": "P15",
+    "run": "P13", "live": "P15",
 }
 
 
@@ -30,14 +30,25 @@ def cmd_parse(rest: List[str]) -> int:
 def cmd_db(rest: List[str]) -> int:
     ap = argparse.ArgumentParser(prog="python -m killchain db",
                                  description="Open the DuckDB views over a parsed run and print a summary or run SQL.")
-    ap.add_argument("--parsed", required=True, help="parsed run folder, e.g. data/parsed/firex-10G")
+    ap.add_argument("--parsed", help="parsed run folder, e.g. data/parsed/firex-10G")
+    ap.add_argument("--run", help="run folder; uses its prepared events.duckdb when present")
+    ap.add_argument("--prepare", action="store_true",
+                    help="store the derived columns as tables in <run>/events.duckdb (one-off, about 80 s on the 6.5 GB file)")
     ap.add_argument("--sql", help="run this SQL against the views and print the result")
     ap.add_argument("--limit", type=int, default=50)
     args = ap.parse_args(rest)
     from . import db
 
     t0 = time.perf_counter()
-    con = db.open_run(args.parsed)
+    if args.prepare:
+        if not args.parsed:
+            ap.error("--prepare needs --parsed")
+        run = args.run or str(Path("data") / "runs" / Path(args.parsed).name)
+        print(json.dumps(db.prepare_run(args.parsed, run), indent=1))
+        return 0
+    if not args.parsed and not args.run:
+        ap.error("give --parsed or --run")
+    con = db.connect(args.parsed, args.run)
     if args.sql:
         rel = con.sql(args.sql)
         rel.limit(args.limit).show(max_width=200, max_rows=args.limit)
@@ -47,7 +58,13 @@ def cmd_db(rest: List[str]) -> int:
     return 0
 
 
-COMMANDS: Dict[str, Callable[[List[str]], int]] = {"parse": cmd_parse, "db": cmd_db}
+def cmd_eval(rest: List[str]) -> int:
+    from .eval.cli import main as eval_main
+
+    return eval_main(rest)
+
+
+COMMANDS: Dict[str, Callable[[List[str]], int]] = {"parse": cmd_parse, "db": cmd_db, "eval": cmd_eval}
 
 
 def main(argv: Optional[List[str]] = None) -> int:

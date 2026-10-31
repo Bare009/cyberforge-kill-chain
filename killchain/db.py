@@ -52,10 +52,15 @@ def load_network(path: Union[str, Path] = NETWORK_YAML) -> Dict[str, Any]:
 
 
 def _ip_int(col: str) -> str:
-    """SQL for the 32-bit integer of a dotted IPv4 string; NULL for anything else."""
-    parts = [f"TRY_CAST(split_part({col}, '.', {i}) AS BIGINT)" for i in range(1, 5)]
-    check = f"regexp_full_match({col}, '\\d{{1,3}}\\.\\d{{1,3}}\\.\\d{{1,3}}\\.\\d{{1,3}}')"
-    return f"(CASE WHEN {check} THEN {parts[0]}*16777216 + {parts[1]}*65536 + {parts[2]}*256 + {parts[3]} END)"
+    """SQL for the 32-bit integer of a dotted IPv4 string; NULL for anything else.
+
+    Splits once and casts the four parts; a part that is not 0-255 or a string
+    without exactly four parts gives NULL.
+    """
+    p = f"string_split({col}, '.')"
+    parts = [f"TRY_CAST({p}[{i}] AS UTINYINT)" for i in range(1, 5)]
+    return (f"(CASE WHEN len({p}) = 4 THEN CAST({parts[0]} AS BIGINT)*16777216 + CAST({parts[1]} AS BIGINT)*65536 "
+            f"+ CAST({parts[2]} AS BIGINT)*256 + CAST({parts[3]} AS BIGINT) END)")
 
 
 def _zone_case(ip_int: str, field: str, net: Dict[str, Any], default: str) -> str:
@@ -83,15 +88,18 @@ def _time_cols() -> str:
 
 
 def _ip_cols(net: Dict[str, Any]) -> str:
+    """Derived address columns; they read src_ip_int / dst_ip_int from the inner query."""
     out: List[str] = []
     for side in ("src", "dst"):
-        ipi = _ip_int(f"{side}_ip")
+        ipi = f"{side}_ip_int"
         out += [
             f"{_private_case(ipi, net)} AS {side}_internal",
             f"{_zone_case(ipi, 'zone', net, _lit('internet'))} AS {side}_zone",
             f"{_zone_case(ipi, 'role', net, _lit('internet'))} AS {side}_role",
             f"{_zone_case(ipi, 'importance', net, '0.25')} AS {side}_importance",
-            f"(CASE WHEN {ipi} IS NOT NULL THEN regexp_replace({side}_ip, '\\.\\d+$', '.0') || '/24' END) AS {side}_net24",
+            f"(CASE WHEN {ipi} IS NOT NULL THEN CAST({ipi} // 16777216 AS VARCHAR) || '.' || "
+            f"CAST(({ipi} // 65536) % 256 AS VARCHAR) || '.' || CAST(({ipi} // 256) % 256 AS VARCHAR) || '.0/24' END) "
+            f"AS {side}_net24",
         ]
     return ", ".join(out)
 
@@ -127,7 +135,9 @@ def create_views(con: duckdb.DuckDBPyConnection, parsed_dir: Union[str, Path],
         if src is None:
             continue
         # Both tables have src_ip and dst_ip, so both get the same derived columns.
-        con.execute(f"CREATE OR REPLACE VIEW {view} AS SELECT *, {_time_cols()}, {_ip_cols(net)} FROM {src}")
+        # The inner query parses each address once; the zone rules compare integers.
+        inner = f"SELECT *, {_ip_int('src_ip')} AS src_ip_int, {_ip_int('dst_ip')} AS dst_ip_int FROM {src}"
+        con.execute(f"CREATE OR REPLACE VIEW {view} AS SELECT *, {_time_cols()}, {_ip_cols(net)} FROM ({inner})")
     if have.get("firewall"):
         con.execute("CREATE OR REPLACE VIEW events AS SELECT * FROM firewall_events")
     elif have.get("windows"):
@@ -140,11 +150,69 @@ def create_views(con: duckdb.DuckDBPyConnection, parsed_dir: Union[str, Path],
 def open_run(parsed_dir: Union[str, Path], database: Union[str, Path] = ":memory:",
              memory_limit: Optional[str] = None, threads: Optional[int] = None,
              network: Optional[Dict[str, Any]] = None) -> duckdb.DuckDBPyConnection:
-    """A configured DuckDB connection with the event views over one parsed run."""
+    """A configured DuckDB connection with the event views over one parsed run.
+
+    Views compute the derived columns on every query: fine for small runs and
+    one-off queries. For repeated queries over a large run use prepare_run()
+    once and then connect(), which reads the stored table.
+    """
     con = duckdb.connect(str(database))
     configure(con, memory_limit, threads)
     create_views(con, parsed_dir, network)
     return con
+
+
+PREPARED_NAME = "events.duckdb"
+
+
+def prepare_run(parsed_dir: Union[str, Path], run_dir: Union[str, Path],
+                network: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Store the views as tables in run_dir/events.duckdb (derived columns computed once).
+
+    On firex-10G.log this takes about 80 s and 1.5 GB of disk; afterwards a
+    filter on a zone column takes milliseconds instead of 10-35 s through the view.
+    """
+    import time
+
+    run = Path(run_dir)
+    run.mkdir(parents=True, exist_ok=True)
+    final = run / PREPARED_NAME
+    tmp = run / (PREPARED_NAME + ".tmp")
+    for p in (tmp, Path(str(tmp) + ".wal")):
+        if p.exists():
+            p.unlink()
+    t0 = time.perf_counter()
+    con = duckdb.connect(str(tmp))
+    configure(con)
+    have = create_views(con, parsed_dir, network)
+    for stream, view in (("firewall", "firewall_events"), ("windows", "windows_events")):
+        if have.get(stream):
+            con.execute(f"CREATE TABLE {view}_t AS SELECT * FROM {view} ORDER BY line")
+            con.execute(f"DROP VIEW {view}")
+            con.execute(f"ALTER TABLE {view}_t RENAME TO {view}")
+    con.execute("DROP VIEW IF EXISTS events")
+    con.execute("CREATE VIEW events AS SELECT * FROM " + ("firewall_events" if have.get("firewall") else "windows_events"))
+    meta = {"parsed": str(Path(parsed_dir).resolve()), "streams": have}
+    con.execute("CREATE TABLE _meta AS SELECT ? AS parsed", [meta["parsed"]])
+    con.execute("CHECKPOINT")
+    con.close()
+    if final.exists():
+        final.unlink()
+    tmp.rename(final)
+    return {**meta, "path": str(final), "secs": round(time.perf_counter() - t0, 1),
+            "mb": round(final.stat().st_size / 2**20)}
+
+
+def connect(parsed_dir: Optional[Union[str, Path]] = None, run_dir: Optional[Union[str, Path]] = None,
+            read_only: bool = True) -> duckdb.DuckDBPyConnection:
+    """Prefer the prepared run_dir/events.duckdb; fall back to views over parsed_dir."""
+    if run_dir is not None and (Path(run_dir) / PREPARED_NAME).exists():
+        con = duckdb.connect(str(Path(run_dir) / PREPARED_NAME), read_only=read_only)
+        configure(con)
+        return con
+    if parsed_dir is None:
+        raise FileNotFoundError(f"no {PREPARED_NAME} in {run_dir} and no parsed folder given")
+    return open_run(parsed_dir)
 
 
 def summary(con: duckdb.DuckDBPyConnection) -> Dict[str, Any]:

@@ -8,6 +8,7 @@ each one.
 |---|---|
 | 1. Streaming log parser (FR-1) | done: `killchain.parser` |
 | 1b. DuckDB event views, `python -m killchain`, explorer | done: `killchain.db`, `tools/explore.py` |
+| 1c. Evaluation: silver truth (25 incidents) and the PRD metrics | done: `killchain.eval` |
 | 2. Detection rules with ATT&CK labels (FR-2, FR-3, B-4) | next |
 | 3. Incidents, attack paths, reach-next (FR-4 to FR-6) | planned |
 | 4. API and UI (FR-7) | planned |
@@ -190,5 +191,39 @@ top of the parser's columns they add:
 | `src_zone`, `dst_zone`, `src_role`, `dst_role`, `src_importance`, `dst_importance` | from `config/network.yaml` |
 | `src_net24`, `dst_net24` | the address's /24 |
 
-On `firex-10G.log`: 9,125,383 rows, 3,848,247 with `ts_valid`; a full-table
-query takes 1-2 s.
+On `firex-10G.log`: 9,125,383 rows, 3,848,247 with `ts_valid`.
+
+The views compute the zone columns on every query, which takes 10-35 s on the
+full file. For repeated work, prepare the run once (58 s, 779 MB on disk):
+
+```powershell
+python -m killchain db --parsed data\parsed\firex-10G --prepare      # writes data\runs\firex-10G\events.duckdb
+python -m killchain db --run data\runs\firex-10G --sql "SELECT src_zone, count(*) FROM events WHERE ts_valid GROUP BY 1"
+```
+
+Later stages use the prepared file automatically when it exists; queries on it
+take milliseconds.
+
+## Evaluate a run
+
+The PRD's seven metrics, measured against the planted attacks:
+
+```powershell
+python -m killchain eval silver --parsed data\parsed\firex-10G     # build the silver truth, check every count
+python -m killchain eval score --run data\runs\firex-10G --parsed data\parsed\firex-10G
+python -m killchain eval score --run data\runs\firex-10G --manifest data\raw\<manifest>.json --raw firewall=data\raw\<log>
+python -m killchain eval score --run data\runs\firex-10G --api http://localhost:8000   # also time GET /incidents/{n}/path
+```
+
+- **Silver truth** (`eval/silver_truth.yaml`): the 25 planted incidents found by
+  hand in `firex-10G.log`, each step a SQL condition with its exact line count.
+  `eval silver` checks every count (32,200 lines, all 32 steps match) and writes
+  `truth.parquet` into the run folder.
+- **Manifest:** an organisers' manifest is used as is; one whose byte offsets do
+  not point at line starts of the given log is refused rather than scored as zero.
+- **Output:** a table with each metric's value and grade against the PRD's Good
+  and Great targets, label accuracy three ways (exact, parent technique, any
+  accepted alternate), the incidents not found, attack paths and whether they
+  were rebuilt in order, false alarms (with `eval/reviewed.yml` for incidents
+  confirmed real or false by hand), and alerts per rule split into truth hits
+  and background. Everything is also in `metrics.json`.

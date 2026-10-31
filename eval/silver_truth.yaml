@@ -1,0 +1,205 @@
+# Silver truth: the planted attacks found by hand in firex-10G.log
+# (docs/build-plan.md section 2.3). Each step is a DuckDB condition over the
+# `events` view (ts_valid rows only) and the exact number of lines it must
+# match. `ids` follow the organisers' manifest numbering; `class` is the
+# manifest's difficulty. The expected counts equal the manifest's event counts
+# for the same incident type.
+#
+# Fields per incident: id, name, class, ordered (steps must be rebuilt in this
+# order), steps[]. Per step: name, technique (primary), alt (other acceptable
+# ids), tactic, where, expect (line count), tolerance (share, default 0).
+
+file: firex-10G.log
+incidents:
+  - id: 1
+    name: brute-force-burst
+    class: easy
+    steps:
+      - {name: failed admin logins, technique: T1110.001, alt: [T1110], tactic: credential-access, expect: 2000,
+         where: "src_ip = '15.199.16.197' AND log_desc = 'Admin login failed'"}
+
+  - id: 2
+    name: port-scan
+    class: easy
+    steps:
+      - {name: ports probed, technique: T1046, alt: [T1595.001, T1595], tactic: discovery, expect: 1024,
+         where: "src_ip = '194.102.163.167' AND dst_ip = '10.10.20.20' AND log_type = 'traffic'"}
+
+  - id: 3
+    name: known-bad-destination
+    class: easy
+    steps:
+      - {name: iot hosts to botnet controller on telnet, technique: T1071.001, alt: [T1071], tactic: command-and-control, expect: 60,
+         where: "dst_ip = '154.35.54.115' AND dst_port = 23"}
+
+  - id: 4
+    name: malware-download
+    class: easy
+    steps:
+      - {name: executable served as pdf, technique: T1105, alt: [], tactic: command-and-control, expect: 12,
+         where: "hostname = 'hoguyusebavox.info' AND log_subtype = 'virus'"}
+
+  - id: 5
+    name: admin-login-odd-hour
+    class: easy
+    steps:
+      - {name: admin login at night from abroad, technique: T1078.001, alt: [T1078], tactic: initial-access, expect: 3,
+         where: "user = 'Deepika.Khan' AND log_desc = 'Admin login successful'"}
+
+  - id: 6
+    name: slow-credential-stuffing
+    class: medium
+    steps:
+      - {name: one try per address across a /24, technique: T1110.004, alt: [T1110], tactic: credential-access, expect: 90,
+         where: "src_net24 = '71.54.76.0/24' AND log_desc = 'Admin login failed'"}
+
+  - id: 7
+    name: successful-login-after-failures
+    class: medium
+    ordered: true
+    steps:
+      - {name: failures from one /24, technique: T1110.001, alt: [T1110], tactic: credential-access, expect: 29,
+         where: "src_net24 = '8.42.69.0/24' AND log_desc = 'Admin login failed'"}
+      - {name: the successful login, technique: T1078, alt: [T1078.001, T1110.001], tactic: initial-access, expect: 1,
+         where: "src_net24 = '8.42.69.0/24' AND log_desc = 'Admin login successful'"}
+
+  - id: 8
+    name: impossible-travel
+    class: medium
+    steps:
+      - {name: vpn tunnel up from two countries, technique: T1078.004, alt: [T1078], tactic: initial-access, expect: 4,
+         where: "user = 'keerat.ghughal' AND action = 'tunnel-up'"}
+
+  - id: 9
+    name: lateral-movement
+    class: medium
+    steps:
+      - {name: smb to many servers, technique: T1021.002, alt: [T1021], tactic: lateral-movement, expect: 90,
+         where: "src_ip = '10.10.10.63' AND dst_internal AND dst_port = 445"}
+      - {name: rdp to many servers, technique: T1021.001, alt: [T1021], tactic: lateral-movement, expect: 90,
+         where: "src_ip = '10.10.10.63' AND dst_internal AND dst_port = 3389"}
+
+  - id: 10
+    name: dns-tunnel
+    class: medium
+    steps:
+      - {name: long labels under one domain, technique: T1071.004, alt: [T1048.003, T1071], tactic: command-and-control, expect: 1500,
+         where: "src_ip = '10.10.10.88' AND log_subtype = 'dns' AND hostname LIKE '%.doqotobitum.com'"}
+
+  - id: 11
+    name: c2-beaconing
+    class: hard
+    steps:
+      - {name: connection every 300 s, technique: T1071.001, alt: [T1573, T1071], tactic: command-and-control, expect: 1612,
+         where: "src_ip = '10.10.10.112' AND dst_ip = '198.79.124.52'"}
+
+  - id: 12
+    name: staged-exfiltration
+    class: hard
+    steps:
+      - {name: 41 MB out in 2000 pieces, technique: T1048.002, alt: [T1030, T1048], tactic: exfiltration, expect: 2000,
+         where: "src_ip = '10.10.20.31' AND dst_ip = '7.93.184.183'"}
+
+  - id: 13
+    name: insider-drift
+    class: hard
+    steps:
+      - {name: smb to a growing set of servers, technique: T1078.002, alt: [T1083, T1078, T1021.002], tactic: initial-access, expect: 2400,
+         where: "src_ip = '10.10.10.44' AND dst_internal AND dst_port = 445"}
+
+  - id: 14
+    name: logging-disabled-around-a-change
+    class: hard
+    steps:
+      - {name: log disk off, policies purged, log disk on, technique: T1562.002, alt: [T1070, T1562], tactic: defense-evasion, expect: 3,
+         where: "user = 'Tejas.Roy' AND log_desc = 'Attribute configured'"}
+
+  - id: 15
+    name: rogue-admin-account
+    class: hard
+    steps:
+      - {name: admin added, used and deleted, technique: T1136.001, alt: [T1098, T1136, T1078], tactic: persistence, expect: 3,
+         where: "(user = 'Rakes' AND log_desc = 'Object attribute configured') OR (user = 'svc_backup30' AND log_desc = 'Admin login successful')"}
+
+  - id: 16
+    name: sql-injection
+    class: easy
+    steps:
+      - {name: sql injection payloads, technique: T1190, alt: [T1595.002], tactic: initial-access, expect: 220,
+         where: "src_ip = '131.228.119.59' AND log_subtype = 'ips'"}
+
+  - id: 17
+    name: cross-site-scripting
+    class: easy
+    steps:
+      - {name: reflected xss payloads, technique: T1189, alt: [T1059.007, T1190], tactic: initial-access, expect: 60,
+         where: "src_ip = '178.50.251.250' AND log_subtype = 'ips'"}
+
+  - id: 18
+    name: path-traversal
+    class: easy
+    steps:
+      - {name: traversal and php filter payloads, technique: T1190, alt: [T1083], tactic: initial-access, expect: 80,
+         where: "src_ip = '72.90.113.105' AND log_subtype = 'ips'"}
+
+  - id: 19
+    name: command-injection
+    class: medium
+    steps:
+      - {name: shell metacharacters in a parameter, technique: T1190, alt: [T1059.004], tactic: initial-access, expect: 55,
+         where: "src_ip = '72.7.116.239' AND log_subtype = 'ips'"}
+
+  - id: 20
+    name: web-shell-in-use
+    class: hard
+    steps:
+      - {name: requests to upload paths nobody else uses, technique: T1505.003, alt: [T1071.001], tactic: persistence, expect: 120,
+         where: "src_ip = '202.36.226.247' AND log_subtype = 'webfilter'"}
+
+  - id: 21
+    name: syn-flood
+    class: easy
+    steps:
+      - {name: half-open connections from one /16, technique: T1498.001, alt: [T1498], tactic: impact, expect: 9000,
+         where: "src_ip LIKE '189.238.%' AND dst_ip = '10.10.20.20' AND action = 'deny'"}
+
+  - id: 22
+    name: http-flood
+    class: medium
+    steps:
+      - {name: one request each from thousands of addresses, technique: T1498.001, alt: [T1499.002, T1498, T1499], tactic: impact,
+         expect: 6000, tolerance: 0.01,
+         where: "dst_ip = '10.10.20.20' AND dst_port = 443 AND log_type = 'traffic' AND action = 'accept' AND ts_ist >= TIMESTAMP '2026-10-24 07:24:00' AND ts_ist < TIMESTAMP '2026-10-24 07:34:00'"}
+
+  - id: 23
+    name: dns-amplification
+    class: medium
+    steps:
+      - {name: unsolicited dns answers to the public address, technique: T1498.002, alt: [T1498], tactic: impact, expect: 4000,
+         where: "src_port = 53 AND proto = 17 AND dst_ip = '203.0.113.5'"}
+
+  - id: 28
+    name: chain-web-to-domain-admin
+    class: insane
+    ordered: true
+    steps:
+      - {name: port sweep of the portal, technique: T1595.002, alt: [T1046, T1595], tactic: reconnaissance, expect: 240,
+         where: "src_ip = '32.127.48.11' AND dst_ip = '10.10.20.20' AND log_type = 'traffic' AND action = 'deny'"}
+      - {name: sql injection, technique: T1190, alt: [], tactic: initial-access, expect: 60,
+         where: "src_ip = '32.127.48.11' AND log_subtype = 'ips'"}
+      - {name: web shell, technique: T1505.003, alt: [], tactic: persistence, expect: 40,
+         where: "src_ip = '32.127.48.11' AND log_subtype = 'webfilter'"}
+      - {name: large transfer, technique: T1048.002, alt: [T1048, T1041], tactic: exfiltration, expect: 600,
+         where: "src_ip = '32.127.48.11' AND dst_ip = '10.10.20.20' AND log_type = 'traffic' AND action = 'accept'"}
+
+  - id: 29
+    name: chain-ransomware-precursor
+    class: insane
+    ordered: true
+    steps:
+      - {name: malicious attachment detected not blocked, technique: T1204.002, alt: [T1566.001, T1204, T1566], tactic: execution, expect: 3,
+         where: "src_ip = '10.10.10.118' AND log_subtype = 'virus' AND action = 'detected'"}
+      - {name: beaconing to the downloader host, technique: T1071.001, alt: [T1071], tactic: command-and-control, expect: 400,
+         where: "src_ip = '10.10.10.118' AND dst_ip = '7.154.5.35' AND log_type = 'traffic' AND sent_bytes < 2000"}
+      - {name: exfiltration to the same host, technique: T1048.002, alt: [T1048, T1041], tactic: exfiltration, expect: 400,
+         where: "src_ip = '10.10.10.118' AND dst_ip = '7.154.5.35' AND log_type = 'traffic' AND sent_bytes >= 2000"}

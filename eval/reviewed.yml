@@ -1,0 +1,7 @@
+# Incidents reviewed by hand that do not overlap the truth.
+# `eval score` lists unreviewed ones. Key: the incident's stable incident_id.
+#   real: true    a real attack the truth file misses (not a false alarm)
+#   real: false   confirmed false alarm
+# Example:
+#   3f2a9c1b0d4e5f60: {real: false, note: "steady scanner /24, background"}
+{}
