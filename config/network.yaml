@@ -1,0 +1,34 @@
+# Network zones and roles, measured from firex-10G.log (docs/build-plan.md 2.1).
+# Used for zones in the DuckDB view, hub entities, reach next and asset importance.
+# First matching range wins; addresses outside every range are "internet".
+
+zones:
+  - {cidr: 10.10.99.1/32,    zone: mgmt,    role: firewall-management, importance: 1.0}
+  - {cidr: 10.10.99.0/24,    zone: mgmt,    role: management,          importance: 1.0}
+  - {cidr: 10.10.20.20/32,   zone: dmz,     role: web-portal,          importance: 0.75}
+  - {cidr: 10.10.20.0/24,    zone: server,  role: server,              importance: 0.75}
+  - {cidr: 10.10.10.0/24,    zone: desktop, role: user-desktop,        importance: 0.25}
+  - {cidr: 10.10.40.0/24,    zone: iot,     role: iot-device,          importance: 0.5}
+  - {cidr: 10.10.30.0/24,    zone: lan,     role: lan,                 importance: 0.4}
+  - {cidr: 10.10.50.0/24,    zone: lan,     role: lan,                 importance: 0.4}
+  - {cidr: 203.0.113.5/32,   zone: public,  role: firewall-public-ip,  importance: 1.0}
+  - {cidr: 10.0.0.0/8,       zone: lan,     role: internal,            importance: 0.4}
+  - {cidr: 172.16.0.0/12,    zone: lan,     role: internal,            importance: 0.4}
+  - {cidr: 192.168.0.0/16,   zone: lan,     role: internal,            importance: 0.4}
+
+# Entities that appear in a large share of alerts and must not link alerts on
+# their own (docs/build-plan.md P6). Matched exactly.
+hubs:
+  ips: [10.10.20.20, 10.10.99.1, 203.0.113.5]
+  users: [admin]
+
+# Never sent to outside threat-intel services (docs/build-plan.md P9).
+private_ranges:
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+  - 127.0.0.0/8
+  - 169.254.0.0/16
+  - 192.0.2.0/24
+  - 198.51.100.0/24
+  - 203.0.113.0/24

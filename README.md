@@ -21,23 +21,34 @@ contracts: `docs/architecture.md`. What the organisers' data looks like:
 ```
 killchain/          Python package, one sub-package per pipeline stage
   parser/           raw logs -> Parquet (built)
+  contracts.py      alert and incident formats shared by both tracks (frozen)
   attack/           ATT&CK catalogue and kill chain stage order
   detect/           YAML rule engine
+  anomaly/          generic detectors for attacks no rule covers
   correlate/        incident builder
-  enrich/           local context and threat intel
   graph/            attack paths and reach-next
   score/            risk score
-  agents/           LLM narrator, triage opinion, Q&A, rule writer
   report/           template reports when no LLM is reachable
+  enrich/           local context and threat intel
+  agents/           LLM narrator with triage opinion, Q&A, rule writer
   api/              FastAPI app
-  eval/             scoring against the ground-truth manifest
+  eval/             scoring against the silver truth or a manifest
   live/             live mode
-rules/              detection rules, firewall/ and windows/
-web/                React UI
-tools/              developer checks
-docs/               requirements, architecture, data notes
+config/             network zones and hubs, kill chain stage order
+rules/              detection rules: firewall/, anomaly/, windows/
+eval/               silver truth and reviewed incidents
+examples/           sample-run/: one real incident in the contract format
+web/                React UI (from AI-SOC)
+docker/             images for the pipeline and the API
+tools/              developer checks and the sample-run builder
+tests/              pytest suite
+docs/               plan, contracts, requirements, architecture, data notes
 data/               local inputs and outputs, never committed
 ```
+
+The two people building this work in parallel tracks; see
+`docs/build-plan.md` section 5. The files they exchange are defined in
+`docs/contracts.md`, and `examples/sample-run/` is a valid example of them.
 
 ## Setup
 
@@ -45,6 +56,8 @@ Python 3.11 or newer.
 
 ```powershell
 pip install -r requirements.txt
+copy .env.example .env      # optional keys for threat intel and the LLM agents
+python -m pytest -q         # contract and sample checks
 ```
 
 Put the organisers' files under `data/raw/` (for example

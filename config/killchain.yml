@@ -1,0 +1,18 @@
+# ATT&CK tactics in kill chain order (stage_no) and their 7-phase label.
+# Order from AI-SOC backend/services/ml/attack_stage/stage_identifier.py.
+
+tactics:
+  - {stage_no: 1,  tactic: reconnaissance,       id: TA0043, name: Reconnaissance,       phase: Reconnaissance}
+  - {stage_no: 2,  tactic: resource-development, id: TA0042, name: Resource Development, phase: Weaponization}
+  - {stage_no: 3,  tactic: initial-access,       id: TA0001, name: Initial Access,       phase: Delivery}
+  - {stage_no: 4,  tactic: execution,            id: TA0002, name: Execution,            phase: Exploitation}
+  - {stage_no: 5,  tactic: persistence,          id: TA0003, name: Persistence,          phase: Installation}
+  - {stage_no: 6,  tactic: privilege-escalation, id: TA0004, name: Privilege Escalation, phase: Installation}
+  - {stage_no: 7,  tactic: defense-evasion,      id: TA0005, name: Defense Evasion,      phase: Installation}
+  - {stage_no: 8,  tactic: credential-access,    id: TA0006, name: Credential Access,    phase: Actions on Objectives}
+  - {stage_no: 9,  tactic: discovery,            id: TA0007, name: Discovery,            phase: Actions on Objectives}
+  - {stage_no: 10, tactic: lateral-movement,     id: TA0008, name: Lateral Movement,     phase: Actions on Objectives}
+  - {stage_no: 11, tactic: collection,           id: TA0009, name: Collection,           phase: Actions on Objectives}
+  - {stage_no: 12, tactic: command-and-control,  id: TA0011, name: Command and Control,  phase: Command and Control}
+  - {stage_no: 13, tactic: exfiltration,         id: TA0010, name: Exfiltration,         phase: Actions on Objectives}
+  - {stage_no: 14, tactic: impact,               id: TA0040, name: Impact,               phase: Actions on Objectives}

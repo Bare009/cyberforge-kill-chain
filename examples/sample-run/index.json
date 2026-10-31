@@ -1,0 +1,37 @@
+{
+ "run": "sample-run",
+ "generated_by": "tools/make_sample_run.py",
+ "incidents": [
+  {
+   "incident_number": 1,
+   "incident_id": "dc871581294af37c",
+   "title": "Web attack chain from 32.127.48.11 against the portal",
+   "risk_score": 76.5,
+   "risk_band": "critical",
+   "severity": 5,
+   "ts_start": "2026-10-28T20:21:23.449932Z",
+   "ts_end": "2026-10-29T07:08:54.468885Z",
+   "ts_start_ist": "2026-10-29 01:51:23",
+   "ts_end_ist": "2026-10-29 12:38:54",
+   "merged": {
+    "alerts": 4,
+    "events": 940
+   },
+   "tactics": [
+    "reconnaissance",
+    "initial-access",
+    "persistence",
+    "exfiltration"
+   ],
+   "techniques": [
+    "T1595.002",
+    "T1190",
+    "T1505.003",
+    "T1048.002"
+   ],
+   "triage_verdict": "looks_real",
+   "ti_verdict": "no-reports",
+   "sample": true
+  }
+ ]
+}

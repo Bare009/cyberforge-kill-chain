@@ -1,0 +1,722 @@
+[
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210274,
+  "byte_offset": 1694144963,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:23.449932Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210276,
+  "byte_offset": 1694145953,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:23.714298Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210277,
+  "byte_offset": 1694146432,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:23.978664Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210279,
+  "byte_offset": 1694147280,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:24.243030Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210280,
+  "byte_offset": 1694147758,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:24.507396Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210282,
+  "byte_offset": 1694148754,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:24.771762Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210284,
+  "byte_offset": 1694149801,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:25.036128Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210285,
+  "byte_offset": 1694150279,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:25.300494Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210287,
+  "byte_offset": 1694151283,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:25.564860Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210289,
+  "byte_offset": 1694152281,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:25.829226Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210290,
+  "byte_offset": 1694152762,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:26.093592Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210291,
+  "byte_offset": 1694153241,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:26.357958Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210292,
+  "byte_offset": 1694153721,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:26.622324Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210294,
+  "byte_offset": 1694154714,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:26.886690Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210296,
+  "byte_offset": 1694155698,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:27.151056Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210297,
+  "byte_offset": 1694156179,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:27.415422Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210299,
+  "byte_offset": 1694157179,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:27.679788Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210300,
+  "byte_offset": 1694157658,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:27.944154Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210302,
+  "byte_offset": 1694158689,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:28.208520Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "9410b0a5a685c6a4",
+  "line": 3210304,
+  "byte_offset": 1694159738,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:21:28.472886Z",
+  "technique": "T1595.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212670,
+  "byte_offset": 1695392653,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:37:10.515776Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212681,
+  "byte_offset": 1695398474,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:37:14.639896Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212693,
+  "byte_offset": 1695404854,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:37:18.764016Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212699,
+  "byte_offset": 1695407957,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:37:22.570896Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212712,
+  "byte_offset": 1695415187,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:37:26.695016Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212722,
+  "byte_offset": 1695420523,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:37:30.501896Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212734,
+  "byte_offset": 1695427029,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:37:34.626016Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212744,
+  "byte_offset": 1695432686,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:37:38.750136Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212753,
+  "byte_offset": 1695437525,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:37:42.557016Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212764,
+  "byte_offset": 1695443581,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:37:46.681136Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212774,
+  "byte_offset": 1695449057,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:37:50.488016Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212785,
+  "byte_offset": 1695455271,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:37:54.612136Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212795,
+  "byte_offset": 1695460172,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:37:58.736256Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212805,
+  "byte_offset": 1695465859,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:38:02.543136Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212817,
+  "byte_offset": 1695472447,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:38:06.667256Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212825,
+  "byte_offset": 1695476790,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:38:10.474136Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212835,
+  "byte_offset": 1695482483,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:38:14.598256Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212845,
+  "byte_offset": 1695488148,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:38:18.722376Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212852,
+  "byte_offset": 1695492207,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:38:22.529256Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "d923a363ee17ec67",
+  "line": 3212863,
+  "byte_offset": 1695498219,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T20:38:26.653376Z",
+  "technique": "T1190",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217029,
+  "byte_offset": 1697701360,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:11:36.699896Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217086,
+  "byte_offset": 1697731458,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:12:06.520456Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217149,
+  "byte_offset": 1697763119,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:12:36.658256Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217213,
+  "byte_offset": 1697797368,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:13:06.478816Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217276,
+  "byte_offset": 1697830849,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:13:36.616616Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217342,
+  "byte_offset": 1697866295,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:14:06.754416Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217407,
+  "byte_offset": 1697900631,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:14:36.574976Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217473,
+  "byte_offset": 1697935409,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:15:06.712776Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217541,
+  "byte_offset": 1697971570,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:15:36.533336Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217609,
+  "byte_offset": 1698008248,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:16:06.671136Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217679,
+  "byte_offset": 1698045771,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:16:36.491696Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217740,
+  "byte_offset": 1698077685,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:17:06.629496Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217804,
+  "byte_offset": 1698110941,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:17:36.767296Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217860,
+  "byte_offset": 1698141107,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:18:06.587856Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217925,
+  "byte_offset": 1698174776,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:18:36.725656Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3217984,
+  "byte_offset": 1698206440,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:19:06.546216Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3218051,
+  "byte_offset": 1698241948,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:19:36.684016Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3218122,
+  "byte_offset": 1698279571,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:20:06.504576Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3218177,
+  "byte_offset": 1698308921,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:20:36.642376Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "318d6ce2d31b50f9",
+  "line": 3218241,
+  "byte_offset": 1698343255,
+  "source": "firex-10G.log",
+  "ts": "2026-10-28T21:21:06.462936Z",
+  "technique": "T1505.003",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344208,
+  "byte_offset": 1764806229,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:39:09.497745Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344247,
+  "byte_offset": 1764826995,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:39:24.725265Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344285,
+  "byte_offset": 1764847275,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:39:39.635545Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344321,
+  "byte_offset": 1764866717,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:39:54.545825Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344350,
+  "byte_offset": 1764881789,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:40:09.773345Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344383,
+  "byte_offset": 1764900055,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:40:24.683625Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344415,
+  "byte_offset": 1764916248,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:40:39.593905Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344446,
+  "byte_offset": 1764932670,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:40:54.504185Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344486,
+  "byte_offset": 1764954243,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:41:09.731705Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344519,
+  "byte_offset": 1764971324,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:41:24.641985Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344557,
+  "byte_offset": 1764991593,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:41:39.552265Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344587,
+  "byte_offset": 1765006996,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:41:54.462545Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344618,
+  "byte_offset": 1765023333,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:42:09.690065Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344650,
+  "byte_offset": 1765040779,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:42:24.600345Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344678,
+  "byte_offset": 1765055834,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:42:39.510625Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344714,
+  "byte_offset": 1765074298,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:42:54.738145Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344738,
+  "byte_offset": 1765087471,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:43:09.648425Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344771,
+  "byte_offset": 1765104913,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:43:24.558705Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344805,
+  "byte_offset": 1765123050,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:43:39.468985Z",
+  "technique": "T1048.002",
+  "role": "window"
+ },
+ {
+  "alert_id": "e36f6b85e9339493",
+  "line": 3344838,
+  "byte_offset": 1765140907,
+  "source": "firex-10G.log",
+  "ts": "2026-10-29T04:43:54.696505Z",
+  "technique": "T1048.002",
+  "role": "window"
+ }
+]

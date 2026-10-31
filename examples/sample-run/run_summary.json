@@ -1,0 +1,12 @@
+{
+ "run": "sample-run",
+ "sample": true,
+ "source": "firex-10G.log",
+ "stages": {},
+ "counts": {
+  "alerts": 4,
+  "incidents": 1,
+  "evidence_lines": 940
+ },
+ "note": "Hand-made sample in contract C for UI development; not a pipeline run."
+}
