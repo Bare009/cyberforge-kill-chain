@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
-import { AlertCircle, ArrowLeft, Construction } from 'lucide-react'
+import { AlertCircle, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -16,13 +16,14 @@ import { AttackPathGraph } from '@/components/path/AttackPathGraph'
 import { IncidentTechniques } from '@/components/incident/IncidentTechniques'
 import { RiskBreakdown } from '@/components/incident/RiskBreakdown'
 import { MarkdownReport } from '@/components/reports/MarkdownReport'
+import { AskTab } from '@/components/agents/AskTab'
 import { useIncident } from '@/hooks/useIncidents'
 import { apiErrorMessage } from '@/lib/api'
 import { formatIst, formatSpan } from '@/lib/killchain'
 import { reportSummary } from '@/lib/report'
 import type { Incident } from '@/types/incident'
 
-/** Tabs in the order of docs/build-plan.md P12; `planned` ones are filled on later days. */
+/** Tabs in the order of docs/build-plan.md P12. */
 const TABS = [
   { id: 'timeline', label: 'Timeline' },
   { id: 'path', label: 'Attack path' },
@@ -30,7 +31,7 @@ const TABS = [
   { id: 'intel', label: 'Threat intel' },
   { id: 'evidence', label: 'Evidence' },
   { id: 'report', label: 'Report' },
-  { id: 'ask', label: 'Ask', planned: 'day 6: questions about this incident, answered from its evidence' },
+  { id: 'ask', label: 'Ask' },
   { id: 'attack', label: 'ATT&CK' },
 ] as const
 type TabId = (typeof TABS)[number]['id']
@@ -41,17 +42,6 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
       <div className="text-[11px] uppercase tracking-wider text-slate-500">{label}</div>
       <div className="text-sm text-slate-900">{children}</div>
     </div>
-  )
-}
-
-function PlannedTab({ text }: { text: string }) {
-  return (
-    <Card>
-      <CardContent className="flex items-start gap-3 p-6 text-sm text-slate-600">
-        <Construction className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
-        <span>Not built yet. Planned for {text}.</span>
-      </CardContent>
-    </Card>
   )
 }
 
@@ -317,6 +307,9 @@ export function IncidentPage() {
         <TabsContent value="report">
           <ReportTab inc={inc} />
         </TabsContent>
+        <TabsContent value="ask">
+          <AskTab incident={inc.incident_number} onOpenStep={(s) => go('evidence', s)} />
+        </TabsContent>
         <TabsContent value="attack">
           <Card>
             <CardContent className="p-4">
@@ -324,11 +317,6 @@ export function IncidentPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        {TABS.filter((t) => 'planned' in t).map((t) => (
-          <TabsContent key={t.id} value={t.id}>
-            <PlannedTab text={(t as { planned: string }).planned} />
-          </TabsContent>
-        ))}
       </Tabs>
     </div>
   )

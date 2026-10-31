@@ -32,3 +32,14 @@ models:
 narrator:
   max_tokens: 700           # output cap; the fact sheet is ~1,200 tokens in
   prompt_version: 1         # bump when prompts/narrator.md changes, so old reports are redone
+
+qa:                         # incident Q&A from the UI: small model
+  max_tokens: 400
+  max_lines: 60             # evidence lines sent with a question
+
+rule_writer:                # rule drafts from the UI: large model
+  max_tokens: 900
+  test_timeout_s: 60        # a test run of a rule is stopped after this
+  test_memory_limit: 2GB
+
+on_demand_per_minute: 6     # Q&A questions and rule drafts from the UI, together; then 429 with Retry-After

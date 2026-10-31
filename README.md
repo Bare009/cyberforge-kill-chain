@@ -294,6 +294,16 @@ Swagger UI: `http://localhost:<port>/docs`.
 | `GET /rules` | every rule in `rules/` with its alerts, incidents, run time and (after `eval score`) background alerts; filters `layer`, `q` |
 | `GET /rules/{id}` | one rule: settings, YAML text and its 20 most recent alerts |
 | `GET /incidents/{id}/report` | the report Markdown; `source=ai` or `template` (the template is kept beside an AI report) |
+| `POST /incidents/{id}/ask` | `{"question": ...}`: an answer from the incident's facts and up to 60 evidence lines, with the cited lines; `rejected: true` when it cited lines or IPs outside the incident |
+| `POST /rules/draft` | `{"description": ...}`: a YAML rule written by the LLM, validated and test-run on this run; nothing is saved |
+| `POST /rules/test` | `{"yaml": ...}`: validate a rule and run it on this run's events: alerts, evidence lines, time, first 5 hits |
+| `POST /rules/save` | `{"yaml": ...}`: save a valid rule as `rules/<firewall|anomaly>/<id>.yaml`; 409 if the id exists |
+
+Ask and draft share a cap of 6 a minute (`config/llm.yaml`), then 429 with
+`Retry-After`; without an LLM key they answer 503. Rule SQL from the UI or the
+LLM runs only on a read-only connection to the run's `events.duckdb` with file
+access, `ATTACH` and extensions turned off, the configuration locked, a 2 GB
+memory cap and a 60 s limit.
 
 `GET /health` also has an `llm` block: whether the agents are on, the
 configured models (never the keys), AI and template report counts, and today's
@@ -336,7 +346,21 @@ large, fallback small. Limits per model are in `config/llm.yaml` (used to 90%).
 Every answer is cached in `data/cache/llm.sqlite`; a rerun keeps reports whose
 facts did not change and makes no call for them. A 429 waits for `Retry-After`
 when it is under 20 s, else the next model; a refused key pauses that provider
-for 10 minutes. The LLM is off unless `LLM_ENABLED=true` or `--llm` is given.
+for 10 minutes. The batch narrator is off unless `LLM_ENABLED=true` or
+`--llm` is given; the on-demand agents below work whenever a key is set.
+
+**Incident Q&A** (Ask tab, small model): the question, the fact sheet and up
+to 60 evidence lines read from the log; the answer must cite the line numbers
+it rests on, and one that cites a line it was not given, or names an IP found
+in neither the facts nor those lines, is rejected after one retry. Answers are
+cached per question, so rehearsed demo questions cost nothing.
+
+**Rule writer** (Rules page, large model): a plain-English description, the
+`events` columns and three example rules (R01, R16, R07) go in; the YAML that
+comes back is validated like any rule file, its SQL compiled (one retry with
+the problems), then run on the run's events. The analyst can edit and test it
+again; it is saved only with the Save button and never over an existing rule.
+Run `detect` and the later stages to add a saved rule's alerts to the run.
 
 ### Threat intel (enrich)
 

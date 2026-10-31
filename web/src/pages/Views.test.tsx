@@ -111,7 +111,7 @@ describe('Rules', () => {
     const row = screen.getByRole('button', { name: 'R12-large-lopsided-transfer' }).closest('tr')!
     expect(within(row).getByText('3')).toBeInTheDocument()
     expect(within(row).getByRole('link', { name: '#5' })).toHaveAttribute('href', '/incidents/5')
-    expect(screen.getByText(/rule writer .* arrives on day 6/)).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Write a rule' })).toBeInTheDocument()
   })
 
   it('opens a rule with its YAML and recent alerts', async () => {

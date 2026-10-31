@@ -109,6 +109,7 @@ def test_guard_accepts_a_faithful_answer(inc):
 
 @pytest.mark.parametrize("change, problem", [
     (lambda o, i: o.update(summary=o["summary"] + " 8.8.8.8 helped."), "mentions IP 8.8.8.8"),
+    (lambda o, i: o.update(summary=o["summary"] + " It came from 8.8.4.4."), "mentions IP 8.8.4.4"),
     (lambda o, i: o["steps"].pop(), "steps must be numbered exactly"),
     (lambda o, i: o["steps"][0]["evidence_lines"].append(1), "cites lines [1]"),
     (lambda o, i: o["steps"][0].update(evidence_lines=[i["chain"][1]["line_sample"][0]["line"]]), "not that step's evidence_lines"),

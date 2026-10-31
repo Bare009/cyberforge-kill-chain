@@ -99,9 +99,9 @@ describe('Incident page', () => {
     expect(screen.getAllByText('matrix')[0]).toHaveAttribute('href', '/mitre?technique=T1595.002')
   })
 
-  it('says when a tab is planned for a later day', async () => {
+  it('opens the Ask tab from the URL', async () => {
     open('/incidents/1?tab=ask')
-    expect(await screen.findByText(/Not built yet. Planned for day 6/)).toBeInTheDocument()
+    expect(await screen.findByLabelText('Ask about this incident')).toBeInTheDocument()
   })
 
   it('says when the incident does not exist', async () => {

@@ -27,7 +27,8 @@ TRIAGE = ("looks_real", "likely_noise")
 # account names that are also ordinary words; mentioning them is never an invented account
 COMMON_WORDS = {"admin", "administrator", "root", "guest", "user", "test", "system", "service", "backup", "support"}
 
-IP_RE = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
+# an IPv4 address, also at the end of a sentence ("from 8.8.4.4."), but not inside a longer dotted number
+IP_RE = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?!\d|\.\d)")
 TECH_RE = re.compile(r"\bT\d{4}(?:\.\d{3})?\b")
 DOMAIN_RE = re.compile(r"\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{1,}\b", re.I)
 LINE_RE = re.compile(r"\blines?\s*:?\s*((?:\d[\d,]{2,}(?:\s*(?:,|and|&)\s*)?)+)", re.I)

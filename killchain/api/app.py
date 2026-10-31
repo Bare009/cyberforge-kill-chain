@@ -26,6 +26,8 @@ from .mitre import MitreStore
 from .mitre import router as mitre_router
 from .ti import TiStore
 from .ti import router as ti_router
+from .agents import Agents
+from .agents import router as agents_router
 from .views import RuleStore
 from .views import router as views_router
 from killchain.enrich.settings import CACHE_PATH
@@ -89,7 +91,8 @@ def llm_status(b: RunBundle, cache: Path) -> Dict[str, Any]:
 
 def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[str, Path]] = None, *,
                ti_cache: Optional[Union[str, Path]] = None, ti_offline: Optional[bool] = None,
-               ti_client: Any = None, llm_cache: Optional[Union[str, Path]] = None) -> FastAPI:
+               ti_client: Any = None, llm_cache: Optional[Union[str, Path]] = None,
+               llm_client: Any = None) -> FastAPI:
     """Build the app for one run: a folder path or a run name (see resolve_run_dir).
 
     `raw_dir` is where the raw logs named in the evidence are (default
@@ -115,10 +118,12 @@ def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[s
     from killchain.agents.settings import CACHE_PATH as LLM_CACHE
 
     app.state.llm_cache = Path(llm_cache) if llm_cache else LLM_CACHE
+    app.state.agents = Agents(run_dir, app.state.llm_cache, http_client=llm_client)
     app.state.dashboard = None              # built on first request (needs the TI status)
     app.include_router(mitre_router)
     app.include_router(ti_router)
     app.include_router(views_router)
+    app.include_router(agents_router)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(
         CORSMiddleware,

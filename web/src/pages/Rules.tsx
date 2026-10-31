@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { AlertCircle, Construction, FileCode2, Search, X } from 'lucide-react'
+import { AlertCircle, FileCode2, Search, X } from 'lucide-react'
+import { RuleWriter } from '@/components/agents/RuleWriter'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -159,10 +160,7 @@ export function Rules() {
       <PageTitle icon={<FileCode2 className="h-5 w-5" />} title="Rules"
         subtitle="Detection rules and anomaly detectors in rules/, with what each found in this run." />
 
-      <div className="flex items-start gap-2 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-600">
-        <Construction className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-        <span>The rule writer (describe a rule in plain English, test it on the run, then save) arrives on day 6.</span>
-      </div>
+      <RuleWriter />
 
       <div className="space-y-4">
         {selected && <RuleDetailPanel id={selected} onClose={() => set('rule', '')} />}

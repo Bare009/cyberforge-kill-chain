@@ -14,6 +14,32 @@ export interface HealthResponse {
     alerts: number
     events?: number
   }
+  llm?: LlmHealth
+}
+
+/** One model's use today, from the agents' SQLite file. */
+export interface LlmBudgetRow {
+  endpoint: string
+  provider: string
+  model: string
+  size: string
+  day: string
+  requests: number
+  tokens: number
+  requests_per_day: number
+  tokens_per_day: number
+  tokens_left: number
+  paused: boolean
+}
+
+/** GET /health -> llm */
+export interface LlmHealth {
+  enabled: boolean
+  configured: string[]
+  reports: number
+  ai_reports: number
+  template_reports: number
+  budget: LlmBudgetRow[]
 }
 
 /** One evidence line of GET /incidents/{id}/events. `raw` is null when the log is not on the server. */
