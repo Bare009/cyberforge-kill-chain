@@ -917,21 +917,73 @@ following only the README; submission rules; rehearse twice; backup video.
 
 ---
 
-## 5. Team split and 7-day schedule
+## 5. Two tracks, built in parallel
 
-| Person | Owns |
+The work is split into two tracks. Each person owns one track and works through
+its phases in order. Phase numbers give the order **inside** a track, not
+across tracks: while A does P1, B does P12, not P1.
+
+| | Track A: pipeline and detection | Track B: product |
+|---|---|---|
+| Owner | **you** (fill in the name) | **teammate** (fill in the name) |
+| Goal | turn raw logs into correct alerts, incidents, chains and reach next, and prove it with the evaluation | show those results through the API and a UI as good as AI-SOC's, with threat intel, agents and Docker |
+| Phases, in order | P0 (A part) → P1 → P2 → P3 → P5 → P4 → P4b → P6 → P7 → P8 → P10 → P13 → P15 → P16 | P0 (B part) → P12 (scaffold) → P11 → P12 (pages) → P9 → P10b → P14 |
+| Writes code in | `killchain/parser`, `db.py`, `__main__.py`, `attack`, `detect`, `anomaly`, `correlate`, `graph`, `score`, `report`, `eval`, `live`; `rules/`, `config/`, `eval/`, `tests/` | `killchain/api`, `enrich`, `agents`; `web/`, `docker/`, `docker-compose.yml`, `examples/` |
+| Reads but does not edit | `killchain/api` | everything in track A's folders |
+| Shared | `docs/`, `README.md`, `requirements.txt`, `.env.example`, `docs/contracts.md` | same |
+
+P5 (labels) comes before P4 in track A because every rule needs the label
+helper; it is about 2 hours.
+
+### 5.1 Where the tracks meet
+
+Only through files, never through each other's code:
+
+| Hand-off | Produced by | Used by | When |
+|---|---|---|---|
+| `docs/contracts.md` (contracts B and C, exact field names and types) | A | B | end of P0, day 1 |
+| `examples/sample-run/` (one hand-written incident in contract C, plus `index.json`, `alerts.json`, `run_summary.json`) | A | B builds the API and every UI page against it | end of P0, day 1 |
+| `alerts.parquet`, `alert_evidence.parquet` | A (P3, P4) | B's MITRE backend and Alerts page | day 3 onward |
+| `data/runs/<run>/` complete bundle input (incidents, chains, reach next, scores) | A (P6-P10) | B's bundle step and API | day 5 |
+| `enrichment.json` (per-entity threat intel) | B (P9) | A's risk score (5% weight) | day 4; until then the score uses 0 for threat intel |
+| `report.json` (narrator output and triage verdict per incident) | B (P10b) | bundled with the run | day 5-6; until then the template report |
+
+**Contract rule:** contracts B and C are frozen at the end of day 1. A change
+after that is agreed in chat first, written into `docs/contracts.md`, and the
+sample in `examples/` updated in the same commit.
+
+### 5.2 Who does what in P0
+
+P0 takes about an hour and is split so neither person waits:
+
+| You (track A) | Teammate (track B) |
 |---|---|
-| **A: pipeline and detection** | P1 leftovers, P2 evaluation, P3 engine, P4 rules (all), P4b anomaly layer, P5 labels, P6 correlation, P7 chain, P8 reach next, P10 score and template, P13 performance, P15 live mode |
-| **B: product** | P11 bundle and API, P12 UI, P9 threat intel, P10b agents, P14 Docker |
+| 1. Create the folders from section 3 (`config/`, `eval/`, `web/`, `docker/`, `examples/`, `tests/`, `rules/anomaly/`, `killchain/{agents,enrich,anomaly}/`) | 1. Clone the repo; install Node.js 20 LTS and Docker Desktop |
+| 2. Add `duckdb`, `httpx`, `openai` to `requirements.txt`; write `.env.example` with every key name from P9 and P10b | 2. Copy `logs.zip` and unzip into `data/raw/`; `pip install -r requirements.txt` |
+| 3. Write `docs/contracts.md` and the sample run in `examples/sample-run/` (incident 1 = chain A with its real IPs and times) | 3. Sign up for OTX, AbuseIPDB, VirusTotal, GreyNoise, abuse.ch, Groq, NeevCloud keys (some take a day); fill `.env` |
+| 4. Push; post "contracts frozen" in chat | 4. Copy `AI-SOC/web_app/frontend` into `web/`, strip login, tenancy and unused pages |
+| 5. Start P1 | 5. Pull the contracts and sample; start P11 (API serving the sample) |
 
-B starts the UI on day 1 against a hand-written sample of contract C, so both
-work in parallel from the first hour. Contracts B and C are frozen at the end of
-day 1; any change after that is agreed in chat first.
+### 5.3 Git rules for two tracks
 
-| Day | A | B |
+- Each person works on short branches named after the track: `a/<task>`,
+  `b/<task>`. Merge into `main` when the task's checks pass; `git pull
+  --rebase origin main` before merging.
+- Stay inside your track's folders. A change in the other track's folder is
+  made by its owner, on request.
+- Shared files (`requirements.txt`, `.env.example`, `README.md`, `docs/`):
+  small commits, pulled before editing.
+- Track A posts `eval score` numbers in chat after every rule or correlation
+  change. Track B posts a screenshot after every new page.
+- `main` must run end to end every evening (`python -m killchain run` on the
+  sample or real data, and the UI against it).
+
+### 5.4 7-day schedule
+
+| Day | Track A (you) | Track B (teammate) |
 |---|---|---|
 | 1 | P0; P1 leftovers (CLI, DuckDB view, explorer); P2 silver truth for 25 incidents; `eval score` | P0; copy AI-SOC frontend to `web/`, strip auth and unused pages; sample `incidents/1.json` by hand; API skeleton serving the sample |
-| 2 | P3 rule engine and validator; first rules R01, R05; P5 labels | Incident list and incident page (header, timeline, tabs) on the sample; MITRE backend on DuckDB and the MITRE page ported |
+| 2 | P2 finish (\eval score\); P5 labels; P3 rule engine and validator; first rules R01, R05 | Incident list and incident page (header, timeline, tabs) on the sample; MITRE backend on DuckDB and the MITRE page ported |
 | 3 | P4 rules R02-R12 with background review | Attack path graph component; reach-next tab; evidence tab; entity drawer |
 | 4 | P4 rules R13-R24; P4b anomaly layer | P9 threat-intel engine (providers, cache, local context); Threat Intel page |
 | 5 | P6 correlation; P7 chain; P8 access graph and reach next; first real bundle | Wire every page to the real bundle; Dashboard, Alerts, Rules pages; P10b LLM client and narrator |
