@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Backgrounds */
+    --bg-base: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-subtle: #f1f5f9;
+    --bg-overlay: #e2e8f0;
+
+    /* Brand */
+    --brand-primary: #2563eb;
+    --brand-light: #eff6ff;
+
+    /* Severity */
+    --sev-critical: #dc2626;
+    --sev-critical-bg: #fef2f2;
+    --sev-high: #ea580c;
+    --sev-high-bg: #fff7ed;
+    --sev-medium: #d97706;
+    --sev-medium-bg: #fffbeb;
+    --sev-low: #2563eb;
+    --sev-low-bg: #eff6ff;
+    --sev-info: #64748b;
+    --sev-info-bg: #f8fafc;
+
+    /* Status */
+    --status-new: #7c3aed;
+    --status-review: #d97706;
+    --status-resolved: #16a34a;
+    --status-fp: #64748b;
+    --status-escalated: #dc2626;
+
+    /* Text */
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --text-mono: #1e293b;
+
+    /* shadcn compat */
+    --background: 0 0% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-slate-200;
+  }
+
+  body {
+    @apply bg-[var(--bg-base)] text-slate-700 font-sans antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
