@@ -106,3 +106,150 @@ def main(argv: Optional[List[str]] = None) -> int:
           f"{stats['gaps']} gaps, {stats['incident_lines']:,} evidence lines, 0 contract errors; "
           f"{wall:.2f} s -> {run}")
     return 0
+
+
+# ── reach (P8) ───────────────────────────────────────────────────────────────
+
+REACH_DOC = """python -m killchain reach --run data/runs/firex-10G [N] [--parsed DIR] [--force]
+
+Without N: builds the access graph once per run (access_graph.parquet, access_hosts.parquet; reused when
+present, --force rebuilds them) from <run>/events.duckdb or the --parsed folder, computes reach next for
+every incident and writes reach.json, reach/_stats.json and the provisional bundle with the real `next` and
+the path graph merged with reach nodes and edges. Nothing is written when any incident fails the contract
+check. Stage order: detect -> correlate -> chain -> reach; re-running `chain` resets reach next to a
+placeholder until `reach` runs again.
+
+With N: prints incident N's reach list and sentence from incidents/N.json.
+"""
+REACH_INPUTS = {"chains.json": "chain", "incident_lines.parquet": "chain", "incidents.parquet": "correlate",
+                "incident_alerts.parquet": "correlate", "alerts.json": "detect"}
+
+
+def reach_text(inc: Dict[str, Any]) -> str:
+    nxt = inc["next"]
+    out = [f"#{inc['incident_number']} {inc['incident_id']} | {inc['title']}", nxt["sentence"], ""]
+    for i, r in enumerate(nxt["reachable"], 1):
+        via = "; ".join(f"{v['from']} {v['edge']}" + (f" x{v['count']}" if v["count"] else "") for v in r["via"])
+        out.append(f"{i:>2}. {r['host']} zone {r['zone']} hop {r['hop']} {r['kind']} via {via}")
+    if not nxt["reachable"]:
+        out.append("reachable: none")
+    out.append(f"likely next tactics: {', '.join(nxt['likely_tactics']) or 'none'}")
+    return "\n".join(out)
+
+
+def compute_reach(run: Path, con: Any, edges: Any, hosts: Any, net: Dict[str, Any], settings: Dict[str, Any]):
+    """(bundle incidents, reach.json rows, index, alerts) with reach next, from chain's and correlate's output.
+    One join of incident_lines to events on (source, line) gives every evidence line's src, dst, user and
+    log_desc for footholds and the touched set."""
+    import polars as pl
+
+    from . import incident_files as files
+    from .reach import access_digraph, reach_next
+
+    incidents = pl.read_parquet(run / "incidents.parquet")
+    members = pl.read_parquet(run / "incident_alerts.parquet")
+    chains = json.loads((run / "chains.json").read_text(encoding="utf-8"))["incidents"]
+    alerts_json = json.loads((run / "alerts.json").read_text(encoding="utf-8"))
+    il = pl.read_parquet(run / "incident_lines.parquet").select("incident_number", "source", "line").unique()
+    con.register("incident_lines_v", il)
+    joined = con.sql("SELECT DISTINCT il.incident_number, e.src_ip, e.dst_ip, e.user, e.log_desc "
+                     "FROM incident_lines_v il JOIN events e ON e.source = il.source AND e.line = il.line").pl()
+    con.unregister("incident_lines_v")
+    rows_by: Dict[int, List[Dict[str, Any]]] = {}
+    for r in joined.iter_rows(named=True):
+        rows_by.setdefault(int(r["incident_number"]), []).append(r)
+
+    g = access_digraph(edges)
+    by_id = {c["incident_id"]: c for c in chains}
+    bundle, reach_rows = [], []
+    for r in incidents.sort("incident_number").iter_rows(named=True):
+        c = by_id[r["incident_id"]]
+        base = files.assemble(r, c)
+        nxt, graph, fh = reach_next(base, c["graph"], g, hosts, rows_by.get(base["incident_number"], []), net, settings)
+        bundle.append(files.assemble(r, {**c, "graph": graph}, nxt))
+        reach_rows.append({"incident_id": r["incident_id"], "incident_number": base["incident_number"],
+                           "footholds": fh, "next": nxt, "graph": graph})
+    index = files.index_rows(bundle, run.name)
+    alerts_out = files.alerts_with_incidents(alerts_json, members)
+    return bundle, reach_rows, index, alerts_out
+
+
+def reach_main(argv: Optional[List[str]] = None) -> int:
+    ap = argparse.ArgumentParser(prog="python -m killchain reach", description=REACH_DOC,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--run", required=True, help="run folder holding chain's output")
+    ap.add_argument("number", nargs="?", type=int, help="print this incident's reach next instead of building")
+    ap.add_argument("--parsed", help="parsed run folder, used when <run>/events.duckdb is missing")
+    ap.add_argument("--force", action="store_true", help="rebuild access_graph.parquet and access_hosts.parquet")
+    a = ap.parse_args(argv)
+    run = Path(a.run)
+    if a.number is not None:
+        p = run / "incidents" / f"{a.number}.json"
+        if not p.exists():
+            print(f"reach: {p} not found; run `python -m killchain reach --run {run}` first", file=sys.stderr)
+            return 1
+        print(reach_text(json.loads(p.read_text(encoding="utf-8"))))
+        return 0
+
+    order = ("detect", "correlate", "chain")
+    missing = [(n, s) for n, s in REACH_INPUTS.items() if not (run / n).exists()]
+    if missing:
+        stage = min((s for _, s in missing), key=order.index)
+        print(f"reach: {', '.join(n for n, _ in missing)} not found in {run}; run "
+              f"`python -m killchain {stage}` first (--run {run})", file=sys.stderr)
+        return 1
+    from .. import db
+    if not (run / db.PREPARED_NAME).exists() and not a.parsed:
+        print(f"reach: no {db.PREPARED_NAME} in {run}; give --parsed <folder> or run "
+              f"`python -m killchain db --prepare --parsed <folder> --run {run}`", file=sys.stderr)
+        return 1
+    import polars as pl
+
+    from ..detect.cli import _Peak
+    from . import access
+    from . import incident_files as files
+
+    peak = _Peak()
+    peak.start()
+    t0 = time.perf_counter()
+    settings = access.load_settings()
+    net = db.load_network()
+    con = db.connect(a.parsed, run)
+    ag, ah = run / "access_graph.parquet", run / "access_hosts.parquet"
+    rebuilt = a.force or not (ag.exists() and ah.exists())
+    if rebuilt:
+        edges, hosts = access.build_access(con, settings)
+    else:
+        edges, hosts = pl.read_parquet(ag), pl.read_parquet(ah)
+    access_secs = time.perf_counter() - t0
+
+    bundle, reach_rows, index, alerts_out = compute_reach(run, con, edges, hosts, net, settings)
+    con.close()
+    errors = files.check(bundle, index, alerts_out)
+    wall = time.perf_counter() - t0
+    peak.stop.set()
+    if errors:
+        print(f"reach: {len(errors)} contract error(s), nothing written:\n  " + "\n  ".join(errors[:20]),
+              file=sys.stderr)
+        return 1
+    with_reach = sum(bool(x["next"]["reachable"]) for x in reach_rows)
+    stats = {"stage": "reach", "wall_secs": round(wall, 2), "peak_rss_mb": round(peak.peak / 2**20),
+             "access_secs": round(access_secs, 2), "access_rebuilt": bool(rebuilt),
+             "edges_by_kind": dict(sorted(edges.group_by("kind").len().iter_rows())) if edges.height else {},
+             "access_sessions": int(edges["count"].sum()) if edges.height else 0,
+             "hosts": hosts.height, "hosts_by_zone": dict(sorted(hosts.group_by("zone").len().iter_rows())),
+             "incidents": len(reach_rows), "incidents_with_reach": with_reach,
+             "incidents_empty": len(reach_rows) - with_reach,
+             "reachable": sum(len(x["next"]["reachable"]) for x in reach_rows), "contract_errors": 0}
+    extra: Dict[str, Any] = {"reach.json": {"run": run.name, "incidents": reach_rows}, "reach/_stats.json": stats}
+    if rebuilt:
+        extra.update({"access_graph.parquet": edges, "access_hosts.parquet": hosts})
+    files.write(run, bundle, index, alerts_out, extra)
+    for x in reach_rows:
+        n = x["next"]
+        top = n["reachable"][0]["host"] if n["reachable"] else "-"
+        print(f"#{x['incident_number']} reach {len(n['reachable'])} top {top} | {n['sentence']}")
+    print(f"\naccess graph {stats['edges_by_kind']} ({'built' if rebuilt else 'reused'} in {access_secs:.2f} s), "
+          f"{hosts.height:,} internal hosts; {with_reach} incidents with reach, {stats['incidents_empty']} with a "
+          f"stated reason, 0 contract errors; {wall:.2f} s -> {run}")
+    return 0

@@ -175,4 +175,8 @@ No mismatch was found between the contract and what `killchain/api/` or `web/` r
 
 ## Commit
 
-Commit hash: recorded below after the push.
+Commit `046d61f5f65111fcbc14fd94663109e40a2aed4e` ("Add numbered attack chains and path graphs; check
+contracts before correlate writes"), parent 2d164e6. `git fetch` found nothing new on origin/main, so
+`git rebase origin/main` was a no-op; `python -m pytest -q` after the rebase: 194 passed. Pushed
+`2d164e6..046d61f main -> main`; `git rev-list --left-right --count main...origin/main` = `0 0`.
+(This hash line was added after the commit, so it is a working-copy edit to this file.)

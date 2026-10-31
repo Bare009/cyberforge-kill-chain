@@ -1,0 +1,14 @@
+# Access graph and reach next settings (docs/build-plan.md P8). Zones, roles and importance are in
+# config/network.yaml.
+admin_ports: [22, 135, 445, 3389, 5985, 5986]
+strengths: {controls: 1.0, admin_port: 0.8, allowed_flow: 0.4, zone_neighbour: 0.2}
+hop_factor: {1: 1.0, 2: 0.5}
+max_hops: 2
+max_reachable: 10
+max_via: 3
+lines_per_edge: 5
+neighbour_zones: [server, dmz]
+foothold_skip_tactics: [reconnaissance, discovery, impact]
+login_success_desc: ['Admin login successful']
+denied_actions: [deny, dropped, blocked]
+likely_next: 3

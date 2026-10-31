@@ -1,0 +1,28 @@
+# Reach next per incident on firex-10G (python -m killchain reach --run data/runs/firex-10G)
+# #n | footholds | reachable count (observed/inferred) | top host | sentence
+
+#1 | 10.10.20.20 | 10 (0/10) | 10.10.20.31 | No internal connections from portal (10.10.20.20) were observed; 230 hosts in the same server subnet (e.g. 10.10.20.31) are the likely next targets (inferred).
+#2 | 10.10.10.118 | 0 (0/0) | - | No internal reach observed in the logs: 10.10.10.118 opened no allowed sessions to other internal hosts, and inferred neighbours are only drawn for server and DMZ subnets.
+#3 | 10.10.99.1, svc_backup30 | 1 (1/0) | 10.10.99.1 | svc_backup30 logged in to the firewall management interface firewall (10.10.99.1), which controls every zone.
+#4 | 10.10.99.1 | 0 (0/0) | - | No internal reach observed in the logs: firewall (10.10.99.1) opened no allowed sessions to other internal hosts, and inferred neighbours are only drawn for server and DMZ subnets.
+#5 | 10.10.20.31 | 10 (0/10) | 10.10.20.20 | No internal connections from 10.10.20.31 were observed; 230 hosts in the same server subnet (e.g. portal (10.10.20.20)) are the likely next targets (inferred).
+#6 | 10.10.99.1, parul.sinha | 1 (1/0) | 10.10.99.1 | parul.sinha logged in to the firewall management interface firewall (10.10.99.1), which controls every zone.
+#7 | 10.10.20.20 | 10 (0/10) | 10.10.20.31 | No internal connections from portal (10.10.20.20) were observed; 230 hosts in the same server subnet (e.g. 10.10.20.31) are the likely next targets (inferred).
+#8 | 10.10.20.10, 10.10.20.13, 10.10.20.28, 10.10.20.58, 10.10.10.44 | 10 (0/10) | 10.10.20.163 | Every connection seen from 10.10.20.10, 10.10.20.13, 10.10.20.28 and 2 more goes to hosts already in this incident; 171 hosts in the same server subnet (e.g. 10.10.20.163) are the likely next targets (inferred).
+#9 | 10.10.20.24, 10.10.20.10, 10.10.10.63 | 10 (0/10) | 10.10.20.163 | Every connection seen from 10.10.20.24, 10.10.20.10 and 10.10.10.63 goes to hosts already in this incident; 201 hosts in the same server subnet (e.g. 10.10.20.163) are the likely next targets (inferred).
+#10 | - | 0 (0/0) | - | No internal reach observed in the logs: no successful step reached an internal host or signed in to an account.
+#11 | 10.10.99.1, Deepika.Khan | 1 (1/0) | 10.10.99.1 | Deepika.Khan logged in to the firewall management interface firewall (10.10.99.1), which controls every zone.
+#12 | 10.10.10.112 | 0 (0/0) | - | No internal reach observed in the logs: 10.10.10.112 opened no allowed sessions to other internal hosts, and inferred neighbours are only drawn for server and DMZ subnets.
+#13 | - | 0 (0/0) | - | No internal reach observed in the logs: no successful step reached an internal host or signed in to an account.
+#14 | 10.10.40.72 | 0 (0/0) | - | No internal reach observed in the logs: 10.10.40.72 opened no allowed sessions to other internal hosts, and inferred neighbours are only drawn for server and DMZ subnets.
+#15 | 10.10.10.51 | 0 (0/0) | - | No internal reach observed in the logs: 10.10.10.51 opened no allowed sessions to other internal hosts, and inferred neighbours are only drawn for server and DMZ subnets.
+#16 | - | 0 (0/0) | - | No internal reach observed in the logs: no successful step reached an internal host or signed in to an account.
+#17 | 10.10.10.88 | 0 (0/0) | - | No internal reach observed in the logs: 10.10.10.88 opened no allowed sessions to other internal hosts, and inferred neighbours are only drawn for server and DMZ subnets.
+#18 | - | 0 (0/0) | - | No internal reach observed in the logs: no successful step reached an internal host or signed in to an account.
+#19 | - | 0 (0/0) | - | No internal reach observed in the logs: no successful step reached an internal host or signed in to an account.
+#20 | 10.10.20.20 | 10 (0/10) | 10.10.20.31 | No internal connections from portal (10.10.20.20) were observed; 230 hosts in the same server subnet (e.g. 10.10.20.31) are the likely next targets (inferred).
+#21 | 10.10.20.20 | 10 (0/10) | 10.10.20.31 | No internal connections from portal (10.10.20.20) were observed; 230 hosts in the same server subnet (e.g. 10.10.20.31) are the likely next targets (inferred).
+#22 | - | 0 (0/0) | - | No internal reach observed in the logs: no successful step reached an internal host or signed in to an account.
+#23 | - | 0 (0/0) | - | No internal reach observed in the logs: no successful step reached an internal host or signed in to an account.
+#24 | - | 0 (0/0) | - | No internal reach observed in the logs: no successful step reached an internal host or signed in to an account.
+#25 | 10.10.20.20 | 10 (0/10) | 10.10.20.31 | No internal connections from portal (10.10.20.20) were observed; 230 hosts in the same server subnet (e.g. 10.10.20.31) are the likely next targets (inferred).
