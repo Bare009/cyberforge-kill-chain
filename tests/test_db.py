@@ -91,3 +91,40 @@ def test_real_run_counts():
     assert s["ts_valid"] == 3_848_247
     assert s["first_valid_utc"].startswith("2026-10-23 03:18:26")
     assert s["ts_quality"] == {"stuck": 5_277_136, "ok": 3_848_247}
+
+
+def test_prepare_keeps_line_order_without_sorting(tmp_path):
+    """Parser output is already in line order: prepare stores it as is. Parts out of order are sorted."""
+    import shutil
+
+    import duckdb
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    parsed = tmp_path / "parsed"
+    log = tmp_path / "a.log"
+    log.write_text("\n".join(LINES * 40) + "\n", encoding="utf-8")
+    subprocess.run([sys.executable, "-m", "killchain", "parse", str(log), "--out", str(parsed), "--workers", "2",
+                    "--chunk-mb", "1", "--batch-rows", "16", "--no-summary"], cwd=ROOT, check=True, capture_output=True)
+    assert db.parts_in_line_order(parsed / "firewall")
+    res = db.prepare_run(parsed, tmp_path / "run")
+    assert res["sorted"] == {"firewall": False}
+    con = duckdb.connect(res["path"], read_only=True)
+    lines = [r[0] for r in con.execute("SELECT line FROM firewall_events").fetchall()]
+    assert lines == sorted(lines) and len(lines) == len(LINES) * 40
+    con.close()
+    # reverse the line numbers of a part (several row groups): the order check fails and prepare sorts
+    bad = tmp_path / "bad"
+    shutil.copytree(parsed, bad)
+    part = sorted((bad / "firewall").glob("part-*.parquet"))[0]
+    t = pq.read_table(part)
+    pq.write_table(t.set_column(t.schema.get_field_index("line"), "line",
+                                pa.array(list(reversed(t.column("line").to_pylist())), t.schema.field("line").type)),
+                   part, row_group_size=4)
+    assert not db.parts_in_line_order(bad / "firewall")
+    res = db.prepare_run(bad, tmp_path / "run2")
+    assert res["sorted"] == {"firewall": True}
+    con = duckdb.connect(res["path"], read_only=True)
+    lines = [r[0] for r in con.execute("SELECT line FROM firewall_events").fetchall()]
+    assert lines == sorted(lines)
+    con.close()

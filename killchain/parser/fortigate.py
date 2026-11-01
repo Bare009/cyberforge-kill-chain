@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from itertools import chain
 from typing import List, Optional, Tuple
 
 import pyarrow as pa
@@ -18,7 +19,9 @@ import pyarrow as pa
 from . import arrowutil as au
 
 PREFIX = b"date="
-KV_RE = re.compile(rb'([A-Za-z0-9_\-]+)=("(?:[^"\\]|\\.)*"|[^ ]*)')
+# A quoted value is "[^"\\]*(?:\\.[^"\\]*)*": the same strings as "(?:[^"\\]|\\.)*", but runs of
+# ordinary bytes match in one step instead of one alternation per byte.
+KV_RE = re.compile(rb'([A-Za-z0-9_\-]+)=("[^"\\]*(?:\\.[^"\\]*)*"|[^ ]*)')
 
 # (FortiGate key, column, type)
 FIELDS: List[Tuple[str, str, str]] = [
@@ -107,7 +110,8 @@ def _binary_start(raw: bytes) -> Optional[int]:
 
 def _covered(pairs: List[Tuple[bytes, bytes]]) -> int:
     """Bytes a line has when it is exactly these key=value pairs joined by single spaces."""
-    return sum(len(k) + len(v) for k, v in pairs) + 2 * len(pairs) - 1 if pairs else 0
+    # map/chain run in C: this is called once per line, and a generator here cost a third of parse time
+    return sum(map(len, chain.from_iterable(pairs))) + 2 * len(pairs) - 1 if pairs else 0
 
 
 class FortiGateBatch:

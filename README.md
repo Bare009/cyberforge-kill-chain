@@ -350,13 +350,19 @@ With `--run none` (or `KILLCHAIN_RUN=none`), the API starts with no run. The
 Dashboard shows only the upload card, and every other page is empty until a
 log has been analysed. `POST /runs/select {"run": "none"}` empties it again.
 
-Measured on the 16-core, 16 GB development machine, with a fresh 6.1 GiB copy
-of firex-10G uploaded through the browser: the upload took 43 s (about
-150 MB/s), and processing took 4 to 6 min. Parse took 158 s with 8 parser
-processes and 229 s with 4. For a 13 GB file, expect about 1.5 min for the
-upload and roughly twice the processing time. The card defaults to
-`PARSE_WORKERS`, else up to 8 parser processes. The run's peak memory, about
-6 GB, comes from DuckDB in the prepare stage.
+Measured on the development machine (Ryzen 9 5900HS, 8 cores / 16 threads,
+16 GB, NVMe SSD) with the 19.6 GB firex-30G log under a new name:
+
+| Step | Time |
+|---|---|
+| upload through the browser | 2 min 42 s |
+| processing with 8 parser processes | 12 min 1 s: parse 473 s, prepare 188 s, detect 42 s, the rest about 20 s |
+
+Expect about two-thirds of that for a 13 GB file. Parsing is limited by the
+CPU (Python, about 10 MB/s per process), not the disk. The card defaults to
+`PARSE_WORKERS`, else up to 8 parser processes; 12 parsed a 4 GiB slice only
+about 7% faster than 8. The run's peak memory, about 6 GB, comes from DuckDB in
+the prepare stage.
 
 Endpoints (`killchain/api/jobs.py`):
 

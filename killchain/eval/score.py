@@ -58,7 +58,13 @@ def load_run(run: Union[str, Path]) -> Dict[str, Any]:
             stats.append(json.loads(p.read_text(encoding="utf-8")))
         except (OSError, ValueError):
             pass
-    return {"alerts": alerts, "evidence": ev, "incidents": incidents, "stats": stats}
+    pipeline = None
+    if (run / "pipeline.json").exists():
+        try:
+            pipeline = json.loads((run / "pipeline.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            pass
+    return {"alerts": alerts, "evidence": ev, "incidents": incidents, "stats": stats, "pipeline": pipeline}
 
 
 def incidents_from_parquet(run: Path) -> List[Dict[str, Any]]:
@@ -207,6 +213,13 @@ def score(truth: pl.DataFrame, run: Dict[str, Any], reviewed: Optional[Dict[str,
     stats = list(run["stats"]) + list(extra_stats or [])
     secs = sum(float(s.get("wall_secs") or 0) for s in stats)
     rss = max([s.get("peak_rss_mb") or 0 for s in stats] or [0])
+    # A full `killchain run` (no --from, no --reuse-parsed) timed everything end to end, the DuckDB
+    # prepare step and process start-ups included, which the stages' own _stats.json leave out.
+    pipe = run.get("pipeline") or {}
+    opts = pipe.get("options") or {}
+    if pipe.get("wall_secs") and pipe.get("exit_code") == 0 and not opts.get("from") and not opts.get("reuse_parsed"):
+        secs = float(pipe["wall_secs"])
+        rss = max(rss, pipe.get("peak_rss_mb") or 0)
 
     metrics = {
         "detection_recall": n_cov / n_truth if n_truth else 0.0,

@@ -172,6 +172,30 @@ def open_run(parsed_dir: Union[str, Path], database: Union[str, Path] = ":memory
 PREPARED_NAME = "events.duckdb"
 
 
+def parts_in_line_order(stream_dir: Path) -> bool:
+    """True when the stream's Parquet parts, read in file-name order, hold increasing line numbers:
+    every row group's line range starts after the previous one's ends. Checked from the Parquet
+    statistics, without reading data. The parser writes each part's rows in file order, one byte
+    range per part, so its output passes; anything else (no statistics, overlaps) is sorted."""
+    import pyarrow.parquet as pq
+
+    last = None
+    for p in sorted(stream_dir.glob("part-*.parquet")):
+        md = pq.ParquetFile(p).metadata
+        names = md.schema.names
+        if "line" not in names:
+            return False
+        col = names.index("line")
+        for g in range(md.num_row_groups):
+            st = md.row_group(g).column(col).statistics
+            if st is None or not st.has_min_max:
+                return False
+            if last is not None and st.min <= last:
+                return False
+            last = st.max
+    return True
+
+
 def prepare_run(parsed_dir: Union[str, Path], run_dir: Union[str, Path],
                 network: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Store the views as tables in run_dir/events.duckdb (derived columns computed once).
@@ -192,9 +216,18 @@ def prepare_run(parsed_dir: Union[str, Path], run_dir: Union[str, Path],
     con = duckdb.connect(str(tmp))
     configure(con)
     have = create_views(con, parsed_dir, network)
+    ordered: Dict[str, bool] = {}
     for stream, view in (("firewall", "firewall_events"), ("windows", "windows_events")):
         if have.get(stream):
-            con.execute(f"CREATE TABLE {view}_t AS SELECT * FROM {view} ORDER BY line")
+            ordered[stream] = parts_in_line_order(Path(parsed_dir) / stream)
+            if ordered[stream]:
+                # the parts already hold the rows in line order: keep that order instead of sorting
+                # them again (on the 19.6 GB firex-30G log, 185 s instead of 553 s)
+                con.execute("SET preserve_insertion_order = true")
+                con.execute(f"CREATE TABLE {view}_t AS SELECT * FROM {view}")
+                con.execute("SET preserve_insertion_order = false")
+            else:
+                con.execute(f"CREATE TABLE {view}_t AS SELECT * FROM {view} ORDER BY line")
             con.execute(f"DROP VIEW {view}")
             con.execute(f"ALTER TABLE {view}_t RENAME TO {view}")
     con.execute("DROP VIEW IF EXISTS events")
@@ -207,7 +240,7 @@ def prepare_run(parsed_dir: Union[str, Path], run_dir: Union[str, Path],
         final.unlink()
     tmp.rename(final)
     return {**meta, "path": str(final), "secs": round(time.perf_counter() - t0, 1),
-            "mb": round(final.stat().st_size / 2**20)}
+            "mb": round(final.stat().st_size / 2**20), "sorted": {s: not o for s, o in ordered.items()}}
 
 
 def connect(parsed_dir: Optional[Union[str, Path]] = None, run_dir: Optional[Union[str, Path]] = None,
