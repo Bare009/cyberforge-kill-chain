@@ -168,6 +168,65 @@ def test_job_runs_the_pipeline_and_switches_to_the_new_run(env):
     assert runs["runs"][0]["input"] == "attack.log"
 
 
+EXTENSIONS = (".json", ".ndjson", ".jsonl", ".csv", ".tsv", ".txt", ".log", ".gz", ".zip", ".xml")
+
+
+def test_any_log_extension_is_accepted_and_listed(env):
+    client, _, _, raw = env
+    for ext in EXTENSIONS:
+        r = put(client, f"export{ext}", b"x" * 10, 0, 10)
+        assert r.status_code == 200 and r.json()["complete"] is True, ext
+    (raw / "firex.log.manifest.json").write_text("{}", encoding="utf-8")       # truth files are not logs
+    (raw / "export.truth.json").write_text("{}", encoding="utf-8")
+    names = {f["name"] for f in client.get("/uploads").json()["files"]}
+    assert names == {f"export{ext}" for ext in EXTENSIONS}
+
+
+def test_progress_reads_the_schema_stage(env):
+    """The stage list comes from the pipeline (schema first); generic-parser progress lines are read too."""
+    client, app, _, raw = env
+    assert jobs_mod.STAGES[0] == "schema"
+    job = object.__new__(jobs_mod.Job)
+    job.stages = {s: {"name": s, "status": "pending", "wall_secs": None} for s in jobs_mod.STAGES}
+    job._started, job.current, job.tail = {}, None, jobs_mod.deque(maxlen=40)
+    job.parse = {"phase": None, "pct": 0.0, "gib": 0.0, "secs": None}
+    job._lock = jobs_mod.threading.Lock()
+    job.feed("run: stage schema started")
+    assert job.current == "schema" and job.stages["schema"]["status"] == "running"
+    job.feed("run: stage schema ok 0.8")
+    assert job.stages["schema"] == {"name": "schema", "status": "ok", "wall_secs": 0.8}
+    job.feed("[parse] [export.csv] counting lines in 0.31 GiB")
+    assert job.parse["phase"] == "counting"
+    job.feed("[parse] [export.csv]  42.0%    0.13 GiB      1.2 s")
+    assert job.parse["phase"] == "parsing" and job.parse["pct"] == 42.0 and job.parse["gib"] == 0.13
+    job.feed("[parse] parsed 334.1 MB, 1,000 lines -> 999 rows in 3.5 s")
+    assert job.parse["phase"] == "done"
+
+
+def test_job_on_a_vendor_export_shows_format_and_categories(env):
+    client, app, data, raw = env
+    shutil.copy(Path(__file__).parent / "fixtures" / "vendor" / "sentinel_alerts.json", raw / "sentinel.json")
+    assert client.post("/jobs", json={"file": "sentinel.json", "offline": True, "no_llm": True,
+                                      "workers": 1}).status_code == 202
+    job = wait_for_job(client)
+    assert job["state"] in ("ok", "ok_with_warnings"), job
+    res = job["result"]
+    assert res["parser"] == "generic" and res["format"].startswith("json")
+    assert res["categories"].get("vendor_alert", 0) > 0 and res["alerts_by_layer"].get("vendor", 0) > 0
+    assert res["incidents"] >= 1 and client.get("/incidents").json()["incidents"]
+
+
+def test_job_on_a_file_without_events(env):
+    client, app, data, raw = env
+    (raw / "nothing.json").write_text("[\n]\n", encoding="utf-8")
+    assert client.post("/jobs", json={"file": "nothing.json", "offline": True, "no_llm": True}).status_code == 202
+    job = wait_for_job(client, timeout=120)
+    assert job["state"] == "no_events" and job["switched"] is False
+    assert job["error"].startswith("run: no events")
+    assert not (data / "runs" / "nothing").exists()                 # the name can be used again
+    assert client.get("/health").json()["run"] == "first"
+
+
 def test_cancel_stops_the_job(env):
     client, app, _, raw = env
     (raw / "attack.log").write_text("\n".join(attack_lines() * 20) + "\n", encoding="utf-8")

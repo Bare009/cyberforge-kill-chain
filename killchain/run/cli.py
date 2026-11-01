@@ -1,12 +1,16 @@
-"""python -m killchain run --input data/raw/firex-10G.log [--name firex-10G] [--offline] [--no-llm]
+"""python -m killchain run --input <log of any supported product> [--name <run>] [--offline] [--no-llm]
 
-Runs parse -> prepare -> detect -> correlate -> chain -> reach -> score -> report -> enrich ->
-narrate -> bundle on one log file. Each stage's output is printed with a [stage] prefix and kept in
-<run>/logs/<stage>.log. The run's record (per-stage wall time, peak memory, counts, status) is written
-to <run>/pipeline.json and under the `pipeline` key of <run>/run_summary.json.
+Runs schema -> parse -> prepare -> detect -> correlate -> chain -> reach -> score -> report -> enrich ->
+narrate -> bundle on one log file. schema detects the format (FortiGate, CSV/TSV, JSON, NDJSON,
+key=value, syslog/CEF/LEEF, Windows XML; .gz and .zip too) and maps the fields; FortiGate goes to its own
+parser as before, everything else to the generic parser (docs/schema.md). Each stage's output is printed
+with a [stage] prefix and kept in <run>/logs/<stage>.log. The run's record (per-stage wall time, peak
+memory, counts, status) is written to <run>/pipeline.json and under the `pipeline` key of
+<run>/run_summary.json; what was read (format, products, categories, mapping, rules that can run, vendor
+alerts, network zones) under its `schema` key.
 
 Exit codes: 0 done (maybe with warnings), 1 a required stage failed, 2 usage or input error,
-3 the input holds no events.
+3 the input holds no events (the run and parsed folders this run created are removed).
 """
 
 from __future__ import annotations
@@ -35,11 +39,16 @@ def _short(counts: Dict[str, Any], limit: int = 6) -> str:
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m killchain run", description=__doc__.split("\n\n")[1],
                                  formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__.split("\n\n")[2])
-    ap.add_argument("--input", required=True, help="raw log file (FortiGate key=value and/or JSON lines)")
+    ap.add_argument("--input", required=True, help="log file of any supported product (FortiGate, a firewall, EDR or "
+                                                   "SIEM export as CSV, JSON, NDJSON, key=value, syslog/CEF, XML; "
+                                                   ".gz/.zip)")
     ap.add_argument("--name", help="run name (default: the input file name without extension)")
     ap.add_argument("--offline", action="store_true", help="no network: enrich uses cache and local context only, "
                                                            "the narrator is skipped")
-    ap.add_argument("--no-llm", action="store_true", help="skip the AI narrator; incidents keep template reports")
+    ap.add_argument("--no-llm", action="store_true", help="no LLM anywhere: field mapping uses the synonyms only, "
+                                                          "vendor alert names are labelled from their fields and "
+                                                          "keywords, incidents keep template reports (without a key "
+                                                          "in .env the LLM is skipped anyway, and the run says so)")
     ap.add_argument("--reuse-parsed", action="store_true",
                     help="skip parse (and db prepare when events.duckdb is newer) when <data>/parsed/<name> "
                          "was parsed from this same file")
@@ -80,6 +89,20 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"warning: {w}", file=sys.stderr)
     for n in rec["notes"]:
         print(f"note: {n}")
+    sc = rec.get("schema")
+    if sc:
+        print(f"read: {sc['format']} ({sc['parser']} parser)"
+              + (f", products {_short(sc['products'], 4)}" if sc.get("products") else "")
+              + f"; categories {_short(sc['categories'])} ({sc['categories_from']})")
+        r = sc["rules"]
+        print(f"rules: {len(r['can_run'])} can run, {len(r['skipped'])} skipped; alerts {_short(sc['alerts_by_layer'])}"
+              + (f"; vendor alerts {sc['vendor_alerts']['alerts']} (techniques: "
+                 f"{_short(sc['vendor_alerts']['technique_sources']) or '-'})" if sc["vendor_alerts"]["records"] else ""))
+        if sc.get("network"):
+            print(f"network: {sc['network'].get('source')} ({sc['network'].get('reason')})")
     run_dir = Path(rec["run_dir"])
-    print(f"-> {run_dir / 'run_summary.json'} (pipeline), {run_dir / 'pipeline.json'}")
+    if (rec.get("removed") or {}).get("run_dir"):
+        print(f"-> nothing written: {run_dir} removed")
+        return code
+    print(f"-> {run_dir / 'run_summary.json'} (pipeline, schema), {run_dir / 'pipeline.json'}")
     return code

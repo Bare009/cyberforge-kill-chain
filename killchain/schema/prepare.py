@@ -95,8 +95,9 @@ def _fortigate_sample(path: Path, n: int) -> pa.Table:
     size = path.stat().st_size
     starts = [(0, 1)]
     if size > 4 * F.HEAD_BYTES:
-        mid = F.mid_offset(path)
-        starts.append((mid, 1 + F.count_lines_before(path, mid)))
+        # the sample's line numbers are not used, so the middle part is not counted (that would read
+        # half the file: 3 GB on firex-10G)
+        starts.append((F.mid_offset(path), 1))
     for s, first in starts:
         got = 0
         for raw, ln, off in F.iter_lines(path, s, None, first):

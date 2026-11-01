@@ -3,7 +3,7 @@ title: Many failed logons for one account
 status: test
 tuning: "20 failures in 10 min per account (Windows 4625/4771 or auth records with status failed); synthetic
   Sentinel/EDR background: at most 6 per account in 10 min; machine accounts (ending in $) left out; firex-10G: 0
-  (no auth records)"
+  (no auth records); a firewall's own admin logins (log_desc 'Admin login ...') are R01's"
 attack:
   technique: T1110
   alt_techniques: [T1110.001, T1110.003]
@@ -15,6 +15,7 @@ requires_any: [[event_id, user], [category, status, user]]
 where: |-
   (event_id IN ('4625', '4771') OR (category = 'auth' AND status = 'failed'))
   AND user IS NOT NULL AND user NOT LIKE '%$'
+  AND coalesce(log_desc, '') NOT LIKE 'Admin login%'
 group_by: ["lower(user) AS account"]
 window: 10m
 having: {gte: 20}

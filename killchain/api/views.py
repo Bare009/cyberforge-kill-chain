@@ -91,7 +91,7 @@ def dashboard_summary(b: RunBundle, ti_status: Dict[str, Any]) -> Dict[str, Any]
         while h <= last and len(hours) < 24 * 60:
             c = by_hour.get(h, Counter())
             hours.append({"hour": _iso(h), "alerts": sum(c.values()), "rule": c.get("rule", 0),
-                          "anomaly": c.get("anomaly", 0)})
+                          "anomaly": c.get("anomaly", 0), "vendor": c.get("vendor", 0)})
             h += timedelta(hours=1)
 
     # top attackers (outside sources) and targets (internal destinations)
@@ -238,7 +238,7 @@ def get_alerts(
     technique: Optional[str] = Query(None, description="technique id; a parent matches its sub-techniques"),
     tactic: Optional[str] = Query(None),
     rule: Optional[str] = Query(None, description="rule id"),
-    layer: Optional[str] = Query(None, description="rule | anomaly"),
+    layer: Optional[str] = Query(None, description="rule | anomaly | vendor"),
     severity: Optional[int] = Query(None, ge=1, le=5, description="minimum severity"),
     entity: Optional[str] = Query(None, description="exact IP, host, user, domain or URL"),
     q: Optional[str] = Query(None, description="text in the title, summary, rule id or an entity"),

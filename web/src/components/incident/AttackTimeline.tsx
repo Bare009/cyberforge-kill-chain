@@ -1,5 +1,5 @@
 import { CheckCircle2, ShieldX, Sparkles } from 'lucide-react'
-import { TacticChip } from '@/components/incident/badges'
+import { TacticChip, VendorBadge } from '@/components/incident/badges'
 import { cn } from '@/lib/utils'
 import { formatIst, formatSpan, tacticColor } from '@/lib/killchain'
 import type { Step } from '@/types/incident'
@@ -69,6 +69,7 @@ function StepItem({ step, last }: { step: Step; last: boolean }) {
               <Sparkles className="h-3.5 w-3.5" /> anomaly
             </span>
           )}
+          {step.layer === 'vendor' && <VendorBadge ruleId={step.rule_id} />}
         </div>
 
         {step.enrichment_flags.length > 0 && (

@@ -15,9 +15,10 @@ import { formatBytes, formatSecs } from '@/lib/format'
 import { isAbort, runNameFor, safeFileName, uploadFile, type UploadProgress } from '@/lib/upload'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/useAppStore'
-import type { Job, JobStage } from '@/types/jobs'
+import type { Job, JobResult, JobStage } from '@/types/jobs'
 
 const STAGE_LABEL: Record<string, string> = {
+  schema: 'Detect format, map fields',
   parse: 'Parse the log',
   prepare: 'Load events into DuckDB',
   detect: 'Detect (rules and anomalies)',
@@ -148,6 +149,21 @@ function Stat({ label, value, hint }: { label: string; value: React.ReactNode; h
   )
 }
 
+/** What the schema stage found: format, products and record categories (run_summary.json `schema`). */
+function ReadAs({ r }: { r: JobResult }) {
+  const products = Object.keys(r.products ?? {})
+  const cats = Object.entries(r.categories ?? {})
+  const vendor = r.alerts_by_layer?.vendor ?? 0
+  return (
+    <p className="text-xs text-slate-600" aria-label="Read as">
+      Read as <span className="font-medium text-slate-900">{r.format}</span>
+      {products.length > 0 && <> from <span className="font-medium text-slate-900">{products.slice(0, 3).join(', ')}</span>{products.length > 3 ? ` +${products.length - 3}` : ''}</>}
+      {cats.length > 0 && <> · {cats.map(([c, n]) => `${n.toLocaleString()} ${c.replace('_', ' ')}`).join(', ')}</>}
+      {vendor > 0 && <> · {vendor.toLocaleString()} vendor alert{vendor === 1 ? '' : 's'}</>}
+    </p>
+  )
+}
+
 function Finished({ job, onDismiss, onAgain }: { job: Job; onDismiss: () => void; onAgain: () => void }) {
   const r = job.result
   const ok = job.state === 'ok' || job.state === 'ok_with_warnings'
@@ -168,6 +184,7 @@ function Finished({ job, onDismiss, onAgain }: { job: Job; onDismiss: () => void
         <Button size="sm" variant="outline" onClick={onAgain}><FileUp className="mr-1 h-3.5 w-3.5" /> Analyse another log</Button>
         <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Hide" onClick={onDismiss}><X className="h-4 w-4" /></Button>
       </div>
+      {r && ok && r.format && <ReadAs r={r} />}
       {r && ok && (
         <div className="grid grid-cols-2 gap-2 md:grid-cols-6">
           <Stat label="Incidents" value={(r.incidents ?? 0).toLocaleString()} hint={r.critical_incidents ? `${r.critical_incidents} critical` : undefined} />
@@ -375,7 +392,10 @@ export function AnalyseLog() {
           {file ? (
             <span className="font-medium text-slate-900">{file.name} <span className="font-normal text-slate-500">({formatBytes(file.size)})</span></span>
           ) : (
-            <span className="text-slate-600">Drop a FortiGate log here or <span className="text-blue-700 underline">choose a file</span>.</span>
+            <span className="text-slate-600">
+              Drop a log here or <span className="text-blue-700 underline">choose a file</span>: FortiGate, another firewall,
+              an EDR or SIEM export (CSV, TSV, JSON, NDJSON, key=value, syslog/CEF, XML, .gz or .zip).
+            </span>
           )}
           <input ref={inputRef} type="file" className="hidden" data-testid="log-file" onChange={(e) => choose(e.target.files?.[0] ?? null)} />
         </div>

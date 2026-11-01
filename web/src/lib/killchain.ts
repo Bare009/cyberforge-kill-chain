@@ -163,3 +163,9 @@ export function formatSpan(startIso: string, endIso: string): string {
   const d = Math.floor(h / 24)
   return h % 24 ? `${d} d ${h % 24} h` : `${d} d`
 }
+
+/** The product in a vendor alert's rule id: "vendor:sentinelone:mimikatz" -> "sentinelone"; null for a rule. */
+export function vendorProduct(ruleId: string | null | undefined): string | null {
+  const parts = String(ruleId ?? '').split(':')
+  return parts[0] === 'vendor' && parts[1] ? parts[1] : null
+}

@@ -14,6 +14,8 @@ export interface HourRow {
   alerts: number
   rule: number
   anomaly: number
+  /** Alerts other products raised (absent in older API answers). */
+  vendor?: number
 }
 
 export interface TopEntity {

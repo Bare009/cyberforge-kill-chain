@@ -16,7 +16,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
   return { ...real, api: { get: (...a: unknown[]) => get(...a), post: (...a: unknown[]) => post(...a) } }
 })
 
-const STAGES = ['parse', 'prepare', 'detect', 'correlate', 'chain', 'reach', 'score', 'report', 'enrich', 'narrate', 'bundle']
+const STAGES = ['schema', 'parse', 'prepare', 'detect', 'correlate', 'chain', 'reach', 'score', 'report', 'enrich', 'narrate', 'bundle']
 
 const listing: UploadListing = {
   enabled: true, raw_dir: 'F:/logs', partial: [], free_bytes: 150 * 2 ** 30, max_chunk: 256 * 2 ** 20,
@@ -37,7 +37,7 @@ function job(over: Partial<Job> = {}): Job {
     options: { offline: false, no_llm: true, workers: 8, switch: true },
     started_at: new Date(Date.now() - 65_000).toISOString(), finished_at: null, elapsed_secs: 65, upload_secs: 40,
     current: 'parse',
-    stages: STAGES.map((name) => ({ name, status: name === 'parse' ? 'running' : 'pending', wall_secs: name === 'parse' ? 60 : null })),
+    stages: STAGES.map((name) => ({ name, status: name === 'parse' ? 'running' : name === 'schema' ? 'ok' : 'pending', wall_secs: name === 'parse' ? 60 : name === 'schema' ? 1 : null })),
     parse: { phase: 'parsing', pct: 25, gib: 3, secs: 60 }, tail: ['[parse] [new.log]  25.0%    3.00 GiB     60.0 s'],
     result: null, switched: false, error: null, ...over,
   }
@@ -144,14 +144,16 @@ describe('AnalyseLog', () => {
     currentJob = job()
     post.mockResolvedValue({ data: job({ state: 'cancelled' }) })
     renderPage(<AnalyseLog />)
-    expect(await screen.findByText(/Stage 1 of 11: Parse the log/)).toBeInTheDocument()
+    expect(await screen.findByText(/Stage 2 of 12: Parse the log/)).toBeInTheDocument()
     expect(screen.getByText(/upload took 40 s/)).toBeInTheDocument()
     expect(screen.getByText(/8 parser processes/)).toBeInTheDocument()
     expect(screen.getByText(/Parsed 3.00 of 12.00 GiB \(25%\)/)).toBeInTheDocument()
     expect(screen.getByText(/about 3 min 0 s left/)).toBeInTheDocument()
     const stages = within(screen.getByRole('list', { name: 'Pipeline stages' })).getAllByRole('listitem')
-    expect(stages).toHaveLength(11)
-    expect(within(stages[0]).getByLabelText('running')).toBeInTheDocument()
+    expect(stages).toHaveLength(12)
+    expect(within(stages[0]).getByText('Detect format, map fields')).toBeInTheDocument()
+    expect(within(stages[0]).getByLabelText('done')).toBeInTheDocument()
+    expect(within(stages[1]).getByLabelText('running')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /Cancel/ }))
     expect(post).toHaveBeenCalledWith('/jobs/current/cancel')
   })
@@ -173,6 +175,23 @@ describe('AnalyseLog', () => {
     expect(screen.getByText(/every page now show this run/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /Analyse another log/ }))
     expect(screen.getByRole('button', { name: 'Choose a log file' })).toBeInTheDocument()
+    expect(screen.getByText(/EDR or SIEM export/)).toBeInTheDocument()
+  })
+
+  it('names the format, product and categories another product\'s export was read as', async () => {
+    currentJob = job({
+      state: 'ok', file: 'sentinel.json', current: null, finished_at: new Date().toISOString(), switched: true,
+      stages: STAGES.map((name) => ({ name, status: name === 'narrate' ? 'skipped' : 'ok', wall_secs: 1 })),
+      result: { status: 'ok', exit_code: 0, wall_secs: 20, peak_rss_mb: 300, incidents: 3, critical_incidents: 1, alerts: 9,
+        unexplained: 0, events: 31, lines: 600, warnings: [], error: null, format: 'json', parser: 'generic',
+        products: { 'Microsoft Defender for Endpoint': 20, 'Azure AD Identity Protection': 11 },
+        categories: { vendor_alert: 31 }, alerts_by_layer: { rule: 0, anomaly: 0, vendor: 9 } },
+    })
+    renderPage(<AnalyseLog />)
+    const read = await screen.findByLabelText('Read as')
+    expect(read).toHaveTextContent('Read as json from Microsoft Defender for Endpoint, Azure AD Identity Protection')
+    expect(read).toHaveTextContent('31 vendor alert')
+    expect(read).toHaveTextContent('9 vendor alerts')
   })
 })
 

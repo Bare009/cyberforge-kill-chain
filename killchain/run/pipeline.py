@@ -3,6 +3,12 @@
 The record (schema in docs/tasks/trackA/item3-plan.md) goes to <run>/pipeline.json and, under the
 `pipeline` key, into the run_summary.json that bundle writes. Bundle rebuilds run_summary.json from
 scratch, so the key is added after bundle and pipeline.json keeps a copy a later rebundle cannot drop.
+
+The first stage, schema, detects the input's format and maps its fields (killchain/schema). FortiGate
+input (and input of no recognised format) is then parsed by `python -m killchain parse` exactly as before;
+anything else by the generic parser (`python -m killchain schema --mapping <run>/schema.yaml`). What was
+read (format, products, categories, mapping, rules that can run, vendor alerts, network zones) goes to the
+record's `schema` part and to run_summary.json `schema` (docs/schema.md).
 """
 
 from __future__ import annotations
@@ -19,11 +25,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-STAGES: List[str] = ["parse", "prepare", "detect", "correlate", "chain", "reach", "score", "report",
+STAGES: List[str] = ["schema", "parse", "prepare", "detect", "correlate", "chain", "reach", "score", "report",
                      "enrich", "narrate", "bundle"]
-REQUIRED = set(STAGES) - {"enrich", "narrate"}
+# schema may fail (a bug, an odd file): the FortiGate parser then reads the input, as before the stage existed
+REQUIRED = set(STAGES) - {"schema", "enrich", "narrate"}
 RECORD_VERSION = 1
 TAIL_LINES = 20
+SCHEMA_NO_RECORDS = 3        # `python -m killchain schema` exit code when no record can be read
 
 
 @dataclass
@@ -62,16 +70,52 @@ def _read(path: Path) -> Optional[Any]:
         return None
 
 
+def schema_mapping(ctx: Context) -> Optional[Dict[str, Any]]:
+    """The run's schema.yaml (written by the schema stage), or None."""
+    p = ctx.run_dir / "schema.yaml"
+    if not p.is_file():
+        return None
+    try:
+        import yaml
+
+        doc = yaml.safe_load(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return doc if isinstance(doc, dict) else None
+
+
+def uses_fortigate_parser(ctx: Context) -> bool:
+    """FortiGate input (and input of no recognised format) goes to the FortiGate parser exactly as before
+    the schema stage existed; so does a run without a schema.yaml (--from parse on an older run)."""
+    m = schema_mapping(ctx)
+    return m is None or m.get("format") == "fortigate"
+
+
+def _llm_off(ctx: Context) -> bool:
+    return ctx.no_llm or ctx.offline
+
+
 def command_for(stage: str, ctx: Context) -> List[str]:
     py, P, R = sys.executable, str(ctx.parsed_dir), str(ctx.run_dir)
+    workers = ["--workers", str(ctx.workers)] if ctx.workers else []
+    if stage == "schema":
+        cmd = [py, "-m", "killchain", "schema", "--input", str(ctx.input), "--name", ctx.name,
+               "--data-dir", str(ctx.data_dir)]
+        return cmd + (["--no-llm"] if _llm_off(ctx) else [])
     if stage == "parse":
-        cmd = [py, "-m", "killchain", "parse", str(ctx.input), "--out", P, "--overwrite"]
-        return cmd + (["--workers", str(ctx.workers)] if ctx.workers else [])
+        if uses_fortigate_parser(ctx):
+            report = _read(ctx.run_dir / "schema_report.json") or {}
+            src = report.get("plain_input") or str(ctx.input)        # a .gz / .zip is read from its plain copy
+            return [py, "-m", "killchain", "parse", src, "--out", P, "--overwrite"] + workers
+        return [py, "-m", "killchain", "schema", "--input", str(ctx.input), "--name", ctx.name,
+                "--data-dir", str(ctx.data_dir), "--mapping", str(ctx.run_dir / "schema.yaml"), "--out", P] + workers
     if stage == "prepare":
         return [py, "-m", "killchain", "db", "--prepare", "--parsed", P, "--run", R]
     if stage == "reach":
         return [py, "-m", "killchain", "reach", "--run", R, "--parsed", P]
-    if stage in ("detect", "correlate", "chain", "score", "report"):
+    if stage == "detect":
+        return [py, "-m", "killchain", "detect", "--run", R] + (["--no-llm"] if _llm_off(ctx) else [])
+    if stage in ("correlate", "chain", "score", "report"):
         return [py, "-m", "killchain", stage, "--run", R]
     if stage == "enrich":
         cmd = [py, "-m", "killchain.enrich", "--run", R] + (["--offline"] if ctx.offline else [])
@@ -142,6 +186,14 @@ def _numbers(d: Dict[str, Any], dicts: Tuple[str, ...] = ()) -> Dict[str, Any]:
 
 def stage_counts(stage: str, ctx: Context) -> Dict[str, Any]:
     P, R = ctx.parsed_dir, ctx.run_dir
+    if stage == "schema":
+        rep = _read(R / "schema_report.json")
+        if not isinstance(rep, dict):
+            return {}
+        rules = (rep.get("rules") or {}).get("counts") or {}
+        return {"format": rep.get("format"), "parser": rep.get("parser"),
+                "sample": (rep.get("sample") or {}).get("records"), "categories": rep.get("categories") or {},
+                "rules_can_run": rules.get("can_run"), "rules_skipped": rules.get("skipped")}
     if stage == "parse":
         st = _read(P / "_stats.json")
         if not isinstance(st, dict):
@@ -183,8 +235,11 @@ def check_events(ctx: Context) -> Optional[str]:
     if not st.get("bytes"):
         return f"run: no events in {ctx.input}: the file is empty (0 bytes)"
     classes = ", ".join(f"{k}={v}" for k, v in (st.get("lines_by_class") or {}).items())
-    return (f"run: no events in {ctx.input}: none of its {st.get('lines', 0)} lines is a FortiGate or JSON event "
-            f"({classes})")
+    if st.get("parser") == "generic":
+        return (f"run: no events in {ctx.input}: read as {st.get('format')}, but none of its {st.get('lines', 0)} "
+                f"lines gave a record ({classes})")
+    return (f"run: no events in {ctx.input}: none of its {st.get('lines', 0)} lines is a FortiGate event or a record "
+            f"of another supported format (CSV/TSV, JSON, NDJSON, key=value, syslog/CEF/LEEF, Windows XML) ({classes})")
 
 
 def _same_input(st: Dict[str, Any], ctx: Context) -> Tuple[bool, str, Any]:
@@ -209,7 +264,7 @@ def check_reuse(ctx: Context) -> Optional[str]:
 
 
 def check_from(ctx: Context) -> Optional[str]:
-    if ctx.from_stage in (None, "parse"):
+    if ctx.from_stage in (None, "schema", "parse"):
         return None
     if (ctx.parsed_dir / "_stats.json").exists():
         return None
@@ -233,9 +288,86 @@ def _atomic_json(path: Path, doc: Dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
+def _category_counts(ctx: Context) -> Tuple[Dict[str, int], Dict[str, int]]:
+    """({category: rows}, {product: rows}) over the whole parsed run (the generic parser's columns)."""
+    import duckdb
+
+    db_path = ctx.run_dir / "events.duckdb"
+    if not db_path.exists():
+        return {}, {}
+    try:
+        con = duckdb.connect(str(db_path), read_only=True)
+    except Exception:  # noqa: BLE001 - a locked or broken file: the sample counts are reported instead
+        return {}, {}
+    try:
+        con.execute("SET TimeZone = 'UTC'")
+        cats = dict(con.execute("SELECT coalesce(category, 'none'), count(*) FROM events GROUP BY 1 "
+                                "ORDER BY 2 DESC").fetchall())
+        prods = dict(con.execute("SELECT product, count(*) FROM events WHERE product IS NOT NULL GROUP BY 1 "
+                                 "ORDER BY 2 DESC LIMIT 20").fetchall())
+    except Exception:  # noqa: BLE001 - an older prepared run without the optional columns
+        cats, prods = {}, {}
+    finally:
+        con.close()
+    return {str(k): int(v) for k, v in cats.items()}, {str(k): int(v) for k, v in prods.items()}
+
+
+def schema_summary(ctx: Context, record: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """What the run read and what could run on it, for run_summary.json `schema` (docs/schema.md)."""
+    rep = _read(ctx.run_dir / "schema_report.json")
+    if not isinstance(rep, dict):
+        return None
+    mapping = schema_mapping(ctx) or {}
+    stages = {s["name"]: s for s in record.get("stages") or []}
+    parsed = _read(ctx.parsed_dir / "_stats.json") or {}
+    rows = sum(int(v.get("rows") or 0) for v in (parsed.get("streams") or {}).values())
+    fortigate = rep.get("parser") == "fortigate"
+    cats, prods = ({}, {}) if fortigate else _category_counts(ctx)
+    if fortigate:
+        prods = {"FortiGate": rows} if mapping.get("detected") is None and rows else {}
+    methods: Dict[str, int] = {}
+    for c in rep.get("columns") or []:
+        methods[c["method"]] = methods.get(c["method"], 0) + 1
+    rules = rep.get("rules") or {}
+    det = _read(ctx.run_dir / "detect" / "_stats.json") or {}
+    vend = det.get("vendor") or {}
+    net = _read(ctx.run_dir / "network_zones.json") or {}
+    llm = rep.get("llm") or {}
+    out: Dict[str, Any] = {
+        "format": rep.get("format"),
+        "detected": mapping.get("detected") or (rep.get("format_detail") or {}).get("format"),
+        "fallback": "fortigate" if mapping.get("detected") == "unknown" else None,
+        "parser": rep.get("parser"), "fingerprint": rep.get("fingerprint"), "schema_source": rep.get("schema_source"),
+        "products": prods,
+        "categories": cats or rep.get("categories") or {},
+        "categories_from": "parsed events" if cats else "sample",
+        "sample_records": (rep.get("sample") or {}).get("records"),
+        "mapping": {"methods": methods,
+                    "mapped": sorted(c["column"] for c in rep.get("columns") or []
+                                     if c["method"] not in ("unmapped",)),
+                    "unmapped": sorted(c["column"] for c in rep.get("columns") or [] if c["method"] == "unmapped"),
+                    "time_coverage": (rep.get("time") or {}).get("coverage"),
+                    "dropped": len((rep.get("validation") or {}).get("dropped") or [])},
+        "llm": {"used": bool(llm.get("used")), "reason": llm.get("reason"),
+                "added": len(llm.get("added") or [])},
+        "rules": {"can_run": [r["id"] for r in rules.get("can_run") or []],
+                  "skipped": [{"id": r["id"], "missing": r.get("missing")} for r in rules.get("skipped") or []]},
+        "alerts_by_layer": det.get("layers") or {},
+        "vendor_alerts": {"records": vend.get("records", 0), "alerts": (det.get("layers") or {}).get("vendor", 0),
+                          "technique_sources": vend.get("technique_sources") or {},
+                          "llm_skipped": (vend.get("llm") or {}).get("skipped")},
+        "network": {k: net.get(k) for k in ("source", "file", "reason", "internal_ips", "configured_share", "zones",
+                                            "servers", "named_hosts") if k in net} or None,
+        "secs": (stages.get("schema") or {}).get("wall_secs"),
+        "prepare_secs": rep.get("secs"),
+    }
+    return out
+
+
 def merge_summary(run_dir: Path, record: Dict[str, Any]) -> Optional[str]:
-    """Put the record under `pipeline` in run_summary.json, keeping every other key as bundle wrote it.
-    Returns a warning (and writes nothing) when the existing file is not valid JSON."""
+    """Put the record under `pipeline` (and its `schema` part also at the top, as `schema`) in
+    run_summary.json, keeping every other key as bundle wrote it. Returns a warning (and writes nothing)
+    when the existing file is not valid JSON."""
     path = run_dir / "run_summary.json"
     if path.exists():
         try:
@@ -247,6 +379,8 @@ def merge_summary(run_dir: Path, record: Dict[str, Any]) -> Optional[str]:
     else:
         summary = {"run": record.get("name")}
     summary["pipeline"] = record
+    if record.get("schema") is not None:
+        summary["schema"] = record["schema"]
     _atomic_json(path, summary)
     return None
 
@@ -290,6 +424,7 @@ def run_pipeline(ctx: Context) -> Tuple[int, Dict[str, Any]]:
             record.update(status="usage_error", exit_code=2, error=msg)
             return 2, record
 
+    existed = {"run_dir": ctx.run_dir.exists(), "parsed_dir": ctx.parsed_dir.exists()}
     ctx.run_dir.mkdir(parents=True, exist_ok=True)
     t0 = time.perf_counter()
     stages: List[Dict[str, Any]] = record["stages"]
@@ -323,7 +458,8 @@ def run_pipeline(ctx: Context) -> Tuple[int, Dict[str, Any]]:
                 notes.append(f"--reuse-parsed: no earlier parse in {ctx.parsed_dir}; parsing")
         if stage == "prepare" and parse_reused:
             db, st = ctx.run_dir / "events.duckdb", ctx.parsed_dir / "_stats.json"
-            if db.exists() and db.stat().st_mtime > st.stat().st_mtime:
+            # the network choice (network_zones.json) is made by prepare: without it, prepare runs again
+            if db.exists() and db.stat().st_mtime > st.stat().st_mtime and (ctx.run_dir / "network_zones.json").exists():
                 add(_skipped(stage, "--reuse-parsed", stage_counts(stage, ctx)))
                 continue
         if stage == "narrate":
@@ -336,6 +472,9 @@ def run_pipeline(ctx: Context) -> Tuple[int, Dict[str, Any]]:
                 continue
         if not (stage == "parse" and parse_reused):
             notes.extend(notes_before(stage, ctx, written))
+            if stage == "schema":
+                for old in ("schema.yaml", "schema_report.json"):    # an earlier run's mapping must not be used
+                    (ctx.run_dir / old).unlink(missing_ok=True)
             cmd = command_for(stage, ctx)
             print(f"run: stage {stage} started", flush=True)
             res = run_stage(stage, cmd, ctx)
@@ -345,6 +484,9 @@ def run_pipeline(ctx: Context) -> Tuple[int, Dict[str, Any]]:
                      "exit_code": res["exit_code"], "wall_secs": res["wall_secs"], "peak_rss_mb": res["peak_rss_mb"],
                      "counts": stage_counts(stage, ctx) if ok else {}, "command": cmd, "log": res["log"],
                      "tail": None if ok else res["tail"]}
+            no_records = stage == "schema" and res["exit_code"] == SCHEMA_NO_RECORDS
+            if no_records:              # the stage worked: the file holds nothing it can read
+                entry.update(status="ok", reason="no record could be read")
             add(entry)
             if ok:
                 written.add(stage)
@@ -354,6 +496,17 @@ def run_pipeline(ctx: Context) -> Tuple[int, Dict[str, Any]]:
                 entry["status"] = "degraded"
                 warnings.append(f"enrich: {entry['counts']['failures']} of {entry['counts'].get('lookups')} lookups "
                                 f"failed ({errs[0]}); threat intel is partial")
+            if ok and stage == "schema":
+                notes.extend(schema_notes(ctx, warnings))
+            if ok and stage == "detect":
+                notes.extend(detect_notes(ctx))
+            if no_records:
+                why = next((t for t in reversed(res["tail"]) if t.startswith("schema: ")),
+                           res["tail"][-1] if res["tail"] else "no record could be read")
+                record["error"] = f"run: no events in {ctx.input}: {why[len('schema: '):] if why.startswith('schema: ') else why}"
+                stop = "no events in the input"
+                code = 3
+                continue
             if not ok:
                 if stage in REQUIRED:
                     record["error"] = (f"run: stage {stage} failed (exit {res['exit_code']}); log {ctx.run_dir / res['log']}"
@@ -361,8 +514,9 @@ def run_pipeline(ctx: Context) -> Tuple[int, Dict[str, Any]]:
                     stop = f"earlier stage {stage} failed"
                     code = 1
                     continue
-                warnings.append(f"{stage} failed (exit {res['exit_code']}); the run goes on without it, "
-                                f"see {ctx.run_dir / res['log']}")
+                warnings.append(f"{stage} failed (exit {res['exit_code']}); the run goes on without it"
+                                + (" (the FortiGate parser reads the file)" if stage == "schema" else "")
+                                + f", see {ctx.run_dir / res['log']}")
                 continue
         if stage == "parse":
             msg = check_events(ctx)
@@ -375,12 +529,61 @@ def run_pipeline(ctx: Context) -> Tuple[int, Dict[str, Any]]:
     record.update(finished_at=_now(), exit_code=code, wall_secs=round(time.perf_counter() - t0, 2),
                   peak_rss_mb=max(peaks) if peaks else None)
     record["status"] = {1: "failed", 3: "no_events"}.get(code, "ok")
+    if code == 3:
+        # nothing to show: the run and parsed folders this attempt created are removed, so no empty run is
+        # listed and the name can be used again (folders that existed before are kept, with this record)
+        removed = remove_attempt(ctx, existed)
+        record["removed"] = removed
+        if removed.get("run_dir"):
+            return code, record
+    try:
+        record["schema"] = schema_summary(ctx, record)
+    except Exception as exc:  # noqa: BLE001 - the summary is a report; it never fails a finished run
+        warnings.append(f"schema summary not written: {type(exc).__name__}: {exc}")
     warn = merge_summary(ctx.run_dir, _finish(record, warnings))
     if warn:
         warnings.append(warn)
         _finish(record, warnings)
     write_record(ctx.run_dir, record)
     return code, record
+
+
+def remove_attempt(ctx: Context, existed: Dict[str, bool]) -> Dict[str, bool]:
+    """Delete the run and parsed folders of a run that found no events, when this run created them."""
+    import shutil
+
+    out: Dict[str, bool] = {}
+    for key, path in (("run_dir", ctx.run_dir), ("parsed_dir", ctx.parsed_dir)):
+        out[key] = False
+        if not existed.get(key) and path.exists():
+            shutil.rmtree(path, ignore_errors=True)
+            out[key] = not path.exists()
+    return out
+
+
+def schema_notes(ctx: Context, warnings: List[str]) -> List[str]:
+    """After the schema stage: what it read, and why the LLM was not asked (when it was not)."""
+    rep = _read(ctx.run_dir / "schema_report.json") or {}
+    mapping = schema_mapping(ctx) or {}
+    notes: List[str] = []
+    if mapping.get("detected") == "unknown":
+        warnings.append(f"schema: no supported format recognised in {ctx.input.name}; read with the FortiGate "
+                        f"parser, which rejects the lines it cannot parse")
+    else:
+        notes.append(f"schema: {rep.get('format')} via the {rep.get('parser')} parser"
+                     + (f" ({rep.get('schema_source')} mapping)" if rep.get("parser") == "generic" else ""))
+    llm = rep.get("llm") or {}
+    if rep.get("parser") == "generic" and not llm.get("used") and llm.get("reason"):
+        notes.append(f"schema: LLM not asked about unmatched fields: {llm['reason']}")
+    return notes
+
+
+def detect_notes(ctx: Context) -> List[str]:
+    v = (_read(ctx.run_dir / "detect" / "_stats.json") or {}).get("vendor") or {}
+    llm = v.get("llm") or {}
+    if v.get("records") and llm.get("names") and llm.get("skipped"):
+        return [f"detect: LLM not asked to label {llm['names']} vendor alert name(s): {llm['skipped']}"]
+    return []
 
 
 def _finish(record: Dict[str, Any], warnings: List[str]) -> Dict[str, Any]:

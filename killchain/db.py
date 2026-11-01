@@ -15,8 +15,9 @@ Derived columns:
   ts_ist            the same instant in IST (+05:30), for display and hour rules
   ist_hour          hour of ts_ist, 0-23
   src_internal, dst_internal   address is in a private range
-  src_zone, dst_zone           zone from config/network.yaml (internet if none)
-  src_role, dst_role           role from config/network.yaml
+  src_zone, dst_zone           zone from config/network.yaml, or the run's network.inferred.yaml
+                               (run_network, killchain/netzones.py); internet if none
+  src_role, dst_role           role from the same file
   src_importance, dst_importance
   src_net24, dst_net24         the /24 of an IPv4 address, e.g. 10.10.20.0/24
 
@@ -52,6 +53,19 @@ def load_network(path: Union[str, Path] = NETWORK_YAML) -> Dict[str, Any]:
     net["_private"] = [(int(n.network_address), int(n.broadcast_address))
                        for n in map(ipaddress.ip_network, net["private_ranges"])]
     return net
+
+
+INFERRED_NETWORK = "network.inferred.yaml"
+
+
+def run_network(run_dir: Optional[Union[str, Path]] = None) -> Dict[str, Any]:
+    """The network of one run: <run>/network.inferred.yaml when the run's addresses did not fit
+    config/network.yaml (killchain/netzones.py wrote it), else config/network.yaml."""
+    if run_dir is not None:
+        p = Path(run_dir) / INFERRED_NETWORK
+        if p.is_file():
+            return load_network(p)
+    return load_network()
 
 
 def _ip_int(col: str) -> str:
@@ -283,7 +297,7 @@ def connect(parsed_dir: Optional[Union[str, Path]] = None, run_dir: Optional[Uni
         return attach_with_optional(con, path)
     if parsed_dir is None:
         raise FileNotFoundError(f"no {PREPARED_NAME} in {run_dir} and no parsed folder given")
-    return open_run(parsed_dir)
+    return open_run(parsed_dir, network=run_network(run_dir))
 
 
 def lacks_optional(con: duckdb.DuckDBPyConnection) -> bool:

@@ -59,11 +59,32 @@ def test_dashboard_summary(client, run):
     assert all(cov[t]["incidents"] == 1 for t in inc["tactics"])
     hours = d["alerts_per_hour"]
     assert hours and sum(h["alerts"] for h in hours) == k["alerts"]
-    assert all(h["rule"] + h["anomaly"] == h["alerts"] for h in hours)
+    assert all(h["rule"] + h["anomaly"] + h["vendor"] == h["alerts"] for h in hours)
     assert d["top_attackers"][0]["value"] == "32.127.48.11" and d["top_attackers"][0]["incidents"] == [1]
     assert all(t["value"].startswith("10.") or t["value"].startswith("203.0.113") for t in d["top_targets"])
     assert d["worst_incidents"][0]["incident_number"] == 1
     assert d["threat_intel"]["providers"]["local"] == "ok"
+
+
+def test_vendor_alerts_per_hour_and_filter(run, tmp_path):
+    """Alerts another product raised (layer vendor) get their own hourly count and layer filter."""
+    alerts = rd(run / "alerts.json")
+    vend = {**alerts[0], "alert_id": "vend0001", "rule_id": "vendor:sentinelone:mimikatz", "layer": "vendor",
+            "technique_source": "keyword", "incident_number": None, "title": "Mimikatz credential theft",
+            "ts_start": "2026-10-27T01:10:00.000000Z", "ts_end": "2026-10-27T01:10:00.000000Z"}
+    wr(run / "alerts.json", alerts + [vend])
+    c = TestClient(create_app(run, raw_dir=tmp_path, ti_cache=tmp_path / "ti2.sqlite", ti_offline=True))
+    d = c.get("/dashboard/summary").json()
+    hours = d["alerts_per_hour"]
+    assert sum(h["vendor"] for h in hours) == 1 and d["alerts_by_layer"]["vendor"] == 1
+    assert all(h["rule"] + h["anomaly"] + h["vendor"] == h["alerts"] for h in hours)
+    body = c.get("/alerts?layer=vendor").json()
+    assert [a["alert_id"] for a in body["alerts"]] == ["vend0001"] and body["alerts"][0]["technique_source"] == "keyword"
+    m = c.get("/mitre/matrix", params={"source": "vendor"}).json()
+    assert m["summary"]["alertsTotal"] == 1 and m["filters"]["sources"] == ["vendor"]
+    assert c.get("/mitre/matrix", params={"source": "rule"}).json()["summary"]["alertsTotal"] == len(
+        [a for a in alerts if a["layer"] == "rule"])
+    assert c.get("/mitre/matrix", params={"source": "bogus"}).status_code == 422
 
 
 def test_alerts_filters_and_counts(client, run):

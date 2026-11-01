@@ -102,7 +102,12 @@ def _csv_dialect(lines: List[bytes]) -> Optional[str]:
         return None
     best = None
     for d in (",", "\t", ";", "|"):
-        rows = list(csv.reader(text, delimiter=d))
+        try:
+            rows = list(csv.reader(text, delimiter=d))
+        except csv.Error:            # binary or a stray carriage return: not CSV
+            return None
+        if not rows:
+            return None
         n = len(rows[0])
         if n < 3:
             continue

@@ -11,7 +11,8 @@ Differences from AI-SOC, all deliberate:
   are historical, so "last 24h" means the last 24 hours of the data.
 - "Open" means an alert that is not in an incident; "correlated" means it is
   (docs/build-plan.md P11).
-- `source` is the detection layer (rule or anomaly); `status` is `open` or
+- `source` is the detection layer (rule, anomaly, or vendor: another product's
+  alert); `status` is `open` or
   `correlated`; there are no false positives to include, so that flag is
   accepted and echoed but changes nothing.
 - The per-technique breakdowns are by detection rule, by asset and by
@@ -40,6 +41,7 @@ _TECHNIQUE_RE = re.compile(r"^T\d{4}(\.\d{3})?$")
 _SEV_BUCKETS = ("critical", "high", "medium", "low", "info", "unknown")
 _SEV_BY_ID = {5: "critical", 4: "high", 3: "medium", 2: "low", 1: "info"}
 _SEV_ID_BY_NAME = {v: k for k, v in _SEV_BY_ID.items()}
+SOURCES = ("rule", "anomaly", "vendor")       # contracts.LAYERS: the `source` filter values
 PRESETS = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30), "90d": timedelta(days=90)}
 DEFAULT_PRESET = "30d"
 
@@ -160,6 +162,9 @@ class MitreFilters:
             raise MitreError(f"unknown severity {bad[0]!r}; use {list(_SEV_ID_BY_NAME)}.")
         self.statuses = [s.lower() for s in statuses if s]
         self.sources = [s.lower() for s in sources if s]
+        bad = [s for s in self.sources if s not in SOURCES]
+        if bad:
+            raise MitreError(f"unknown source {bad[0]!r}; use {list(SOURCES)}.")
         self.include_false_positives = include_false_positives
 
     def window(self, run_end: datetime) -> Tuple[datetime, datetime]:
@@ -540,7 +545,7 @@ def mitre_matrix(
     end: Optional[datetime] = Query(None),
     severity: Optional[List[str]] = Query(None, description="critical | high | medium | low | info"),
     status: Optional[List[str]] = Query(None, description="open (not in an incident) | correlated"),
-    source: Optional[List[str]] = Query(None, description="rule | anomaly"),
+    source: Optional[List[str]] = Query(None, description="rule | anomaly | vendor"),
     include_false_positives: bool = Query(False),
 ) -> Dict[str, Any]:
     f = _filters(preset, start, end, severity, status, source, include_false_positives)

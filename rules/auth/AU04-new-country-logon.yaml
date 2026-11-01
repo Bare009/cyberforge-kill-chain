@@ -17,7 +17,8 @@ requires_any: [[event_id, user, src_country, src_ip], [category, status, user, s
 sql: |
   WITH s AS (SELECT source, line, lower(user) AS account, src_country, ts_utc FROM {events}
              WHERE (event_id = '4624' OR (category = 'auth' AND status = 'success'))
-               AND user IS NOT NULL AND src_country IS NOT NULL AND NOT src_internal),
+               AND user IS NOT NULL AND src_country IS NOT NULL AND NOT src_internal
+               AND coalesce(log_desc, '') NOT LIKE 'Admin login%'),
   t AS (SELECT min(ts_utc) AS t0 FROM s),
   first AS (SELECT account, src_country, min(ts_utc) AS seen FROM s GROUP BY account, src_country),
   new AS (SELECT f.account, f.src_country FROM first f

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { SeverityText, TacticChip } from '@/components/incident/badges'
+import { SeverityText, TacticChip, VendorBadge } from '@/components/incident/badges'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn, exactTimeParts, timeTooltip } from '@/lib/utils'
 import type { Alert } from '@/types/incident'
@@ -117,11 +117,16 @@ export function AlertTable({ alerts, extra }: { alerts: Alert[]; extra?: { heade
                   {a.layer === 'anomaly' && (
                     <span className="rounded border border-violet-200 bg-violet-50 px-1 text-[10px] text-violet-700">anomaly</span>
                   )}
+                  {a.layer === 'vendor' && <VendorBadge ruleId={a.rule_id} techniqueSource={a.technique_source} />}
                 </div>
                 <div className="mt-0.5 text-slate-500">{a.summary}</div>
-                <Link to={`/rules?rule=${encodeURIComponent(a.rule_id)}`} className="font-mono text-[11px] text-slate-400 hover:text-blue-700">
-                  {a.rule_id}
-                </Link>
+                {a.layer === 'vendor' ? (            // no rule file behind another product's alert
+                  <span className="font-mono text-[11px] text-slate-400">{a.rule_id}</span>
+                ) : (
+                  <Link to={`/rules?rule=${encodeURIComponent(a.rule_id)}`} className="font-mono text-[11px] text-slate-400 hover:text-blue-700">
+                    {a.rule_id}
+                  </Link>
+                )}
               </td>
               <td className="px-3 py-2">
                 <div className="font-mono text-slate-700">{a.technique}</div>

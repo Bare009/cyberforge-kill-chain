@@ -92,7 +92,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     peak = _Peak()
     peak.start()
     t0 = time.perf_counter()
-    net = db.load_network()
+    net = db.run_network(run)
     enrichment = load_enrichment(run)
     before = {i["incident_id"]: int(i["incident_number"]) for i in incidents}
     for inc in incidents:

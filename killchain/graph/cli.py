@@ -79,7 +79,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     alerts = pl.read_parquet(run / "alerts.parquet")
     evidence = pl.read_parquet(run / "alert_evidence.parquet")
     alerts_json = json.loads((run / "alerts.json").read_text(encoding="utf-8"))
-    chains, lines = build_chains(incidents, members, alerts, evidence, db.load_network())
+    chains, lines = build_chains(incidents, members, alerts, evidence, db.run_network(run))
     by_id = {c["incident_id"]: c for c in chains}
     bundle = [files.assemble(r, by_id[r["incident_id"]]) for r in incidents.sort("incident_number").iter_rows(named=True)]
     index = files.index_rows(bundle, run.name)
@@ -243,7 +243,7 @@ def run_reach(run: Path, con: Any, force: bool, peak: Any = None
 
     t0 = time.perf_counter()
     settings = access.load_settings()
-    net = db.load_network()
+    net = db.run_network(run)
     ag, ah = run / "access_graph.parquet", run / "access_hosts.parquet"
     rebuilt = force or not (ag.exists() and ah.exists())
     if rebuilt:

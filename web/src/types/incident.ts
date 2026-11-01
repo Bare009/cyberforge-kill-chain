@@ -13,7 +13,10 @@ export type KillChainStage =
   | 'Reconnaissance' | 'Weaponization' | 'Delivery' | 'Exploitation' | 'Installation'
   | 'Command and Control' | 'Actions on Objectives'
 
-export type Layer = 'rule' | 'anomaly'
+/** vendor: an alert another security product raised (EDR, SIEM ...), rule_id `vendor:<product>:<name>`. */
+export type Layer = 'rule' | 'anomaly' | 'vendor'
+/** Where a vendor alert's ATT&CK label came from. */
+export type TechniqueSource = 'vendor' | 'keyword' | 'llm' | 'unknown'
 export type RiskBand = 'critical' | 'high' | 'medium' | 'low'
 export type Zone = 'internet' | 'dmz' | 'server' | 'desktop' | 'iot' | 'lan' | 'mgmt' | 'public' | 'unknown'
 export type NodeKind = 'external_ip' | 'internal_host' | 'server' | 'firewall' | 'account' | 'domain'
@@ -60,6 +63,8 @@ export interface Alert {
   summary: string
   action_text: string
   incident_number: number | null
+  /** Vendor alerts only. */
+  technique_source?: TechniqueSource | null
 }
 
 export interface Step {

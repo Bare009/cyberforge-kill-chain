@@ -9,8 +9,9 @@ import {
   severityLabel,
   tacticChipClass,
   tacticLabel,
+  vendorProduct,
 } from '@/lib/killchain'
-import type { RiskBand, TiVerdict, TriageVerdict } from '@/types/incident'
+import type { RiskBand, TechniqueSource, TiVerdict, TriageVerdict } from '@/types/incident'
 
 export function TacticChip({ tactic, className }: { tactic: string; className?: string }) {
   return (
@@ -91,6 +92,28 @@ export function TiVerdictBadge({ verdict }: { verdict: TiVerdict | null | undefi
       title="External threat-intel reputation of the incident's entities"
     >
       TI: {TI_VERDICT_LABEL[verdict]}
+    </span>
+  )
+}
+
+const TECHNIQUE_SOURCE_TEXT: Record<TechniqueSource, string> = {
+  vendor: "ATT&CK label from the product's own fields",
+  keyword: 'ATT&CK label from a keyword in the alert name',
+  llm: 'ATT&CK label suggested by the LLM',
+  unknown: 'no ATT&CK label: the product gave none and no keyword matched',
+}
+
+/** "Vendor" badge for an alert another security product raised. */
+export function VendorBadge({ ruleId, techniqueSource }: { ruleId?: string | null; techniqueSource?: TechniqueSource | null }) {
+  const product = vendorProduct(ruleId)
+  const how = techniqueSource ? TECHNIQUE_SOURCE_TEXT[techniqueSource] : null
+  return (
+    <span
+      className="rounded border border-teal-200 bg-teal-50 px-1 text-[10px] text-teal-700"
+      title={[`Alert raised by ${product ?? 'another security product'}`, how].filter(Boolean).join('; ')}
+    >
+      Vendor{product ? ` · ${product}` : ''}
+      {techniqueSource && techniqueSource !== 'vendor' ? ` · label: ${techniqueSource}` : ''}
     </span>
   )
 }

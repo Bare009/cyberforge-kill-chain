@@ -94,15 +94,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--data-dir", default=os.environ.get("KILLCHAIN_DATA_DIR") or str(ROOT / "data"))
     ap.add_argument("--assume-tz", default="+00:00", help="zone for times that carry none (e.g. +05:30)")
     ap.add_argument("--workers", type=int, default=None)
-    ap.add_argument("--schemas-dir", default=None, help="saved mappings (default config/schemas)")
+    ap.add_argument("--schemas-dir", default=os.environ.get("KILLCHAIN_SCHEMAS_DIR") or None,
+                    help="saved mappings (default KILLCHAIN_SCHEMAS_DIR, else config/schemas)")
+    ap.add_argument("--mapping", help="parse only: read the whole file with this schema.yaml (no detection or "
+                                      "mapping); `python -m killchain run` uses it for its parse stage")
+    ap.add_argument("--out", help="parsed folder for --parse / --mapping (default <data>/parsed/<name>)")
     a = ap.parse_args(argv)
-    from . import SchemaError, parse, prepare
+    from . import SchemaError, load_mapping, prepare
     from .prepare import SCHEMAS_DIR
 
     data = Path(a.data_dir)
     if not data.is_absolute():
         data = ROOT / data
     run_dir = data / "runs" / a.name
+    out = Path(a.out) if a.out else data / "parsed" / a.name
+    if a.mapping:
+        return _parse_only(a.input, out, load_mapping(a.mapping), a.workers)
     try:
         fmt, mapping, report = prepare(a.input, run_dir, no_llm=a.no_llm, force=a.force, assume_tz=a.assume_tz,
                                        schemas_dir=a.schemas_dir or SCHEMAS_DIR)
@@ -112,12 +119,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(render(report))
     print(f"\nwrote {run_dir / 'schema.yaml'} and schema_report.json ({report['secs']} s)")
     if a.parse:
-        t0 = time.perf_counter()
-        st = parse(a.input, data / "parsed" / a.name, mapping, workers=a.workers)
-        rows = sum(v.get("rows", 0) for v in (st.get("streams") or {}).values())
-        print(f"parsed {st['bytes'] / 2**20:.1f} MB, {st['lines']:,} lines -> {rows:,} rows in {st['wall_secs']} s "
-              f"({st['mb_per_sec']} MB/s, {st['lines_per_sec']:,} lines/s); lines {st.get('lines_by_class')}; "
-              f"total {time.perf_counter() - t0:.1f} s")
+        _parse_only(a.input, out, mapping, a.workers)
+    return 0
+
+
+def _parse_only(inp: str, out: Path, mapping: Dict[str, Any], workers: Optional[int]) -> int:
+    from . import parse
+
+    t0 = time.perf_counter()
+    st = parse(inp, out, mapping, workers=workers)
+    rows = sum(v.get("rows", 0) for v in (st.get("streams") or {}).values())
+    # "parsed ..." first: the API's job runner reads that line as the end of the parse
+    print(f"parsed {st['bytes'] / 2**20:.1f} MB, {st['lines']:,} lines -> {rows:,} rows in {st['wall_secs']} s "
+          f"({st['mb_per_sec']} MB/s, {st['lines_per_sec']:,} lines/s); lines {st.get('lines_by_class')}; "
+          f"total {time.perf_counter() - t0:.1f} s", flush=True)
+    print(f"stats: {out / '_stats.json'}")
     return 0
 
 

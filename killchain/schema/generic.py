@@ -428,6 +428,8 @@ def parse_generic(path: Path, out: Path, mapping: Dict[str, Any], *, source_path
                 results.append(parse_range(t))
         else:
             with ProcessPoolExecutor(max_workers=min(workers, len(tasks))) as pool:
+                if not quiet:
+                    print(f"[{path.name}] counting lines in {size / 2**30:.2f} GiB", file=sys.stderr, flush=True)
                 counts = list(pool.map(count_newlines, [(str(path), a, b) for a, b in ranges]))
                 for t, c in zip(tasks, counts):
                     t["base_line"] = base
@@ -439,8 +441,9 @@ def parse_generic(path: Path, out: Path, mapping: Dict[str, Any], *, source_path
                     results.append(r)
                     done += r["bytes"]
                     if not quiet:
-                        print(f"[{path.name}] {100 * done / max(size, 1):5.1f}%  {time.perf_counter() - t0:7.1f} s",
-                              file=sys.stderr, flush=True)
+                        # the FortiGate parser's progress format, which the API's job runner reads
+                        print(f"[{path.name}] {100 * done / max(size, 1):5.1f}%  {done / 2**30:6.2f} GiB  "
+                              f"{time.perf_counter() - t0:7.1f} s", file=sys.stderr, flush=True)
     else:
         results.append(_parse_single(path, out, mapping, args, syn))
     wall = time.perf_counter() - t0

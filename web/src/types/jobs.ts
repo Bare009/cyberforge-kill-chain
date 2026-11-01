@@ -37,6 +37,12 @@ export interface JobStage {
 }
 
 export interface JobResult {
+  /** What the schema stage read (run_summary.json `schema`); absent for runs made before it existed. */
+  format?: string | null
+  parser?: string | null
+  products?: Record<string, number>
+  categories?: Record<string, number>
+  alerts_by_layer?: Record<string, number>
   status: string
   exit_code: number
   wall_secs: number | null

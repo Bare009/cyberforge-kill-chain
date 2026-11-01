@@ -192,9 +192,79 @@ files, so the same slice can be scored in all three forms.
   when every column of one group is available (its `where` has alternatives).
 - Rules never read `vendor_alert` records; `python -m killchain detect` turns those into alerts of layer
   `vendor` (`killchain/detect/vendor.py`, docs/contracts.md).
+- The auth rules AU01-AU04 leave out a firewall's own admin logins (`log_desc` 'Admin login ...', which the
+  derive rules also set for PAN and ECS exports): those are R01/R06/R07's. Without that, AU02 (password
+  spray) raised 183 background alerts on the PAN and ECS conversions of the firex slice (false alarms 97%).
+
+## In `python -m killchain run` (stage 3)
+
+`run` starts with a `schema` stage (`python -m killchain schema --input <file> --name <run> --data-dir
+<data> [--no-llm]`, also with `--offline`), timed like the others. Then:
+
+- FortiGate input (`schema.yaml` `format: fortigate`, which includes a file of no recognised format)
+  takes the parse stage as before: `python -m killchain parse <file> --out <parsed> --overwrite`. The schema
+  stage costs under 1 s on firex-10G (its FortiGate sample no longer counts the lines before the middle of
+  the file). A file of no recognised format adds the warning `schema: no supported format recognised`.
+- Any other format: the parse stage is `python -m killchain schema ... --mapping <run>/schema.yaml --out
+  <parsed>` (parse only, with the mapping the schema stage wrote). The generic parser prints the FortiGate
+  parser's progress lines, so the Dashboard's parse bar works for it too.
+- detect gets `--no-llm` with `--no-llm` or `--offline`. When the LLM is skipped for want of a key (or
+  because of the flag), the run's notes say so for the field mapping and the vendor alert labels.
+- `schema` failing for another reason is a warning: the FortiGate parser then reads the file.
+- No record (an empty file, binary, `[]`): exit 3 with the reason, and the run and parsed folders the run
+  created are removed (folders that existed before are kept, with the record).
+- `KILLCHAIN_SCHEMAS_DIR` moves the saved mappings out of `config/schemas` (the tests use it).
+
+`run_summary.json` `schema` (also `pipeline.schema` in the record):
+
+| key | value |
+|---|---|
+| `format`, `detected`, `fallback`, `parser`, `fingerprint`, `schema_source` | what was read and how (`fallback: fortigate` for an unrecognised file) |
+| `products` | {product: rows} over the whole parse (FortiGate: `{"FortiGate": rows}`) |
+| `categories`, `categories_from` | {category: rows} over the parsed events; for FortiGate the sample's (the FortiGate parser writes no category) |
+| `sample_records` | records in the schema sample |
+| `mapping` | `methods` (columns per method: fortigate, synonym, pattern, llm, derived, unmapped), `mapped`, `unmapped`, `time_coverage`, `dropped` |
+| `llm` | `used`, `reason` it was not, `added` (columns the LLM mapped) |
+| `rules` | `can_run` (ids) and `skipped` ({id, missing}) |
+| `alerts_by_layer` | detect's layers |
+| `vendor_alerts` | `records`, `alerts`, `technique_sources` (vendor, keyword, llm, unknown), `llm_skipped` |
+| `network` | `source` (configured or inferred), `reason`, `internal_ips`, `configured_share`, `zones` ({zone/role: {ips, rows}}), `servers`, `named_hosts` |
+| `secs`, `prepare_secs` | schema stage wall time, and the time `schema.prepare` took inside it |
+
+### Network zones per run
+
+`killchain/netzones.py`, called by `python -m killchain db --prepare` (`--network config` turns it off),
+writes `<run>/network_zones.json` and, when the zones are inferred, `<run>/network.inferred.yaml`
+(network.yaml layout, editable; rerun `--from prepare` after editing). `db.run_network(run)` returns it, else
+`config/network.yaml`; db prepare, correlate, chain, reach and score use it.
+
+- The run's internal addresses are the RFC 1918 and loopback ones in `src_ip`, `dst_ip` and `host_ip`. When at
+  least half of them (distinct) are in a configured zone other than the catch-all `internal` ranges, the run
+  uses `config/network.yaml` unchanged. firex-10G: 99.9% of 1,388 (0.8 s); the PAN and ECS conversions of
+  its slice: the same.
+- Otherwise: hosts whose name has a `dc` / `domaincontroller` part are zone server, role domain-controller
+  (importance 1.0); `srv`, `server`, `sql`, `db`, `web`, `mail` names are servers (0.75), each a /32 from its
+  `host_ip`; a /24 whose hosts take connections on 22, 25, 53, 80, 88, 135, 139, 389, 443, 445, 1433, 3306,
+  3389, 5432 or 5985 from 3 or more internal sources is a server subnet; every other internal address is a
+  desktop (0.25). No fixed hubs (correlate still finds hubs from the alerts), and only RFC 1918, loopback and
+  link-local are internal.
+- Why config/network.yaml lists 192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24 as private: the list is
+  also threat intel's never-send list (the documentation ranges are not real addresses), and db.py uses it
+  for `src_internal` / `dst_internal`. firex depends on it: its firewall's public address 203.0.113.5
+  (140,307 rows as a destination) is "internal" there, zone public. That file is unchanged; in an inferred
+  network those ranges are outside addresses (threat intel still never sends them).
+
+Inferred on the test inputs: SentinelOne export, 9 internal addresses, desktop 8, server 1 (SRV-WEB-01
+10.10.0.30 by name); Wazuh, 10 addresses, desktop 7, server 3 (web-01, web-02, db-01 by name); EDR sample,
+28 addresses, desktop 24, server 3 (SRV-WEB-01, SRV-FILE-01, SRV-DB-01) and domain controller 1 (SRV-DC-01
+10.10.0.10); Sentinel SecurityAlert export, none (its addresses are only in the alert entities), so no
+zones and no fixed hubs. None of these has flows on server ports, so no server /24 was found.
 
 ## Known limits
 
+- Network zones are inferred from columns only: a Sentinel export's hosts and addresses live in the alert
+  entities (`extra`), so it gets no zones. A server subnet needs flows (`dst_port`); EDR and SIEM alert
+  exports have none, so servers there come from host names only.
 - Rules that compare FortiGate vocabulary (`log_desc` strings, `log_type`/`log_subtype`) only run on other
   products when a value map or derive rule supplies those words; `rules.skipped` names what is missing.
   CEF and Check Point key=value logs have no record type field, so traffic rules are skipped for them.

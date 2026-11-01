@@ -15,10 +15,12 @@ group_by: ["lower(user) AS account"]
 within: 30m
 steps:
   - name: failures
-    where: "(event_id IN ('4625', '4771') OR (category = 'auth' AND status = 'failed')) AND user IS NOT NULL AND user NOT LIKE '%$'"
+    where: "(event_id IN ('4625', '4771') OR (category = 'auth' AND status = 'failed')) AND user IS NOT NULL AND user NOT LIKE '%$'
+      AND coalesce(log_desc, '') NOT LIKE 'Admin login%'"
     min: 10
   - name: success
-    where: "(event_id = '4624' OR (category = 'auth' AND status = 'success')) AND user IS NOT NULL AND user NOT LIKE '%$'"
+    where: "(event_id = '4624' OR (category = 'auth' AND status = 'success')) AND user IS NOT NULL AND user NOT LIKE '%$'
+      AND coalesce(log_desc, '') NOT LIKE 'Admin login%'"
 success: "event_id = '4624' OR status = 'success'"
 entities: {user: user, src_ip: src_ip, host: host, dst_ip: "coalesce(dst_ip, host_ip)"}
 action_text: "account {account} logged on after {event_count} attempts within {minutes} minutes"

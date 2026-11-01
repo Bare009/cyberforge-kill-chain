@@ -7,8 +7,11 @@ file to <raw>/<name>. A chunk must start where the server's copy ends, so an int
 resumes from GET /uploads/{name}.
 
 A job runs `python -m killchain run` on one file of the raw folder in a subprocess (one job at
-a time) and reads its output for progress: the `run: stage <name> ...` lines and the parser's
-percentage lines. When it succeeds the API switches to the new run.
+a time) and reads its output for progress: the `run: stage <name> ...` lines (schema, parse ...
+bundle, killchain.run.pipeline.STAGES) and the parser's percentage lines. Any product's log is
+accepted (FortiGate, CSV/TSV, JSON, NDJSON, key=value, syslog/CEF, XML, .gz/.zip); the result
+names the format and categories the schema stage found. When it succeeds the API switches to the
+new run.
 
 GET  /uploads                    logs in the raw folder, partial uploads, free disk, defaults
 GET  /uploads/{name}             bytes the server has of one upload
@@ -215,7 +218,8 @@ class Uploads:
         files = []
         if self.raw_dir.is_dir():
             for f in sorted(self.raw_dir.iterdir()):
-                if not f.is_file() or f.name.startswith(".") or f.name.endswith(".json"):
+                # truth manifests are not logs; JSON exports of other products are
+                if not f.is_file() or f.name.startswith(".") or f.name.endswith((".manifest.json", ".truth.json")):
                     continue
                 st = f.stat()
                 if st.st_size == 0:
@@ -328,7 +332,10 @@ class Job:
                                                       reason=s.get("reason"))
                 counts = summary.get("counts") or {}
                 dq = summary.get("data_quality") or {}
+                sc = summary.get("schema") or {}
                 self.result = {
+                    "format": sc.get("format"), "parser": sc.get("parser"), "products": sc.get("products") or {},
+                    "categories": sc.get("categories") or {}, "alerts_by_layer": sc.get("alerts_by_layer") or {},
                     "status": record.get("status"), "exit_code": record.get("exit_code"),
                     "wall_secs": record.get("wall_secs"), "peak_rss_mb": record.get("peak_rss_mb"),
                     "incidents": counts.get("incidents"), "critical_incidents": counts.get("critical_incidents"),
@@ -342,6 +349,10 @@ class Job:
                 final = "cancelled"
             elif record is not None:
                 final = record.get("status") or ("ok" if code == 0 else "failed")
+            elif code == 3:                  # no events: the run removed the folders it made, so no record
+                final = "no_events"
+                self.error = next((t for t in reversed(self.tail) if t.startswith("run: no events")),
+                                  "the file holds no events")
             else:
                 final = "failed"
                 self.error = f"python -m killchain run exited with code {code}: " + " | ".join(list(self.tail)[-5:])

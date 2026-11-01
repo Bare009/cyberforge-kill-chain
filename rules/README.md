@@ -122,3 +122,5 @@ columns are NULL, so every rule here binds and finds nothing (firex-10G: 0 alert
 | `AU03-logon-after-failures` | 10 failures then a success for one account within 30 min | T1078 |
 | `AU04-new-country-logon` | anomaly layer: account logs on from a country first seen after day 1 | T1078 |
 | `AU05-external-remote-logon` | logon type 10 / 9 or event 4648 from an outside address | T1021.001 |
+AU01-AU04 leave out a firewall's own admin logins (`log_desc` 'Admin login ...', also derived for PAN and
+ECS exports); R01, R06 and R07 cover those.

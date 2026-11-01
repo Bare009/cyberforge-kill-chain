@@ -121,6 +121,75 @@ def test_offline_enrich(full_run):
     assert summary["threat_intel"]["offline"] is True
 
 
+def test_fortigate_takes_the_fortigate_parser(full_run):
+    tmp, _, _ = full_run
+    run = tmp / "data" / "runs" / "attack"
+    summary = load(run / "run_summary.json")
+    st = by_name(summary["pipeline"])
+    assert st["schema"]["status"] == "ok" and st["schema"]["counts"]["format"] == "fortigate"
+    assert st["parse"]["command"][3] == "parse"                       # python -m killchain parse, as before
+    sc = summary["schema"]
+    assert sc == summary["pipeline"]["schema"]
+    assert sc["format"] == "fortigate" and sc["parser"] == "fortigate" and sc["fallback"] is None
+    assert sc["products"] == {"FortiGate": len(attack_lines())} and sc["categories_from"] == "sample"
+    assert sc["mapping"]["methods"]["fortigate"] > 10
+    assert "R01-admin-brute-force" in sc["rules"]["can_run"] or any(r.startswith("R01") for r in sc["rules"]["can_run"])
+    assert sc["vendor_alerts"] == {"records": 0, "alerts": 0, "technique_sources": {}, "llm_skipped": None}
+    assert sc["network"]["source"] == "configured" and isinstance(sc["secs"], float)
+    assert not (run / "network.inferred.yaml").exists()
+
+
+def test_other_format_takes_the_generic_parser(tmp_path):
+    """A PAN-style CSV: schema -> generic parse -> the rest unchanged; the summary names what was read."""
+    log = tmp_path / "pan.csv"
+    shutil.copy(ROOT / "tests" / "fixtures" / "schema" / "pan.csv", log)
+    assert run_main(args(tmp_path, log, "pan", "--offline", "--no-llm")) == 0
+    run = tmp_path / "data" / "runs" / "pan"
+    summary = load(run / "run_summary.json")
+    st = by_name(summary["pipeline"])
+    assert st["parse"]["command"][3] == "schema" and "--mapping" in st["parse"]["command"]
+    assert "--no-llm" in st["schema"]["command"] and "--no-llm" in st["detect"]["command"]
+    sc = summary["schema"]
+    assert sc["format"] == "csv" and sc["parser"] == "generic" and sc["categories_from"] == "parsed events"
+    assert sum(sc["categories"].values()) == st["parse"]["counts"]["rows"]["firewall"]
+    assert sc["mapping"]["methods"]["synonym"] >= 8 and sc["rules"]["can_run"]
+    assert all({"id", "missing"} <= set(r) for r in sc["rules"]["skipped"])
+    assert sc["llm"]["used"] is False
+    assert sc["llm"]["reason"] == "--no-llm" or sc["llm"]["reason"].startswith("mapping reused")
+    assert any(n.startswith("schema: LLM not asked") for n in summary["pipeline"]["notes"])
+
+
+def test_vendor_alerts_only_make_incidents(tmp_path):
+    """A Sentinel SecurityAlert export (vendor alerts only, no network flows) still ends in incidents;
+    its 10.10.x hosts are outside the firex zones, so the zones are inferred and the firex hubs dropped."""
+    log = tmp_path / "sentinel.json"
+    shutil.copy(ROOT / "tests" / "fixtures" / "vendor" / "sentinel_alerts.json", log)
+    assert run_main(args(tmp_path, log, "sentinel", "--offline", "--no-llm")) == 0
+    run = tmp_path / "data" / "runs" / "sentinel"
+    summary = load(run / "run_summary.json")
+    sc = summary["schema"]
+    assert sc["categories"].get("vendor_alert", 0) > 0
+    assert sc["vendor_alerts"]["alerts"] > 0 and sum(sc["vendor_alerts"]["technique_sources"].values()) > 0
+    assert sc["alerts_by_layer"].get("vendor") == sc["vendor_alerts"]["alerts"]
+    assert summary["counts"]["incidents"] >= 1
+    assert sc["network"]["source"] == "inferred" and (run / "network.inferred.yaml").exists()
+
+
+def test_unknown_format_falls_back_to_fortigate(tmp_path):
+    """Mostly free text with some FortiGate lines: no format is recognised, the FortiGate parser reads it
+    (as before the schema stage) and the run reports the fallback."""
+    lines = []
+    for i, l in enumerate(attack_lines()):
+        lines += [f"free text note number {i} without any structure at all", l if i % 3 == 0 else "-- -- --"]
+    log = tmp_path / "mixed.log"
+    log.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    assert run_main(args(tmp_path, log, "mixed", "--offline", "--no-llm")) == 0
+    summary = load(tmp_path / "data" / "runs" / "mixed" / "run_summary.json")
+    assert summary["schema"]["fallback"] == "fortigate" and summary["schema"]["detected"] == "unknown"
+    assert any("no supported format recognised" in w for w in summary["pipeline"]["warnings"])
+    assert summary["pipeline"]["status"] == "ok_with_warnings"
+
+
 def test_merge_keeps_existing_fields(tmp_path):
     p = tmp_path / "run_summary.json"
     p.write_text(json.dumps({"counts": {"a": 1}, "x": 1, "pipeline": {"old": 1}}), encoding="utf-8")
@@ -148,17 +217,22 @@ def test_rebundle_keeps_pipeline_json(full_run, tmp_path):
 
 
 def test_empty_file(tmp_path, capsys):
+    from killchain.run.pipeline import Context, run_pipeline
+
     log = tmp_path / "empty.log"
     log.write_bytes(b"")
-    assert run_main(args(tmp_path, log, "empty", "--offline", "--no-llm")) == 3
-    assert "the file is empty (0 bytes)" in capsys.readouterr().err
-    run = tmp_path / "data" / "runs" / "empty"
-    rec = load(run / "pipeline.json")
-    assert rec["status"] == "no_events" and rec["exit_code"] == 3
+    code, rec = run_pipeline(Context(input=log, name="empty", data_dir=tmp_path / "data", offline=True, no_llm=True,
+                                     workers=1))
+    assert code == 3 and rec["status"] == "no_events" and "the file is empty (0 bytes)" in rec["error"]
     st = by_name(rec)
-    assert st["parse"]["status"] == "ok"
-    assert all(st[s]["status"] == "skipped" for s in STAGES[1:])
-    assert not (run / "events.duckdb").exists()
+    assert st["schema"]["status"] == "ok" and st["parse"]["status"] == "ok"
+    assert all(st[s]["status"] == "skipped" for s in STAGES[2:])
+    # no stale folders: the run name can be used again
+    assert rec["removed"] == {"run_dir": True, "parsed_dir": True}
+    assert not (tmp_path / "data" / "runs" / "empty").exists() and not (tmp_path / "data" / "parsed" / "empty").exists()
+    assert run_main(args(tmp_path, log, "empty", "--offline", "--no-llm")) == 3
+    out = capsys.readouterr()
+    assert "the file is empty (0 bytes)" in out.err and "nothing written" in out.out
 
 
 def test_binary_only(tmp_path, capsys):
@@ -166,7 +240,30 @@ def test_binary_only(tmp_path, capsys):
     log.write_bytes(bytes(range(256)) * 64)
     assert run_main(args(tmp_path, log, "binary", "--offline", "--no-llm")) == 3
     assert "rejected:binary" in capsys.readouterr().err
-    assert load(tmp_path / "data" / "runs" / "binary" / "pipeline.json")["status"] == "no_events"
+    assert not (tmp_path / "data" / "runs" / "binary").exists()
+
+
+def test_no_events_keeps_an_existing_run_folder(tmp_path):
+    from killchain.run.pipeline import Context, run_pipeline
+
+    log = tmp_path / "empty.log"
+    log.write_bytes(b"")
+    run = tmp_path / "data" / "runs" / "kept"
+    run.mkdir(parents=True)
+    (run / "note.txt").write_text("earlier run", encoding="utf-8")
+    code, rec = run_pipeline(Context(input=log, name="kept", data_dir=tmp_path / "data", workers=1, no_llm=True))
+    assert code == 3 and rec["removed"]["run_dir"] is False
+    assert (run / "note.txt").exists() and load(run / "pipeline.json")["status"] == "no_events"
+
+
+def test_json_without_records(tmp_path, capsys):
+    """A JSON export holding no record object: the schema stage says so, exit 3, nothing left behind."""
+    log = tmp_path / "nothing.json"
+    log.write_text("[\n]\n", encoding="utf-8")
+    assert run_main(args(tmp_path, log, "nothing", "--offline", "--no-llm")) == 3
+    err = capsys.readouterr().err
+    assert "run: no events in" in err
+    assert not (tmp_path / "data" / "runs" / "nothing").exists()
 
 
 def test_truncated_file(tmp_path):

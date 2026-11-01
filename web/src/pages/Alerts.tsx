@@ -114,7 +114,7 @@ export function Alerts() {
       <PageTitle
         icon={<Bell className="h-5 w-5" />}
         title="Alerts"
-        subtitle="Every rule and anomaly hit in this run, with its technique, entities and incident."
+        subtitle="Every rule and anomaly hit in this run, and the alerts other products raised, with technique, entities and incident."
       />
 
       <div className="rounded-xl border border-slate-200 bg-white">
@@ -155,9 +155,10 @@ export function Alerts() {
                 onChange={(e) => set('technique', e.target.value)} className="h-8 w-40 text-xs" />
               <select aria-label="Layer" className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-600"
                 value={sp.get('layer') ?? ''} onChange={(e) => set('layer', e.target.value)}>
-                <option value="">Rules and anomalies</option>
+                <option value="">All layers</option>
                 <option value="rule">Rules only</option>
                 <option value="anomaly">Anomalies only</option>
+                <option value="vendor">Vendor alerts only</option>
               </select>
               <select aria-label="Minimum severity" className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs text-slate-600"
                 value={sp.get('severity') ?? ''} onChange={(e) => set('severity', e.target.value)}>

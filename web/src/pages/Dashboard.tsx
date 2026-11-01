@@ -56,6 +56,9 @@ function AlertsPerHour({ data }: { data: DashboardSummary }) {
         <Legend wrapperStyle={{ fontSize: 11 }} />
         <Bar dataKey="rule" stackId="a" name="Rule alerts" fill="#2563eb" isAnimationActive={false} />
         <Bar dataKey="anomaly" stackId="a" name="Anomaly alerts" fill="#8b5cf6" isAnimationActive={false} />
+        {rows.some((r) => (r.vendor ?? 0) > 0) && (
+          <Bar dataKey="vendor" stackId="a" name="Vendor alerts" fill="#0d9488" isAnimationActive={false} />
+        )}
       </BarChart>
       <p className="text-xs text-slate-400">By start hour, IST. {rows.length} hours from the first alert to the last.</p>
     </div>

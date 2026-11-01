@@ -43,7 +43,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     t0 = time.perf_counter()
     alerts = pl.read_parquet(need[0])
     evidence = pl.read_parquet(need[1], columns=["alert_id", "source", "line"])
-    res = engine.correlate(alerts, evidence, db.load_network(), load_settings(a.config))
+    res = engine.correlate(alerts, evidence, db.run_network(run), load_settings(a.config))
     wall = time.perf_counter() - t0
     peak.stop.set()
     st = res["stats"]

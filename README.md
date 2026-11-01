@@ -15,7 +15,7 @@ each one.
 | 3a. Correlation (FR-4, B-3) | done: `killchain.correlate`, `python -m killchain correlate --run <run>`, settings in `config/correlate.yaml`; on firex-10G 57 alerts become 25 incidents (24 anomaly alerts joined as supporting evidence, 1 unexplained, 0 below the bar, largest 8 alerts), chain A (32.127.48.11, R02 > R16 > R20 > R12) and chain B (10.10.10.118, R24 > R11 > R12) each one incident; attack paths 25/25, multi-step 4/4, no incident spans two truth incidents; recall 100%, labels 100%, false alarms 0%; 0.1 s |
 | 3b. Attack chains, path graphs, reach-next (FR-5, FR-6) | chains and path graphs done (P7): `killchain.graph`, `python -m killchain chain --run <run> [N]`; only rule alerts are numbered, each anomaly alert is `supporting` evidence on the nearest rule step (shared entity, then time overlap, then same tactic, then nearest start) and is still drawn in the path graph; an anomaly-only incident numbers its anomaly alerts; on firex-10G 25 incidents, 32 numbered steps (2 ongoing), 24 supporting, 19 gaps, 44,622 evidence lines, 0 contract errors in 0.28 s; chain A reads `1. Discovery → 2. Initial Access → 3. Persistence → 4. Exfiltration` (R02 > R16 > R20 > R12), chain B `1. Execution → 2. Command and Control → 3. Exfiltration` (R24 > R11 > R12); writes provisional `incidents/<n>.json`, `index.json`, `alerts.json` (risk, threat intel and report are placeholders); recall 100%, labels 100%, attack paths 25/25 (multi-step 4/4), false alarms 0%. Access graph and reach next done (P8): `python -m killchain reach --run <run> [N] [--parsed DIR] [--force]`, settings in `config/reach.yaml`; on firex-10G the access graph has 3 `controls` edges (svc_backup30, parul.sinha, Deepika.Khan to the firewall 10.10.99.1) and 90 `admin_port` edges from 10.10.10.44 and 10.10.10.63 (2,580 sessions), 1,387 internal hosts, built in 0.7 s; 11 incidents get a reach list (83 hosts), 14 a stated reason; incidents #3, #6, #11 say the account controls the firewall; chain A (#1) lists inferred 10.10.20.x servers, chain B (#2) is empty with its reason; 0 contract errors, stage 1.2 s; metrics unchanged. Desktop reach (Track A item 2): `neighbour_zones` now includes `desktop`, so a desktop foothold gets its subnet neighbours (inferred, 0 reach points) and the servers they reach at hop 2 (inferred, half points); on firex-10G 15 incidents get a reach list, 10 a stated reason; chain B and the other desktop footholds (10.10.10.112, 10.10.10.88, 10.10.10.51) each list 10 inferred 10.10.20.x servers |
 | 3c. Risk score and template report (B-1, B-2) | done (P10): `killchain.score`, `killchain.report`; `python -m killchain score --run <run> [N]` (fixed weights severity 0.25, stage 0.20, breadth 0.10, success 0.15, asset 0.15, reach 0.10, threat intel 0.05; each part stored with a `detail`; incidents renumbered 1..N by risk) and `python -m killchain report --run <run> [N]` (Markdown: summary, risk table, numbered chain with IST times, gaps, reach next, entities, threat intel, 5 evidence lines per step, actions per tactic); breadth is full at 3 or more distinct tactics, else tactics / 6 (Track A item 2); on firex-10G 25 incidents: critical 3, high 17, medium 5; chain A #1 89.8, chain B #2 82.3, large one-way transfer #3 81.5, lone port scan #24 45.8; R24 step text names the malware (`JS/Nemucod.A!tr.dldr`); threat intel 0 for every incident (offline enrich: 58 indicators, all `unknown`); 25 template reports (73,066 characters); 0 contract errors; score 0.05 s, report 0.04 s; recall 100%, labels 100%, attack paths 25/25 (multi-step 4/4), false alarms 0% |
-| 3d. Logs from any security product | schema mapping and generic parser (`killchain.schema`, `docs/schema.md`); vendor alerts as layer `vendor` and 17 endpoint/auth rules ([Logs from other security products](#logs-from-other-security-products)); firex-10G unchanged: 57 alerts, 25 incidents, recall 100%, labels 100%, attack paths 25/25 |
+| 3d. Logs from any security product | done: schema mapping and generic parser (`killchain.schema`, `docs/schema.md`); vendor alerts as layer `vendor` and 17 endpoint/auth rules; `python -m killchain run` and the Dashboard upload take any supported product's log, with network zones inferred per run when the addresses do not fit `config/network.yaml` ([Logs from other security products](#logs-from-other-security-products)); firex-10G unchanged: 57 alerts, 25 incidents, recall 100%, labels 100%, attack paths 25/25 |
 | 4. API and UI (FR-7) | in progress: `killchain.api` (health, incidents, path), `web/` scaffold |
 | 5. Scoring harness against the ground-truth manifest | done: `eval score --manifest` on firex-30G (37.2 M events, 29 planted incidents): recall 99.0%, labels 94.9%, attack paths 79.3% (23/29), false alarms 0%, 10 min 1 s, 2.4 GB, open p95 3 ms. Not found: the 4 Windows-only incidents (#24-27), and the 2 chains miss their Windows steps, because the Windows log (`firex-30G.win.jsonl`, 10.4 GB) was not supplied |
 | 6. One-command run (P13) | done: `python -m killchain run --input <log> [--name N] [--offline] [--no-llm] [--reuse-parsed] [--from STAGE]` (see [Full run](#full-run)); exit codes 0 done, 1 a required stage failed, 2 usage or input error, 3 no events in the input; on firex-10G with `--offline --no-llm`: 187 s end to end with a cold file cache (parse 88.6 s, prepare 58.7 s, detect 16.4 s, the other stages 1.6-4.6 s each), peak 6.2 GB (during prepare); 25 incidents, recall 100%, labels 100%, attack paths 25/25 (multi-step 4/4), false alarms 0%; the 50 GB tier run is still to do |
@@ -103,9 +103,45 @@ small (api 690 MB, web 50 MB) whatever sits in those folders.
 
 ## Logs from other security products
 
-`python -m killchain schema --input <file> --name <run> [--no-llm] --parse` reads any product's export
-(CSV, JSON, NDJSON, key=value, syslog/CEF/LEEF, Windows XML) into the same Parquet layout and columns
-(`docs/schema.md`); `python -m killchain db --prepare` and the later stages then run unchanged.
+Quick start: analyse any vendor's log with one command,
+
+```powershell
+python -m killchain run --input exports\sentinel_alerts.json --offline --no-llm
+python -m killchain run --input pan_traffic.csv.gz                  # a firewall export, compressed
+```
+
+or drop the file on the Dashboard's **Analyse a new log** card ([below](#analyse-a-new-log-from-the-dashboard)).
+The first stage, `schema`, detects the format (FortiGate, CSV/TSV, JSON, NDJSON, key=value,
+syslog/CEF/LEEF, Windows XML; `.gz` and `.zip` too) and maps the fields. A FortiGate log takes the
+FortiGate parser exactly as before; anything else the generic parser; a file of no recognised format is
+read as FortiGate and the run warns. What was read goes to `run_summary.json` `schema`: format, products,
+categories with counts, mapping methods, the rules that can run and the ones skipped (with the missing
+columns), vendor alerts with their technique sources, and the network zones used. The LLM maps fields
+the synonyms do not know and labels vendor alert names; `--no-llm` / `--offline` keep it out, and
+without a key in `.env` it is skipped and the run's notes say so.
+
+Network zones: `config/network.yaml` describes the firex network. When fewer than half of a run's
+internal (RFC 1918, loopback) addresses fall in its zones, db prepare infers zones for that run into
+`data/runs/<run>/network.inferred.yaml` (`killchain/netzones.py`): hosts named dc / srv / sql / db / web /
+mail (with a host IP) are servers or domain controllers, a /24 taking connections on server ports (22, 25,
+53, 80, 88, 135, 139, 389, 443, 445, 1433, 3306, 3389, 5432, 5985) from 3 or more internal sources is a
+server subnet, every other internal address is a desktop; the firex hubs (10.10.20.20, 10.10.99.1,
+203.0.113.5, admin, portal.corp.local) do not apply, and the documentation ranges are outside addresses
+there. db prepare, correlate, chain, reach and score read that file instead; firex-10G keeps
+`config/network.yaml` (99.9% of its 1,388 internal addresses are in its zones).
+
+`python -m killchain schema --input <file> --name <run> [--no-llm] --parse` runs the schema stage and the
+parse alone (`docs/schema.md`); `python -m killchain db --prepare` and the later stages then run unchanged.
+
+| Input (`run --offline --no-llm`) | Read as | Alerts | Incidents | Time |
+|---|---|---|---|---|
+| firex-10G.log (6.1 GiB) | fortigate | 32 rule, 25 anomaly | 25 (recall 100%, labels 100%, paths 25/25, false alarms 0%) | 94 s (warm cache) |
+| chain A slice as PAN CSV (42 MB) | csv; network 143,470, auth 24,656, other 9,767 | 9 rule, 8 anomaly | 5 (= FortiGate slice; chain A R02 > R16 > R20 > R12) | 17 s |
+| the same slice as ECS NDJSON (130 MB) | ndjson | 9 rule, 8 anomaly | 5 (same) | 18 s |
+| Sentinel SecurityAlert export | json; vendor_alert 36 | 30 vendor | 2 (one per planted attack) | 13 s |
+| SentinelOne threats export | json; vendor_alert 32 | 25 vendor | 4 (3 planted attacks + 1 of noise) | 13 s |
+| Wazuh alerts | ndjson; vendor_alert 39 | 30 vendor | 3 (2 planted attacks, holding 3 noise alerts of the same hosts, + 1 of noise) | 13 s |
+| EDR sample (`edr_events.json`, 10,000 records) | ndjson; endpoint 8,712, auth 780, vendor_alert 508 | 99 vendor | 14 | 14 s |
 
 - **Vendor alerts.** Records that are already detections (category `vendor_alert`: Microsoft Sentinel
   SecurityAlert, SentinelOne threats, Wazuh alerts, an EDR's alerts) become alerts of layer `vendor` in
@@ -311,8 +347,11 @@ python -m killchain run --input data\raw\firex-10G.log --reuse-parsed     # keep
 python -m killchain run --input data\raw\firex-10G.log --from score       # rerun score .. bundle only
 ```
 
-Stage order: parse → db prepare → detect → correlate → chain → reach → score →
-report → enrich → narrate → bundle. Each stage runs as its own process; its
+Stage order: schema → parse → db prepare → detect → correlate → chain → reach → score →
+report → enrich → narrate → bundle. schema detects the format and maps the fields (under 1 s on
+firex-10G); FortiGate input then goes to the FortiGate parser as before, other products to the generic
+parser ([Logs from other security products](#logs-from-other-security-products)). If schema itself
+fails, the run warns and the FortiGate parser reads the file. Each stage runs as its own process; its
 output is printed with a `[stage]` prefix and kept in `<run>/logs/<stage>.log`.
 Paths are `<data>/parsed/<name>` and `<data>/runs/<name>` (`--data-dir`,
 default `data`; `--name` defaults to the file name without extension).
@@ -320,8 +359,8 @@ default `data`; `--name` defaults to the file name without extension).
 | Flag | Does |
 |---|---|
 | `--offline` | enrich uses the cache and local context only; the narrator is skipped |
-| `--no-llm` | the narrator is skipped; incidents keep their template reports |
-| `--reuse-parsed` | skips parse when `<data>/parsed/<name>` was parsed from the same file (same path and size; else exit 2), and db prepare when `events.duckdb` is newer than that parse |
+| `--no-llm` | no LLM: field mapping uses the synonyms only, vendor alert names their fields and keywords, the narrator is skipped (incidents keep their template reports) |
+| `--reuse-parsed` | skips parse when `<data>/parsed/<name>` was parsed from the same file (same path and size; else exit 2), and db prepare when `events.duckdb` is newer than that parse and the network choice (`network_zones.json`) is there |
 | `--from STAGE` | skips the stages before STAGE and reuses their outputs (needs an earlier parse) |
 | `--workers N`, `--ti-cache FILE` | passed to the parser and to enrich |
 
@@ -336,10 +375,11 @@ Any other failed stage stops the run.
 | 0 | done (status `ok`, or `ok_with_warnings`) |
 | 1 | a required stage failed; its last 20 output lines are printed and kept in the record |
 | 2 | usage or input error (not a file, bad name, `--reuse-parsed` mismatch, `--from` without a parse); nothing is written |
-| 3 | the input holds no events (empty, or no line is a FortiGate or JSON event, e.g. only binary) |
+| 3 | the input holds no events (empty, only binary, a JSON export without records, or no line a record of any supported format); the run and parsed folders this run created are removed, so the name can be used again |
 
 The run's record (per stage: status, reason, exit code, wall time, peak memory,
-counts, command, log) goes under the `pipeline` key of `<run>/run_summary.json`,
+counts, command, log; and `schema`, what was read, also at the top of the file as
+`run_summary.json` `schema`) goes under the `pipeline` key of `<run>/run_summary.json`,
 added after bundle so every bundle field stays as bundle wrote it, and to
 `<run>/pipeline.json`. Bundle rebuilds `run_summary.json` from scratch, so a
 later `python -m killchain.bundle` drops the `pipeline` key; `pipeline.json`
@@ -348,8 +388,11 @@ stage's processes, so it includes the orchestrator itself.
 
 ## Analyse a new log from the Dashboard
 
-The Dashboard's **Analyse a new log** card takes a log file of any size, runs
-the full pipeline on it and then shows the new run on every page.
+The Dashboard's **Analyse a new log** card takes a log file of any size from
+any supported product (FortiGate, another firewall's CSV, an EDR or SIEM
+export: `.json`, `.ndjson`, `.jsonl`, `.csv`, `.tsv`, `.txt`, `.log`, `.xml`,
+`.gz`, `.zip`), runs the full pipeline on it and then shows the new run on every
+page.
 
 1. Drop the file on the card or choose it (or pick a log already in the
    API's raw folder). The run name defaults to the file name.
@@ -362,9 +405,15 @@ the full pipeline on it and then shows the new run on every page.
    card shows each stage as it runs, the parser's progress with time left,
    and the pipeline output. One job runs at a time, and it can be cancelled.
 4. When the run finishes, the API serves it straight away and every open page
-   reloads. The card shows the incidents, alerts, events, upload time,
-   processing time and the time per stage. **Showing run** at the top of the
-   Dashboard switches between analysed runs.
+   reloads. The card shows what the file was read as (format, products,
+   categories, vendor alerts), the incidents, alerts, events, upload time,
+   processing time and the time per stage. A file with no events ends as
+   "No events in the file" and leaves no run behind. **Showing run** at the top of the
+   Dashboard switches between analysed runs. Alerts other products raised
+   carry a **Vendor** badge (with the product, and where the ATT&CK label came
+   from when not the product itself) in the alert lists and incident timelines;
+   the Alerts page filters them with **Vendor alerts only**, and the Dashboard's
+   alerts-per-hour chart stacks them as **Vendor alerts**.
 
 ```powershell
 python -m killchain serve --run none --raw-dir logs           # start empty; uploads land in logs\

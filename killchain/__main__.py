@@ -38,6 +38,10 @@ def cmd_db(rest: List[str]) -> int:
                     help="store the derived columns as tables in <run>/events.duckdb (one-off, about 80 s on the 6.5 GB file)")
     ap.add_argument("--sql", help="run this SQL against the views and print the result")
     ap.add_argument("--limit", type=int, default=50)
+    ap.add_argument("--network", choices=("auto", "config"), default="auto",
+                    help="with --prepare: auto (default) uses config/network.yaml when the run's internal addresses "
+                         "fit its zones, else infers zones into <run>/network.inferred.yaml (killchain/netzones.py); "
+                         "config always uses config/network.yaml")
     args = ap.parse_args(rest)
     from . import db
 
@@ -46,7 +50,18 @@ def cmd_db(rest: List[str]) -> int:
         if not args.parsed:
             ap.error("--prepare needs --parsed")
         run = args.run or str(Path("data") / "runs" / Path(args.parsed).name)
-        print(json.dumps(db.prepare_run(args.parsed, run), indent=1))
+        if args.network == "auto":
+            from . import netzones
+
+            info = netzones.decide(args.parsed, run)
+            print(f"network: {info['source']} ({info['reason']}; {info['secs']} s)")
+            for z, c in (info.get("zones") or {}).items():
+                print(f"  {z:28s} {c['ips']:>6,} addresses {c['rows']:>12,} rows")
+        else:
+            p = Path(run) / db.INFERRED_NETWORK
+            if p.exists():
+                p.unlink()
+        print(json.dumps(db.prepare_run(args.parsed, run, network=db.run_network(run)), indent=1))
         return 0
     if not args.parsed and not args.run:
         ap.error("give --parsed or --run")
