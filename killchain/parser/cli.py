@@ -25,6 +25,7 @@ from .arrowutil import parse_tz
 from .worker import count_newlines, parse_range
 
 STREAMS = ("firewall", "windows")
+PROGRESS_STEP = 0.05          # a progress line on stderr every 5% of the bytes
 
 
 def parse_args(argv: Optional[List[str]]) -> argparse.Namespace:
@@ -263,6 +264,7 @@ def main(argv: Optional[List[str]] = None) -> None:
                     end = min(end, next_line_start(f, start + int(args.max_mb * 2**20), size))
             ranges = plan_ranges(str(path), start, end, args.chunk_mb << 20)
             prefix = plan_ranges(str(path), 0, start, args.chunk_mb << 20) if start else []
+            print(f"[{path.name}] counting lines in {(end - start) / 2**30:.2f} GiB", file=sys.stderr, flush=True)
             counts = list(pool.map(count_newlines, [(str(path), a, b) for a, b in prefix + ranges]))
             base = 1 + sum(counts[: len(prefix)])
             files.append({"path": str(path.resolve()), "size": size, "start": start, "end": end,
@@ -276,7 +278,7 @@ def main(argv: Optional[List[str]] = None) -> None:
                 })
                 base += c
             total = max(end - start, 1)
-            done, next_mark = 0, 0.1
+            done, next_mark = 0, PROGRESS_STEP
             for fut in as_completed([pool.submit(parse_range, t) for t in tasks]):
                 r = fut.result()
                 results.append(r)
@@ -286,7 +288,7 @@ def main(argv: Optional[List[str]] = None) -> None:
                     print(f"[{path.name}] {100 * done / total:5.1f}%  {done / 2**30:6.2f} GiB  {el:7.1f} s  "
                           f"peak RSS {monitor.peak / 2**20:7.0f} MB", file=sys.stderr, flush=True)
                     while next_mark <= done / total:
-                        next_mark += 0.1
+                        next_mark += PROGRESS_STEP
     wall = time.perf_counter() - t0
     peak = monitor.stop()
 

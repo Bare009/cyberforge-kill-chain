@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { invalidateRunData } from '@/hooks/useJobs'
 import { API_BASE_URL } from '@/lib/api'
 import { useAppStore } from '@/store/useAppStore'
 import { useLiveStore } from '@/store/useLiveStore'
@@ -47,6 +48,15 @@ export function LiveListener() {
         ].filter(Boolean)
         notify({ type: 'warning', message: `Live: ${parts.join(', ')}`, duration: 6000 })
       }
+    })
+    // The API switched to another run (an analysis finished, or someone picked a run): reload
+    // everything. The stream then ends and EventSource reconnects to the new run's watcher.
+    es.addEventListener('run', (m) => {
+      const e = parse(m as MessageEvent)
+      if (!e) return
+      push(e)
+      void invalidateRunData(qc)
+      void qc.invalidateQueries({ queryKey: ['job'] })
     })
     es.addEventListener('status', (m) => {
       const e = parse(m as MessageEvent)

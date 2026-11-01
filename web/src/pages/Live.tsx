@@ -60,6 +60,14 @@ function EventRow({ e }: { e: LiveEvent }) {
       </li>
     )
   }
+  if (e.type === 'run') {
+    return (
+      <li className="flex items-start gap-3 border-b border-slate-50 px-4 py-2 text-xs">
+        <span className="w-36 shrink-0 text-slate-500"><TimeCell iso={e.at} /></span>
+        <span className="text-slate-700">The API now serves run <span className="font-medium">{e.run}</span></span>
+      </li>
+    )
+  }
   const c = e.counts
   return (
     <li className="space-y-1 border-b border-slate-50 px-4 py-2 text-xs">

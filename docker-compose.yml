@@ -46,13 +46,14 @@ services:
       KILLCHAIN_SYSLOG: ${KILLCHAIN_SYSLOG:-0}
       CONNECTOR_CREDENTIALS_KEY: ${CONNECTOR_CREDENTIALS_KEY:-}
       INGEST_PUBLIC_BASE_URL: ${INGEST_PUBLIC_BASE_URL:-http://localhost:${API_PORT:-8000}}
+      KILLCHAIN_UPLOADS: ${KILLCHAIN_UPLOADS:-1}
     volumes:
-      - ./data:/app/data:ro                 # runs are read only ...
-      - ./data/cache:/app/data/cache        # ... except the threat-intel and LLM caches
-      - ./data/connectors:/app/data/connectors   # ... SIEM connections (connectors.json, credentials key)
-      - ./data/ingest:/app/data/ingest      # ... and what they deliver (records, live.log)
+      # read-write: "Analyse a new log" on the Dashboard uploads into ./logs and runs the
+      # pipeline into ./data/runs from this container (set KILLCHAIN_UPLOADS=0 to turn it off);
+      # this also covers the caches, data/connectors and data/ingest the SIEM connections write
+      - ./data:/app/data
       - ./rules:/app/rules                  # rules saved from the rule writer land in ./rules
-      - ${LOGS_DIR:-./logs}:/app/logs:ro    # raw log text for the Evidence tab (read at byte offsets)
+      - ${LOGS_DIR:-./logs}:/app/logs       # raw logs: uploads, and the Evidence tab's raw text
     ports:
       - "${API_PORT:-8000}:8000"
       - "${SYSLOG_HOST_PORT:-5514}:5514/udp"  # syslog listener (only with KILLCHAIN_SYSLOG=1)

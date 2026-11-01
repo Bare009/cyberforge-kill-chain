@@ -95,8 +95,10 @@ export interface LiveAlert {
 /** One event of GET /live/stream and /live/status. */
 export interface LiveEvent {
   id: number
-  type: 'hello' | 'bundle' | 'status'
+  type: 'hello' | 'bundle' | 'status' | 'run'
   at: string
+  /** run: the API now serves this run */
+  run?: string
   // bundle
   new_incidents?: number[]
   changed_incidents?: number[]

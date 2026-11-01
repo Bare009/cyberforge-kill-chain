@@ -80,10 +80,13 @@ class LiveWatcher:
     """Polls a run folder; reloads the bundle through `reload` when its files change."""
 
     def __init__(self, run_dir: Path, reload: Callable[[], Any], get_bundle: Callable[[], Any],
-                 interval: float = 2.0):
+                 interval: float = 2.0, start_version: int = 0):
         self.run_dir = Path(run_dir)
         self.reload, self.get_bundle, self.interval = reload, get_bundle, interval
-        self.version = 0
+        # a watcher that replaces another (a run switch) carries on its event ids, so a client
+        # reconnecting with Last-Event-ID still gets the new watcher's events
+        self.version = start_version
+        self.closed = False
         self.events: Deque[Dict[str, Any]] = deque(maxlen=MAX_EVENTS)
         self.reloads = 0
         self.loaded_at = now_iso()
@@ -185,6 +188,12 @@ class LiveWatcher:
         self._stop.set()
         self.watching = False
 
+    def close(self, switched_to: Dict[str, Any]) -> None:
+        """The API now serves another run: say so to the open streams (a `run` event), then end them."""
+        self.stop()
+        self._emit("run", switched_to)
+        self.closed = True
+
     def _loop(self) -> None:
         while not self._stop.wait(self.interval):
             try:
@@ -229,7 +238,8 @@ async def live_stream(request: Request,
                       since: Optional[int] = Query(None, ge=0, description="send events after this id (default: only new ones)"),
                       limit: Optional[int] = Query(None, ge=1, le=1000, description="close after this many events")
                       ) -> StreamingResponse:
-    """Server-Sent Events: `hello` once, then `bundle` (incidents and alerts changed) and `status`."""
+    """Server-Sent Events: `hello` once, then `bundle` (incidents and alerts changed), `status`, and
+    `run` when the API switches to another run (the stream then ends; EventSource reconnects)."""
     w = _w(request)
     header = request.headers.get("last-event-id")
     last = int(header) if header and header.isdigit() else (since if since is not None else w.version)
@@ -252,6 +262,8 @@ async def live_stream(request: Request,
                 sent += 1
                 if limit and sent >= limit:
                     return
+            if w.closed and not w.events_since(last):
+                return                       # run switched: the client reconnects to the new watcher
             if not evs:
                 await asyncio.sleep(0.5)
                 quiet += 0.5

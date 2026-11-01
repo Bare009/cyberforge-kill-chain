@@ -321,6 +321,58 @@ later `python -m killchain.bundle` drops the `pipeline` key; `pipeline.json`
 keeps it. Peak memory per stage is the summed RSS of the run process and the
 stage's processes, so it includes the orchestrator itself.
 
+## Analyse a new log from the Dashboard
+
+The Dashboard's **Analyse a new log** card takes a log file of any size, runs
+the full pipeline on it and then shows the new run on every page.
+
+1. Drop the file on the card or choose it (or pick a log already in the
+   API's raw folder). The run name defaults to the file name.
+2. **Upload and analyse.** The browser sends the file in 128 MB chunks to
+   the raw folder the API reads evidence from (`--raw-dir`, else
+   `KILLCHAIN_RAW_DIR`, else `data/raw`). If the upload stops, pick the same
+   file again and it carries on from where the server's copy ends. A file
+   already on the server is not sent again.
+3. The API runs `python -m killchain run` on the file in a subprocess. The
+   card shows each stage as it runs, the parser's progress with time left,
+   and the pipeline output. One job runs at a time, and it can be cancelled.
+4. When the run finishes, the API serves it straight away and every open page
+   reloads. The card shows the incidents, alerts, events, upload time,
+   processing time and the time per stage. **Showing run** at the top of the
+   Dashboard switches between analysed runs.
+
+```powershell
+python -m killchain serve --run firex-30G --raw-dir logs      # uploads land in logs\
+cd web; npm run dev                                           # http://localhost:5173
+```
+
+Measured on the 16-core, 16 GB development machine, with a fresh 6.1 GiB copy
+of firex-10G uploaded through the browser: the upload took 43 s (about
+150 MB/s), and processing took 4 to 6 min. Parse took 158 s with 8 parser
+processes and 229 s with 4. For a 13 GB file, expect about 1.5 min for the
+upload and roughly twice the processing time. The card defaults to
+`PARSE_WORKERS`, else up to 8 parser processes. The run's peak memory, about
+6 GB, comes from DuckDB in the prepare stage.
+
+Endpoints (`killchain/api/jobs.py`):
+
+| Endpoint | Does |
+|---|---|
+| `GET /uploads` | lists the logs in the raw folder (with the runs made from each), partial uploads and free disk space |
+| `GET /uploads/{name}` | returns how many bytes of an upload the server has |
+| `POST /uploads/{name}?offset=&total=` | takes one chunk (raw body, at most 256 MB) that starts where the server's copy ends; returns 409 with `received` otherwise, 507 when the disk is too full for the file plus its processing |
+| `POST /uploads/{name}/discard` | drops a partial upload |
+| `POST /jobs` | starts a run: `{file, run, offline, no_llm, workers, replace}` |
+| `GET /jobs/current` | returns the running or last job, with per-stage status and times, parse progress and an output tail |
+| `POST /jobs/current/cancel` | stops the job and every process it started |
+| `GET /runs`, `POST /runs/select` | list analysed runs, and serve another one |
+
+The API has no login, so anyone who can reach it can upload and start runs.
+Set `KILLCHAIN_UPLOADS=0` to turn these endpoints off. In Docker the API
+container mounts `./data` and `./logs` read-write for this feature, and nginx
+streams the chunks through to it. On Windows, Docker bind mounts are much
+slower than the local disk, so for a 13 GB file run the API natively (above).
+
 ## Live mode
 
 `python -m killchain live` tails one growing log file and keeps a run folder's

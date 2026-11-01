@@ -7,12 +7,14 @@ mitre.py); /incidents/{id}/events (evidence.py) and /entities/{value}
 POST /ti/lookup (ti.py) (day 4); /dashboard/summary, /alerts, /unexplained,
 /rules, /rules/{id} (views.py) and /incidents/{id}/report (day 5);
 POST /incidents/{id}/ask, /rules/draft|test|save (agents.py); /live/status,
-/live/stream (live.py); /metrics, /system (system.py) (day 6).
+/live/stream (live.py); /metrics, /system (system.py) (day 6); /uploads, /jobs, /runs
+(jobs.py): upload a log, run the pipeline on it and switch to the result.
 """
 
 from __future__ import annotations
 
 import os
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -20,7 +22,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from .bundle import RunBundle, default_raw_dir, load_bundle, resolve_run_dir
+from .bundle import RunBundle, default_data_dir, default_raw_dir, load_bundle, resolve_run_dir
 from .entities import entity_view
 from .evidence import EvidenceStore
 from .mitre import MitreStore
@@ -29,6 +31,8 @@ from .ti import TiStore
 from .ti import router as ti_router
 from .agents import Agents
 from .agents import router as agents_router
+from .jobs import Jobs, Uploads
+from .jobs import router as jobs_router
 from .live import LiveWatcher
 from .live import router as live_router
 from .system import router as system_router
@@ -123,10 +127,10 @@ def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[s
     ti_cache_path = Path(ti_cache) if ti_cache else CACHE_PATH
 
     def attach(b: RunBundle) -> RunBundle:
-        """Make `b` the bundle every endpoint serves (start-up, and each live reload)."""
+        """Make `b` the bundle every endpoint serves (start-up, each live reload, a run switch)."""
         state = {
             "mitre": MitreStore(b.alerts),
-            "evidence": EvidenceStore(run_dir, b.incidents, raw),
+            "evidence": EvidenceStore(b.run_dir, b.incidents, raw),
             "ti": TiStore(b, ti_cache_path, offline=ti_offline, otx_client=ti_client),
             "rules": RuleStore(b),
         }
@@ -136,15 +140,36 @@ def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[s
         app.state.dashboard = None          # rebuilt on the next request (needs the TI status)
         return b
 
-    attach(bundle)
     from killchain.agents.settings import CACHE_PATH as LLM_CACHE
 
     app.state.llm_cache = Path(llm_cache) if llm_cache else LLM_CACHE
-    app.state.agents = Agents(run_dir, app.state.llm_cache, http_client=llm_client)
-    app.state.live = LiveWatcher(run_dir, reload=lambda: attach(load_bundle(run_dir)),
-                                 get_bundle=lambda: app.state.bundle, interval=watch_interval)
-    if watch:
-        app.state.live.start()
+    switch_lock = threading.Lock()
+
+    def activate(new_dir: Path, b: Optional[RunBundle] = None) -> RunBundle:
+        """Serve the run in `new_dir` from now on: its bundle, rule sandbox and live watcher.
+        The old watcher announces the switch on /live/stream and closes it, so clients reconnect."""
+        new_dir = Path(new_dir)
+        with switch_lock:
+            b = b if b is not None else load_bundle(new_dir)          # raises before anything changes
+            old: Optional[LiveWatcher] = getattr(app.state, "live", None)
+            attach(b)
+            app.state.agents = Agents(new_dir, app.state.llm_cache, http_client=llm_client)
+            if old is not None:
+                old.close({"run": b.run, "incidents": len(b.incidents), "alerts": len(b.alerts)})
+            app.state.live = LiveWatcher(new_dir, reload=lambda: attach(load_bundle(new_dir)),
+                                         get_bundle=lambda: app.state.bundle, interval=watch_interval,
+                                         start_version=old.version if old else 0)
+            if watch:
+                app.state.live.start()
+            return b
+
+    app.state.activate = activate
+    app.state.raw_dir = raw
+    app.state.data_dir = default_data_dir()
+    activate(run_dir, bundle)
+    app.state.uploads = Uploads(raw)
+    app.state.jobs = Jobs(app.state.data_dir, activate)
+    app.include_router(jobs_router)
     app.include_router(mitre_router)
     app.include_router(ti_router)
     app.include_router(views_router)
@@ -159,6 +184,7 @@ def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[s
         allow_origins=_cors_origins(),
         allow_methods=["GET", "POST", "PATCH", "DELETE"],   # PATCH/DELETE: SIEM connection edits
         allow_headers=["Content-Type"],
+        max_age=600,                        # upload chunks are POSTs with a preflight each; cache it
     )
 
     @app.get("/health", tags=["system"])

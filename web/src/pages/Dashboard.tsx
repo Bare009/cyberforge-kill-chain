@@ -2,6 +2,8 @@ import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Legend, Tooltip as RTooltip, XAxis, YAxis } from 'recharts'
 import { AlertCircle, Bell, Clock, Cpu, Database, FileText, Globe, LayoutDashboard, ShieldAlert, Sparkles } from 'lucide-react'
+import { AnalyseLog } from '@/components/analyse/AnalyseLog'
+import { RunPicker } from '@/components/analyse/RunPicker'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -230,7 +232,10 @@ export function Dashboard() {
         {data?.sample && (
           <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800">Sample run</span>
         )}
+        <RunPicker />
       </PageTitle>
+
+      <AnalyseLog />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiTile loading={isLoading} label="Events parsed" value={fmt(k?.events_parsed)} icon={<Database className="h-4 w-4 text-slate-500" />}
@@ -245,7 +250,7 @@ export function Dashboard() {
           value={k?.log_start && k.log_end ? `${Math.round((Date.parse(k.log_end) - Date.parse(k.log_start)) / 86_400_000)} days` : '—'}
           hint={k?.log_start && k.log_end ? `${formatDay(k.log_start)} to ${formatDay(k.log_end)}` : undefined} />
         <KpiTile loading={isLoading} label="Run time" value={formatSecs(k?.processing_secs)} icon={<FileText className="h-4 w-4 text-slate-500" />}
-          hint="all stages" />
+          hint={k?.processing_timing === 'pipeline' ? 'parse to bundle, end to end' : 'all stages'} />
         <KpiTile loading={isLoading} label="Peak memory" value={k?.peak_rss_mb ? `${(k.peak_rss_mb / 1024).toFixed(1)} GB` : '—'}
           icon={<Cpu className="h-4 w-4 text-slate-500" />} hint="largest stage" />
       </div>

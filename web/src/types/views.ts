@@ -73,6 +73,8 @@ export interface DashboardSummary {
     incident_end: string | null
     processing_secs: number | null
     peak_rss_mb: number | null
+    /** pipeline: one full `killchain run`, timed end to end; stages: the sum of the stages' own timings */
+    processing_timing?: 'pipeline' | 'stages'
     evidence_lines: number | null
   }
   risk_scored: boolean

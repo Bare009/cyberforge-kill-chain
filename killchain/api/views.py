@@ -114,7 +114,19 @@ def dashboard_summary(b: RunBundle, ti_status: Dict[str, Any]) -> Dict[str, Any]
 
     counts = rs.get("counts") or {}
     dq = rs.get("data_quality") or {}
-    totals = rs.get("totals") or {}
+    totals = dict(rs.get("totals") or {})
+    stages = rs.get("stages") or {}
+    # A full `python -m killchain run` (every stage, nothing reused) timed the whole thing end to end,
+    # child processes included: show that, so the Dashboard agrees with the job that made the run.
+    # A partial rerun (--from, --reuse-parsed) only timed part of it: keep the per-stage totals.
+    pipe = rs.get("pipeline") or {}
+    opts = pipe.get("options") or {}
+    timing = "stages"
+    if pipe.get("wall_secs") and not opts.get("from") and not opts.get("reuse_parsed"):
+        timing = "pipeline"
+        totals = {"processing_secs": pipe.get("wall_secs"), "peak_rss_mb": pipe.get("peak_rss_mb")}
+        stages = {s["name"]: {"wall_secs": s.get("wall_secs"), "peak_rss_mb": s.get("peak_rss_mb")}
+                  for s in pipe.get("stages") or [] if s.get("status") != "skipped"}
     span_start = min((i["ts_start"] for i in incs), default=None)
     span_end = max((i["ts_end"] for i in incs), default=None)
     worst = [{k: r.get(k) for k in ("incident_number", "title", "risk_score", "risk_band", "severity",
@@ -137,6 +149,7 @@ def dashboard_summary(b: RunBundle, ti_status: Dict[str, Any]) -> Dict[str, Any]
             "incident_end": span_end,
             "processing_secs": totals.get("processing_secs"),
             "peak_rss_mb": totals.get("peak_rss_mb"),
+            "processing_timing": timing,
             "evidence_lines": counts.get("evidence_lines"),
         },
         "risk_scored": scored,
@@ -149,7 +162,7 @@ def dashboard_summary(b: RunBundle, ti_status: Dict[str, Any]) -> Dict[str, Any]
         "top_targets": top(tgt),
         "worst_incidents": worst,
         "data_quality": dq or None,
-        "stages": rs.get("stages") or {},
+        "stages": stages,
         "threat_intel": ti_status,
         "llm": rs.get("llm"),
     }

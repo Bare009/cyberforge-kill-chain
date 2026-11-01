@@ -301,28 +301,35 @@ def run_pipeline(ctx: Context) -> Tuple[int, Dict[str, Any]]:
     start = STAGES.index(ctx.from_stage) if ctx.from_stage else 0
     parse_reused = False
 
+    def add(entry: Dict[str, Any]) -> None:
+        """Record a stage and say so on stdout (`run: stage <name> <status> <secs>`), which the API's
+        job runner reads for progress."""
+        stages.append(entry)
+        secs = "-" if entry["wall_secs"] is None else f"{entry['wall_secs']}"
+        print(f"run: stage {entry['name']} {entry['status']} {secs}", flush=True)
+
     for i, stage in enumerate(STAGES):
         if stop:
-            stages.append(_skipped(stage, stop))
+            add(_skipped(stage, stop))
             continue
         if i < start:
-            stages.append(_skipped(stage, f"--from {ctx.from_stage}"))
+            add(_skipped(stage, f"--from {ctx.from_stage}"))
             continue
         if stage == "parse" and ctx.reuse_parsed:
             if (ctx.parsed_dir / "_stats.json").exists():
                 parse_reused = True
-                stages.append(_skipped(stage, "--reuse-parsed", stage_counts(stage, ctx)))
+                add(_skipped(stage, "--reuse-parsed", stage_counts(stage, ctx)))
             else:
                 notes.append(f"--reuse-parsed: no earlier parse in {ctx.parsed_dir}; parsing")
         if stage == "prepare" and parse_reused:
             db, st = ctx.run_dir / "events.duckdb", ctx.parsed_dir / "_stats.json"
             if db.exists() and db.stat().st_mtime > st.stat().st_mtime:
-                stages.append(_skipped(stage, "--reuse-parsed", stage_counts(stage, ctx)))
+                add(_skipped(stage, "--reuse-parsed", stage_counts(stage, ctx)))
                 continue
         if stage == "narrate":
             reason = llm_gate(ctx)
             if reason:
-                stages.append(_skipped(stage, reason))
+                add(_skipped(stage, reason))
                 if reason == NO_KEY:
                     warnings.append(f"narrate: {reason}")
                     print(f"run: narrate skipped: {reason}", file=sys.stderr)
@@ -330,6 +337,7 @@ def run_pipeline(ctx: Context) -> Tuple[int, Dict[str, Any]]:
         if not (stage == "parse" and parse_reused):
             notes.extend(notes_before(stage, ctx, written))
             cmd = command_for(stage, ctx)
+            print(f"run: stage {stage} started", flush=True)
             res = run_stage(stage, cmd, ctx)
             ok = res["exit_code"] == 0
             entry = {"name": stage, "status": "ok" if ok else "failed",
@@ -337,7 +345,7 @@ def run_pipeline(ctx: Context) -> Tuple[int, Dict[str, Any]]:
                      "exit_code": res["exit_code"], "wall_secs": res["wall_secs"], "peak_rss_mb": res["peak_rss_mb"],
                      "counts": stage_counts(stage, ctx) if ok else {}, "command": cmd, "log": res["log"],
                      "tail": None if ok else res["tail"]}
-            stages.append(entry)
+            add(entry)
             if ok:
                 written.add(stage)
             if ok and stage == "enrich" and (entry["counts"].get("failures") or 0) > 0:
