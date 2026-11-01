@@ -45,7 +45,8 @@ columns:
   proto: [proto, IP Protocol, network.iana_number, network.transport, connection_info.protocol_num, protocol,
           transport, ip_proto, data.protocol, cef.extensions.proto, leef.attributes.proto]
   action: [action, Action, act, cef.extensions.act, leef.attributes.action, data.action, fw_action, DeviceAction,
-           SimplifiedDeviceAction, disposition, activity_name, event.action]
+           SimplifiedDeviceAction, disposition, activity_name, event.action, threatInfo.mitigationStatus,
+           mitigationStatus]
   log_type: [type, Type, log_type, logtype, Log Type, event.dataset, event.category, category_name, class_name]
   log_subtype: [subtype, Threat/Content Type, log_subtype, Subtype, Threat Type, event.dataset, event.category]
   status: [status, event.outcome, outcome.result, outcome, result, Result, cef.extensions.outcome, data.status,
@@ -116,12 +117,15 @@ columns:
                    parent_process, InitiatingProcessFileName, ParentBaseFileName, ParentImageFileName,
                    actor.process.parent_process.name, process.parent.executable]
   file_path: [file.path, TargetFilename, winlog.event_data.TargetFilename, FilePath, file_path, FolderPath,
-              threatInfo.filePath, filePath, cef.extensions.filePath, ObjectName, file.name, cef.extensions.fname, fname]
+              threatInfo.filePath, filePath, cef.extensions.filePath, ObjectName, file.name, cef.extensions.fname, fname,
+              TargetObject, winlog.event_data.TargetObject, EventData.TargetObject, registry.path, RegistryKey]
   file_hash: [file.hash.sha256, process.hash.sha256, SHA256, sha256, SHA256String, threatInfo.sha256,
               InitiatingProcessSHA256, file.hash.sha1, process.hash.sha1, SHA1, threatInfo.sha1, file.hash.md5,
               process.hash.md5, MD5, MD5String, md5, Hashes, cef.extensions.fileHash, fileHash, file_hash]
-  event_id: [winlog.event_id, EventID, Event.System.EventID, System.EventID, event.code, EventCode, Event ID,
-             eventType, event_type, EventName, ActionType, event_id, eventid]
+  # exact spellings: ECS event.id is a unique record id and event.type a list of words, not event ids
+  event_id: [winlog.event_id, {name: EventID, exact: true}, Event.System.EventID, System.EventID, event.code, EventCode,
+             {name: Event ID, exact: true}, {name: eventType, exact: true}, {name: event_type, exact: true}, EventName,
+             ActionType, {name: event_id, exact: true}, data.win.system.eventID]
   logon_type: [LogonType, winlog.event_data.LogonType, EventData.LogonType, winlog.logon.type, logon_type]
   alert_name: [AlertName, AlertDisplayName, alertDisplayName, alert_name, threatInfo.threatName, threatName, DetectName,
                detect_name, detection_name, detectionName, finding_info.title, finding.title, rule.description,
@@ -132,11 +136,20 @@ columns:
                      ConfidenceLevel]
   mitre_technique: [Techniques, threat.technique.id, threat.technique.subtechnique.id, rule.mitre.id, mitre_technique,
                     MitreTechniques, TechniqueId, technique_id, Technique, technique, techniques, attack.technique,
-                    finding_info.attacks, indicators, mitre]
-  mitre_tactic: [Tactics, threat.tactic.name, threat.tactic.id, rule.mitre.tactic, mitre_tactic, Tactic, tactic, tactics]
+                    finding_info.attacks, indicators.tactics.techniques.name, indicators, mitre]
+  mitre_tactic: [Tactics, threat.tactic.name, threat.tactic.id, rule.mitre.tactic, mitre_tactic, Tactic, tactic, tactics,
+                 indicators.tactics.name]
   alert_entities: [Entities, entities, Evidence]
   product: [ProviderName, ProductName, observer.product, cef.device_product, leef.product, metadata.product.name,
             DeviceProduct, product, VendorName, observer.vendor, vendor]
+
+# Product name for exports that have no product field: the first entry whose fields are all present
+# (exact field names, any case) names the product column of every record.
+product_hints:
+  SentinelOne: [threatInfo.threatName, agentRealtimeInfo.agentComputerName]
+  Wazuh: [rule.level, rule.description, agent.name]
+  CrowdStrike Falcon: [DetectName, ComputerName, Tactic]
+  Microsoft Sentinel: [AlertName, SystemAlertId]
 
 # A field feeds only the first column (in the order above) that names it, except for these pairs,
 # which may read the same field (ECS event.category gives both log_type and log_subtype ...).
@@ -185,6 +198,9 @@ value_maps:
     prevent: blocked
     quarantine: blocked
     quarantined: blocked
+    mitigated: blocked          # SentinelOne threatInfo.mitigationStatus
+    not_mitigated: detected
+    partially_mitigated: detected
     reset-both: reset
     reset-client: reset
     reset-server: reset

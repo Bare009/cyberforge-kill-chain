@@ -1,0 +1,22 @@
+id: EP06-run-key
+title: Registry Run key written
+status: test
+tuning: "reg add / Set-ItemProperty on ...\\CurrentVersion\\Run, RunOnce or RunServices, or a registry event whose
+  key path (file_path: Sysmon TargetObject, ECS registry.path) is one; reads (reg query) do not match; synthetic EDR
+  background registry writes go to Office and Defender keys; firex-10G: 0"
+attack:
+  technique: T1547.001
+  alt_techniques: [T1547]
+  tactic: persistence
+severity: 3
+confidence: 0.7
+kind: match
+requires_any: [[command_line], [file_path]]
+where: |-
+  regexp_matches(coalesce(command_line, '') || ' ' || coalesce(file_path, ''),
+    '(?i)\\software\\(wow6432node\\)?microsoft\\windows\\currentversion\\(run|runonce|runservices|runservicesonce)(\\|\s|"|$)')
+  AND (command_line IS NULL OR regexp_matches(command_line, '(?i)(\breg(\.exe)?["]?\s+add\s|set-itemproperty|new-itemproperty)'))
+group_by: ["coalesce(host, host_ip) AS machine"]
+split_gap: 1h
+entities: {host: host, user: user, src_ip: "coalesce(src_ip, host_ip)"}
+action_text: "a Run key was written on {machine} by {user}, so a program starts at every logon"

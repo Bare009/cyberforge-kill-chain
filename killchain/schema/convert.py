@@ -17,7 +17,7 @@ import pyarrow.compute as pc
 
 from ..parser import arrowutil as au
 from . import canonical as C
-from .mapping import Synonyms, load_synonyms, map_value, parse_one, severity_1_5
+from .mapping import Synonyms, confidence_value, load_synonyms, map_value, parse_one, severity_1_5
 
 Getter = Callable[[str], pa.Array]
 _NULL = pa.scalar(None, pa.string())
@@ -275,7 +275,10 @@ class Mapper:
         enc = pc.dictionary_encode(key)
         lut = pa.array([m.get(v) if m.get(v) in CATEGORIES else None for v in enc.dictionary.to_pylist()], pa.string())
         by_group = pc.take(lut, enc.indices)
-        return pc.coalesce(by_group, per_row)
+        # A record that is itself a detection (alert name or MITRE fields) stays vendor_alert even in a
+        # group of telemetry (an EDR's alert-tagged process events among its plain process events).
+        is_alert = true_only(pc.equal(per_row, "vendor_alert"))
+        return pc.if_else(is_alert, per_row, pc.coalesce(by_group, per_row))
 
     # -- the table
     def table(self, get: Getter, n: int, source: str, lines: Sequence[int], offsets: Sequence[int],
@@ -327,6 +330,10 @@ class Mapper:
                     if "bad_number" not in (issues[i] or []):
                         issues[i] = (issues[i] or []) + ["bad_number"]
             elif name in C.FLOAT_COLS:
+                if name == "alert_confidence":      # words (malicious, suspicious, high ...) -> numbers
+                    enc = pc.dictionary_encode(a)
+                    lut = pa.array([confidence_value(v) for v in enc.dictionary.to_pylist()], pa.string())
+                    a = pc.take(lut, enc.indices)
                 f = pc.cast(pc.if_else(pc.match_substring_regex(a, r"^-?\d+(\.\d+)?$"), a, _NULL), pa.float64())
                 arrays[name] = pc.if_else(pc.greater(f, 1.0), pc.divide(f, 100.0), f)
             else:

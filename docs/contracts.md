@@ -103,7 +103,7 @@ One rule hit, in the shape of an OCSF Detection Finding.
 |---|---|---|
 | `alert_id` | string | stable hash of rule, group key and first time |
 | `rule_id` | string | the rule file's `id` |
-| `layer` | `rule` \| `anomaly` | specific rule or generic detector |
+| `layer` | `rule` \| `anomaly` \| `vendor` | specific rule, generic detector, or a detection another product raised (below) |
 | `title` | string | rule title |
 | `technique` | string | primary ATT&CK technique, or `unknown` |
 | `alt_techniques` | list of strings | other acceptable ids (parent, alternates) |
@@ -123,6 +123,15 @@ One rule hit, in the shape of an OCSF Detection Finding.
 
 `alert_evidence.parquet`: `alert_id, source, line, byte_offset, ts, technique,
 role` (`trigger` | `window` | `context`). Every member line is listed.
+
+Vendor alerts (`layer: vendor`, `killchain/detect/vendor.py`): records of category `vendor_alert`
+(Sentinel, SentinelOne, Wazuh, an EDR's alerts ...) grouped per product, alert name and main entity
+within 1 h. `rule_id` is `vendor:<product slug>:<alert name slug>`, `title` the alert name, `kind`
+`vendor`; the evidence lines are the records (role `trigger`). They also carry `technique_source`
+(`vendor` | `keyword` | `llm` | `unknown`: where the ATT&CK label came from) and `group_key`
+(`{product, alert_name, entity}`). Correlation, chains, risk and the scorer treat `vendor` like `rule`
+(`contracts.TRUSTED_LAYERS`): vendor alerts start incidents, pass the same promotion bar and are
+numbered chain steps; anomaly alerts support them.
 
 ## Contract C: incident (`incidents/<n>.json`)
 
@@ -147,7 +156,7 @@ role` (`trigger` | `window` | `context`). Every member line is listed.
 | `next` | `{reachable, sentence, likely_tactics}` | reach next (below) |
 | `report` | `{source, markdown, triage}` | narrator or template report, triage opinion |
 | `report_source` | `ai` \| `template` | |
-| `layers` | list | `rule`, `anomaly` |
+| `layers` | list | `rule`, `anomaly`, `vendor` |
 
 ### Step (`chain[]`)
 
@@ -164,7 +173,7 @@ for this step. Each entry has `alert_id`, `rule_id`, `layer`, `title`,
 `kill_chain_stage`, `ts_start`, `ts_end`, `ts_start_ist`, `ts_end_ist`, `src`
 (nullable), `dst` (nullable), `event_count`, `success`, `line_total`,
 `confidence` and `relation` (`during` | `before` | `after` the step), filled
-like the step fields of the same name. When an incident has a rule-layer
+like the step fields of the same name. "Rule" here means layer `rule` or `vendor`. When an incident has a rule-layer
 alert, only rule alerts are numbered and every anomaly alert is attached to one
 rule step; an incident with only anomaly alerts numbers them and has empty
 `supporting` lists. An anomaly goes to the rule step that first shares an

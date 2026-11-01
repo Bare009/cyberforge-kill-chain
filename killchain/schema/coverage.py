@@ -17,7 +17,7 @@ import yaml
 from . import canonical as C
 
 ROOT = Path(__file__).resolve().parents[2]
-RULE_DIRS = [ROOT / "rules" / "firewall", ROOT / "rules" / "anomaly", ROOT / "rules" / "windows"]
+RULE_DIRS = [ROOT / "rules" / d for d in ("firewall", "anomaly", "windows", "endpoint", "auth")]
 _STR_RE = re.compile(r"'(?:[^']|'')*'")
 _ID_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 KNOWN = set(C.OUTPUT_COLUMNS) | {"ts"}
@@ -58,8 +58,13 @@ def rule_requirements(dirs: Sequence[Path] = RULE_DIRS) -> List[Dict[str, Any]]:
             if doc.get("kind") in ("count", "distinct", "match", "sequence") and "ts" not in required:
                 required.append("ts")          # windows, gaps and sequences need event time
             optional = [c for c in columns_in("\n".join(_texts(doc.get("entities")))) if c not in required]
+            any_of = [[C.DERIVED.get(c, c) for c in g] for g in doc.get("requires_any") or [] if isinstance(g, list)]
+            if any_of:      # alternatives (event_id OR status ...): ts still needed by windowed kinds
+                any_of = [g + (["ts"] if "ts" in required and "ts" not in g else []) for g in any_of]
+                required = list(dict.fromkeys(c for g in any_of for c in g))
             out.append({"id": doc["id"], "layer": doc.get("layer", "rule"), "path": str(p.relative_to(ROOT)) if p.is_relative_to(ROOT) else str(p),
-                        "table": doc.get("table", "events"), "required": required, "optional": optional})
+                        "table": doc.get("table", "events"), "required": required, "optional": optional,
+                        **({"requires_any": any_of} if any_of else {})})
     return out
 
 
@@ -85,6 +90,10 @@ def rule_report(reqs: List[Dict[str, Any]], available: set) -> Dict[str, Any]:
     run, skip = [], []
     for r in reqs:
         missing = [c for c in r["required"] if c not in available]
+        if r.get("requires_any"):
+            # the rule's `requires_any`: it can run when every column of one group is available
+            gaps = [[c for c in g if c not in available] for g in r["requires_any"]]
+            missing = [] if any(not g for g in gaps) else min(gaps, key=len)
         opt_missing = [c for c in r["optional"] if c not in available]
         item = {"id": r["id"], "layer": r["layer"], "required": r["required"]}
         if missing:

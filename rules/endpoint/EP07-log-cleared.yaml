@@ -1,0 +1,20 @@
+id: EP07-log-cleared
+title: Windows event log cleared
+status: test
+tuning: "wevtutil cl, Clear-EventLog / Remove-EventLog, or Windows event 1102 (security log cleared); rare in normal
+  operation; firex-10G: 0 (R14 covers the firewall's own logging)"
+attack:
+  technique: T1070.001
+  alt_techniques: [T1070]
+  tactic: defense-evasion
+severity: 4
+confidence: 0.85
+kind: match
+requires_any: [[command_line], [event_id]]
+where: |-
+  regexp_matches(command_line, '(?i)(wevtutil(\.exe)?["]?\s+(cl|clear-log)\s|clear-eventlog|remove-eventlog)')
+  OR event_id = '1102'
+group_by: ["coalesce(host, host_ip) AS machine"]
+split_gap: 1h
+entities: {host: host, user: user, src_ip: "coalesce(src_ip, host_ip)"}
+action_text: "the event log was cleared on {machine} by {user}"

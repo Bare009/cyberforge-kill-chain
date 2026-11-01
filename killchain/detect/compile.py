@@ -30,8 +30,14 @@ def _lit(v) -> str:
     return "'" + str(v).replace("'", "''") + "'"
 
 
+NOT_VENDOR = "category IS DISTINCT FROM 'vendor_alert'"
+
+
 def time_filter(r: Rule) -> str:
-    return "ts_valid" if r.time_quality == "valid" else "TRUE"
+    """Rows a rule may read: valid times (unless time_quality any), and never a vendor alert record:
+    another product's detection, which detect/vendor.py turns into an alert of its own (a rule over the
+    same record would report it twice). category is NULL on a FortiGate run, so every row stays there."""
+    return f"ts_valid AND {NOT_VENDOR}" if r.time_quality == "valid" else NOT_VENDOR
 
 
 def _group_cols(r: Rule) -> str:

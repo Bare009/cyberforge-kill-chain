@@ -28,7 +28,7 @@ from .convert import CATEGORIES, Mapper, records_getter, row_categories
 from .coverage import RULE_DIRS, available_columns, rule_report, rule_requirements
 from .llm_map import CACHE_DIR, client_or_reason, suggest
 from .mapping import (SYNONYMS_YAML, Synonyms, canonical_vocab, detect_time_format, load_synonyms, map_value, match_fields,
-                      norm, severity_scale, to_text)
+                      norm, product_hint, severity_scale, to_text)
 from .validate import MIN_SHARE, check, validate_columns
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -316,6 +316,10 @@ def build_mapping(det: F.Detected, records: Sequence[Dict[str, Any]], fields: Se
         "value_maps_by": syn.value_maps_by, "derive": syn.derive,
         "severity_scale": sev_scale, "vendor_severity_scale": vsev_scale,
     }
+    if "product" not in columns:            # a product without a product field (SentinelOne, Wazuh exports)
+        hint = product_hint(fields, syn)
+        if hint:
+            mapping["product_name"] = hint
     # categories per record group
     gf = _group_field(fields, records, syn)
     cat: Dict[str, Any] = {"field": gf, "map": {}, "default": "per_record"}

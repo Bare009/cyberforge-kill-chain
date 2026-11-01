@@ -15,6 +15,7 @@ each one.
 | 3a. Correlation (FR-4, B-3) | done: `killchain.correlate`, `python -m killchain correlate --run <run>`, settings in `config/correlate.yaml`; on firex-10G 57 alerts become 25 incidents (24 anomaly alerts joined as supporting evidence, 1 unexplained, 0 below the bar, largest 8 alerts), chain A (32.127.48.11, R02 > R16 > R20 > R12) and chain B (10.10.10.118, R24 > R11 > R12) each one incident; attack paths 25/25, multi-step 4/4, no incident spans two truth incidents; recall 100%, labels 100%, false alarms 0%; 0.1 s |
 | 3b. Attack chains, path graphs, reach-next (FR-5, FR-6) | chains and path graphs done (P7): `killchain.graph`, `python -m killchain chain --run <run> [N]`; only rule alerts are numbered, each anomaly alert is `supporting` evidence on the nearest rule step (shared entity, then time overlap, then same tactic, then nearest start) and is still drawn in the path graph; an anomaly-only incident numbers its anomaly alerts; on firex-10G 25 incidents, 32 numbered steps (2 ongoing), 24 supporting, 19 gaps, 44,622 evidence lines, 0 contract errors in 0.28 s; chain A reads `1. Discovery → 2. Initial Access → 3. Persistence → 4. Exfiltration` (R02 > R16 > R20 > R12), chain B `1. Execution → 2. Command and Control → 3. Exfiltration` (R24 > R11 > R12); writes provisional `incidents/<n>.json`, `index.json`, `alerts.json` (risk, threat intel and report are placeholders); recall 100%, labels 100%, attack paths 25/25 (multi-step 4/4), false alarms 0%. Access graph and reach next done (P8): `python -m killchain reach --run <run> [N] [--parsed DIR] [--force]`, settings in `config/reach.yaml`; on firex-10G the access graph has 3 `controls` edges (svc_backup30, parul.sinha, Deepika.Khan to the firewall 10.10.99.1) and 90 `admin_port` edges from 10.10.10.44 and 10.10.10.63 (2,580 sessions), 1,387 internal hosts, built in 0.7 s; 11 incidents get a reach list (83 hosts), 14 a stated reason; incidents #3, #6, #11 say the account controls the firewall; chain A (#1) lists inferred 10.10.20.x servers, chain B (#2) is empty with its reason; 0 contract errors, stage 1.2 s; metrics unchanged. Desktop reach (Track A item 2): `neighbour_zones` now includes `desktop`, so a desktop foothold gets its subnet neighbours (inferred, 0 reach points) and the servers they reach at hop 2 (inferred, half points); on firex-10G 15 incidents get a reach list, 10 a stated reason; chain B and the other desktop footholds (10.10.10.112, 10.10.10.88, 10.10.10.51) each list 10 inferred 10.10.20.x servers |
 | 3c. Risk score and template report (B-1, B-2) | done (P10): `killchain.score`, `killchain.report`; `python -m killchain score --run <run> [N]` (fixed weights severity 0.25, stage 0.20, breadth 0.10, success 0.15, asset 0.15, reach 0.10, threat intel 0.05; each part stored with a `detail`; incidents renumbered 1..N by risk) and `python -m killchain report --run <run> [N]` (Markdown: summary, risk table, numbered chain with IST times, gaps, reach next, entities, threat intel, 5 evidence lines per step, actions per tactic); breadth is full at 3 or more distinct tactics, else tactics / 6 (Track A item 2); on firex-10G 25 incidents: critical 3, high 17, medium 5; chain A #1 89.8, chain B #2 82.3, large one-way transfer #3 81.5, lone port scan #24 45.8; R24 step text names the malware (`JS/Nemucod.A!tr.dldr`); threat intel 0 for every incident (offline enrich: 58 indicators, all `unknown`); 25 template reports (73,066 characters); 0 contract errors; score 0.05 s, report 0.04 s; recall 100%, labels 100%, attack paths 25/25 (multi-step 4/4), false alarms 0% |
+| 3d. Logs from any security product | schema mapping and generic parser (`killchain.schema`, `docs/schema.md`); vendor alerts as layer `vendor` and 17 endpoint/auth rules ([Logs from other security products](#logs-from-other-security-products)); firex-10G unchanged: 57 alerts, 25 incidents, recall 100%, labels 100%, attack paths 25/25 |
 | 4. API and UI (FR-7) | in progress: `killchain.api` (health, incidents, path), `web/` scaffold |
 | 5. Scoring harness against the ground-truth manifest | done: `eval score --manifest` on firex-30G (37.2 M events, 29 planted incidents): recall 99.0%, labels 94.9%, attack paths 79.3% (23/29), false alarms 0%, 10 min 1 s, 2.4 GB, open p95 3 ms. Not found: the 4 Windows-only incidents (#24-27), and the 2 chains miss their Windows steps, because the Windows log (`firex-30G.win.jsonl`, 10.4 GB) was not supplied |
 | 6. One-command run (P13) | done: `python -m killchain run --input <log> [--name N] [--offline] [--no-llm] [--reuse-parsed] [--from STAGE]` (see [Full run](#full-run)); exit codes 0 done, 1 a required stage failed, 2 usage or input error, 3 no events in the input; on firex-10G with `--offline --no-llm`: 187 s end to end with a cold file cache (parse 88.6 s, prepare 58.7 s, detect 16.4 s, the other stages 1.6-4.6 s each), peak 6.2 GB (during prepare); 25 incidents, recall 100%, labels 100%, attack paths 25/25 (multi-step 4/4), false alarms 0%; the 50 GB tier run is still to do |
@@ -43,7 +44,7 @@ killchain/          Python package, one sub-package per pipeline stage
   eval/             scoring against the silver truth or a manifest
   live/             live mode
 config/             network zones and hubs, kill chain stage order
-rules/              detection rules: firewall/, anomaly/, windows/
+rules/              detection rules: firewall/, anomaly/, endpoint/, auth/, windows/
 eval/               silver truth and reviewed incidents
 examples/           sample-run/: one real incident in the contract format
 web/                React UI (from AI-SOC)
@@ -99,6 +100,30 @@ Evidence tab lists line numbers but no raw text. Other settings: `API_PORT`
 `PARSE_WORKERS` (4; more workers need more memory), `TI_OFFLINE=1`.
 The build context leaves out `data/`, `logs/` and every log file, so images stay
 small (api 690 MB, web 50 MB) whatever sits in those folders.
+
+## Logs from other security products
+
+`python -m killchain schema --input <file> --name <run> [--no-llm] --parse` reads any product's export
+(CSV, JSON, NDJSON, key=value, syslog/CEF/LEEF, Windows XML) into the same Parquet layout and columns
+(`docs/schema.md`); `python -m killchain db --prepare` and the later stages then run unchanged.
+
+- **Vendor alerts.** Records that are already detections (category `vendor_alert`: Microsoft Sentinel
+  SecurityAlert, SentinelOne threats, Wazuh alerts, an EDR's alerts) become alerts of layer `vendor` in
+  `python -m killchain detect` (`killchain/detect/vendor.py`): one alert per product, alert name and main
+  entity within 1 h; severity, confidence and entities from the record (Sentinel `Entities` included);
+  ATT&CK label from the record's MITRE fields, else `config/vendor_alert_keywords.yaml`, else one LLM call
+  for the names left (`--no-llm` skips it), else `unknown` (`technique_source` says which). Vendor alerts
+  count like rule alerts in correlation, chains, risk and the scorer; one at severity 4 or more is an
+  incident on its own.
+- **Endpoint and auth rules.** `rules/endpoint/` (12: encoded PowerShell, LOLBins, LSASS dumping,
+  scheduled task, service install, Run key, log cleared, shadow copies deleted, PsExec/WMI/WinRM, discovery
+  burst, Office spawning a shell, mass ransomware renames) and `rules/auth/` (5: failed logons per account,
+  password spray, logon after failures, new country (anomaly layer), RDP / explicit-credential logon from
+  outside) read the host columns (`command_line`, `process_name`, `parent_process`, `event_id`,
+  `logon_type` ...). On a FortiGate run those columns are NULL and the rules find nothing.
+
+`tools/make_vendor_samples.py` writes synthetic Sentinel, SentinelOne and Wazuh exports with planted
+attacks and a truth file each.
 
 ## Stage 1: parse raw logs into Parquet
 

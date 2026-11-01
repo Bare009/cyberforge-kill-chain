@@ -1,0 +1,24 @@
+id: AU03-logon-after-failures
+title: Successful logon right after many failures for the same account
+status: test
+tuning: "10+ failures then a success for one account within 30 min; a user who mistypes fails 1-3 times; firex-10G:
+  0 (no auth records; the firewall admin login case is R07)"
+attack:
+  technique: T1078
+  alt_techniques: [T1110, T1110.001]
+  tactic: initial-access
+severity: 4
+confidence: 0.85
+kind: sequence
+requires_any: [[event_id, user], [category, status, user]]
+group_by: ["lower(user) AS account"]
+within: 30m
+steps:
+  - name: failures
+    where: "(event_id IN ('4625', '4771') OR (category = 'auth' AND status = 'failed')) AND user IS NOT NULL AND user NOT LIKE '%$'"
+    min: 10
+  - name: success
+    where: "(event_id = '4624' OR (category = 'auth' AND status = 'success')) AND user IS NOT NULL AND user NOT LIKE '%$'"
+success: "event_id = '4624' OR status = 'success'"
+entities: {user: user, src_ip: src_ip, host: host, dst_ip: "coalesce(dst_ip, host_ip)"}
+action_text: "account {account} logged on after {event_count} attempts within {minutes} minutes"

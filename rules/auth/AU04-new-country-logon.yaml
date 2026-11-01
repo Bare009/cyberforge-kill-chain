@@ -1,0 +1,29 @@
+id: AU04-new-country-logon
+title: Account logging on from a country not seen for it before
+status: experimental
+layer: anomaly
+tuning: "the A03 approach on host and identity logons: a successful logon from outside whose (account, country) is
+  first seen after the first day, for an account already seen from another country; synthetic Sentinel export:
+  1 planted, 0 background; firex-10G: 0 (no auth records; A03 covers the firewall)"
+attack:
+  technique: T1078
+  alt_techniques: [T1078.004]
+  tactic: initial-access
+severity: 3
+confidence: 0.5
+promote: false
+kind: sql
+requires_any: [[event_id, user, src_country, src_ip], [category, status, user, src_country, src_ip]]
+sql: |
+  WITH s AS (SELECT source, line, lower(user) AS account, src_country, ts_utc FROM {events}
+             WHERE (event_id = '4624' OR (category = 'auth' AND status = 'success'))
+               AND user IS NOT NULL AND src_country IS NOT NULL AND NOT src_internal),
+  t AS (SELECT min(ts_utc) AS t0 FROM s),
+  first AS (SELECT account, src_country, min(ts_utc) AS seen FROM s GROUP BY account, src_country),
+  new AS (SELECT f.account, f.src_country FROM first f
+          WHERE f.seen >= (SELECT t0 FROM t) + INTERVAL 1 DAY
+            AND EXISTS (SELECT 1 FROM first o WHERE o.account = f.account AND o.src_country <> f.src_country
+                        AND o.seen < f.seen))
+  SELECT s.account || '|' || s.src_country AS alert_key, s.source, s.line FROM s JOIN new USING (account, src_country)
+entities: {user: user, src_ip: src_ip, host: host}
+action_text: "{user} logged on from a country not seen for them before ({src_ip})"

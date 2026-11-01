@@ -1,0 +1,22 @@
+id: AU05-external-remote-logon
+title: RDP or explicit-credential logon from an outside address
+status: test
+tuning: "logon type 10 (RemoteInteractive) or 9 (NewCredentials), or event 4648, from a non-private source that did
+  not fail; synthetic EDR/Sentinel background: 0 (their remote logons come from internal hosts); firex-10G: 0"
+attack:
+  technique: T1021.001
+  alt_techniques: [T1078, T1133]
+  tactic: lateral-movement
+severity: 3
+confidence: 0.7
+kind: match
+requires_any: [[logon_type, src_ip], [event_id, src_ip]]
+where: |-
+  (lower(logon_type) IN ('10', '9', 'remoteinteractive', 'remote interactive', 'newcredentials', 'new credentials')
+   OR event_id = '4648')
+  AND src_ip IS NOT NULL AND NOT src_internal AND coalesce(status, '') NOT IN ('failed', 'failure')
+  AND coalesce(event_id, '') NOT IN ('4625', '4771')
+group_by: [src_ip]
+split_gap: 1h
+entities: {src_ip: src_ip, user: user, host: host, dst_ip: "coalesce(dst_ip, host_ip)"}
+action_text: "{src_ip} logged on remotely as {user} to {host} ({event_count} logons)"

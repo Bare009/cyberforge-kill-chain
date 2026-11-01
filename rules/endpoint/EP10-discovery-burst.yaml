@@ -1,0 +1,21 @@
+id: EP10-discovery-burst
+title: Burst of discovery commands on one host
+status: test
+tuning: "4 different discovery command lines (whoami, net group/user/localgroup/view, nltest, ipconfig, systeminfo,
+  quser, tasklist, netstat, arp -a, Get-AD*) on one host within 10 min; one admin command at a time stays below;
+  firex-10G: 0"
+attack:
+  technique: T1087
+  alt_techniques: [T1082, T1016, T1069, T1033, T1087.002]
+  tactic: discovery
+severity: 3
+confidence: 0.7
+kind: distinct
+where: |-
+  regexp_matches(command_line, '(?i)(\b(whoami|nltest|systeminfo|ipconfig|quser|qwinsta|tasklist|netstat)(\.exe)?\b|\bnet1?(\.exe)?["]?\s+(group|user|localgroup|view|share|accounts|session)\b|\barp(\.exe)?\s+-a\b|\bget-ad(user|group|computer|domain|groupmember)\b)')
+group_by: ["coalesce(host, host_ip) AS machine"]
+field: command_line
+window: 10m
+having: {gte: 4}
+entities: {host: host, user: user, src_ip: "coalesce(src_ip, host_ip)"}
+action_text: "{distinct_count} different discovery commands ran on {machine} as {user} within {minutes} minutes"

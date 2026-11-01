@@ -111,7 +111,14 @@ name. Values not in any map keep their text in lower case and are listed in the 
 
 Category: records are grouped by the first event-type field present (`Type`, `event.dataset`,
 `EventID` ...). Each record gets a category from its columns (vendor_alert > endpoint > auth > network
-> other); a group whose records agree for at least 80% gets that category for all its records.
+> other); a group whose records agree for at least 80% gets that category for all its records, except
+that a record which is itself a detection (an alert name or MITRE fields) stays `vendor_alert` (an EDR's
+alert-tagged process events among its plain process events).
+
+Confidence words (`malicious` 0.9, `suspicious` 0.6, `high` / `medium` / `low` ...) become numbers. When
+an export has no product field, `product_hints` in the synonyms file names the product from marker fields
+(SentinelOne `threatInfo.threatName` + `agentRealtimeInfo.agentComputerName`, Wazuh `rule.level` +
+`rule.description` + `agent.name` ...).
 
 ## schema.yaml
 
@@ -149,8 +156,8 @@ in detect; it can only find nothing.
 ## Generic parser output
 
 `<parsed>/firewall/part-*.parquet` with `canonical.SCHEMA`: the FortiGate parser's columns in the same
-order and types, the optional columns, then `parse_issue` and `extra`. Every record type goes to the
-`firewall` stream for now (stage 2 decides about endpoint data).
+order and types, the optional columns, then `parse_issue` and `extra`. Every record type (network,
+endpoint, auth, vendor alert) goes to the `firewall` stream; `category` tells them apart.
 
 - `ts` is UTC. `ts_quality` as in the FortiGate parser: `ok`, `tz_assumed` (a time without a zone, read
   in `assume_tz`), `missing`, `stuck`, `backwards`.
@@ -173,6 +180,18 @@ are read in one process.
 `tools/convert_firewall.py` converts a slice of a FortiGate log (around a truth incident) into PAN-style
 CSV and ECS NDJSON with each product's field names and value words, plus a line map and remapped truth
 files, so the same slice can be scored in all three forms.
+
+## After the parse (stage 2)
+
+- `db.py` adds every optional column the source lacks as NULL (`db.with_optional`), in the views and in a
+  prepared `events.duckdb`; a run prepared before these columns existed is opened read-only through
+  views that add them. So rules over `command_line`, `event_id` ... bind on every run, and on a FortiGate
+  run they match nothing.
+- `rules/endpoint/` and `rules/auth/` (rules/README.md) read the host columns. A rule may list
+  `requires_any: [[event_id, user], [category, status, user]]`: the coverage report counts it as runnable
+  when every column of one group is available (its `where` has alternatives).
+- Rules never read `vendor_alert` records; `python -m killchain detect` turns those into alerts of layer
+  `vendor` (`killchain/detect/vendor.py`, docs/contracts.md).
 
 ## Known limits
 

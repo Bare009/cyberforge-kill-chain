@@ -20,6 +20,9 @@ Derived columns:
   src_importance, dst_importance
   src_net24, dst_net24         the /24 of an IPv4 address, e.g. 10.10.20.0/24
 
+Optional canonical columns (category, product, host, host_ip, event_id, process_name, command_line ...,
+docs/schema.md) are always present: NULL when the parser that wrote the run has none (FortiGate).
+
 The session time zone is pinned to UTC so results never depend on the laptop's
 own zone.
 """
@@ -123,13 +126,31 @@ def configure(con: duckdb.DuckDBPyConnection, memory_limit: Optional[str] = None
     con.execute("SET preserve_insertion_order = false")
 
 
+def _optional_cols() -> List[tuple]:
+    """(name, SQL type) of the optional canonical columns (killchain/schema/canonical.py EXTRA_COLUMNS)."""
+    from .schema.canonical import EXTRA_COLUMNS
+
+    sql = {"int": "BIGINT", "float": "DOUBLE"}
+    return [(c, sql.get(t, "VARCHAR")) for c, t, _ in EXTRA_COLUMNS]
+
+
+def with_optional(src: str) -> str:
+    """`src` with every optional canonical column (category, host, command_line ...) present: a source
+    that lacks one (the FortiGate parser's output, an older prepared run) gets it as NULL, so rules
+    over those columns bind on every run and simply match nothing there."""
+    nulls = ", ".join(f"NULL::{t} AS {c}" for c, t in _optional_cols())
+    return f"(SELECT * FROM {src} UNION ALL BY NAME SELECT {nulls} WHERE false)"
+
+
 def derived_select(src: str, net: Dict[str, Any]) -> str:
     """SELECT of every parser column of `src` (a table, view or read_parquet call) plus the derived columns.
 
     Both tables have src_ip and dst_ip, so both get the same derived columns.
     The inner query parses each address once; the zone rules compare integers.
+    Optional canonical columns the source lacks are added as NULL (with_optional).
     """
-    inner = f"SELECT *, {_ip_int('src_ip')} AS src_ip_int, {_ip_int('dst_ip')} AS dst_ip_int FROM {src}"
+    inner = (f"SELECT *, {_ip_int('src_ip')} AS src_ip_int, {_ip_int('dst_ip')} AS dst_ip_int "
+             f"FROM {with_optional(src)}")
     return f"SELECT *, {_time_cols()}, {_ip_cols(net)} FROM ({inner})"
 
 
@@ -245,14 +266,43 @@ def prepare_run(parsed_dir: Union[str, Path], run_dir: Union[str, Path],
 
 def connect(parsed_dir: Optional[Union[str, Path]] = None, run_dir: Optional[Union[str, Path]] = None,
             read_only: bool = True) -> duckdb.DuckDBPyConnection:
-    """Prefer the prepared run_dir/events.duckdb; fall back to views over parsed_dir."""
+    """Prefer the prepared run_dir/events.duckdb; fall back to views over parsed_dir.
+
+    A run prepared before the optional canonical columns existed (no `category` column) is opened
+    read-only through an in-memory connection whose views add those columns as NULL (with_optional);
+    the stored tables are not rewritten."""
     if run_dir is not None and (Path(run_dir) / PREPARED_NAME).exists():
-        con = duckdb.connect(str(Path(run_dir) / PREPARED_NAME), read_only=read_only)
+        path = Path(run_dir) / PREPARED_NAME
+        con = duckdb.connect(str(path), read_only=read_only)
         configure(con)
-        return con
+        if not read_only or not _lacks_optional(con):
+            return con
+        con.close()
+        return _attach_with_optional(path)
     if parsed_dir is None:
         raise FileNotFoundError(f"no {PREPARED_NAME} in {run_dir} and no parsed folder given")
     return open_run(parsed_dir)
+
+
+def _lacks_optional(con: duckdb.DuckDBPyConnection) -> bool:
+    names = {r[0] for r in con.execute("SELECT column_name FROM information_schema.columns "
+                                       "WHERE table_name IN ('firewall_events', 'windows_events')").fetchall()}
+    return bool(names) and any(c not in names for c, _ in _optional_cols())
+
+
+def _attach_with_optional(path: Path) -> duckdb.DuckDBPyConnection:
+    con = duckdb.connect(":memory:")
+    configure(con)
+    con.execute(f"ATTACH {_lit(path.as_posix())} AS prepared (READ_ONLY)")
+    tables = [r[0] for r in con.execute("SELECT table_name FROM information_schema.tables "
+                                        "WHERE table_catalog = 'prepared' AND table_type = 'BASE TABLE'").fetchall()]
+    for t in tables:
+        src = f"prepared.main.{t}"
+        body = f"SELECT * FROM {with_optional(src)}" if t in ("firewall_events", "windows_events") else f"SELECT * FROM {src}"
+        con.execute(f"CREATE VIEW {t} AS {body}")
+    con.execute("CREATE OR REPLACE VIEW events AS SELECT * FROM " + ("firewall_events" if "firewall_events" in tables
+                                                                       else "windows_events"))
+    return con
 
 
 def summary(con: duckdb.DuckDBPyConnection) -> Dict[str, Any]:

@@ -42,6 +42,7 @@ class Synonyms:
     derive: List[Dict[str, Any]] = field(default_factory=list)
     message_patterns: List[Dict[str, Any]] = field(default_factory=list)
     shared: set = field(default_factory=set)       # frozensets of columns that may take the same field
+    product_hints: Dict[str, List[str]] = field(default_factory=dict)   # product -> fields that all mark it
 
 
 def load_synonyms(path: Path = SYNONYMS_YAML) -> Synonyms:
@@ -62,7 +63,17 @@ def load_synonyms(path: Path = SYNONYMS_YAML) -> Synonyms:
     return Synonyms(cols, tuple(doc.get("wrappers") or ()), list(doc.get("event_type_fields") or []), vm,
                     doc.get("value_maps_by") or {}, list(doc.get("derive") or []),
                     list(doc.get("message_patterns") or []),
-                    {frozenset(g) for g in (doc.get("shared_fields") or [])})
+                    {frozenset(g) for g in (doc.get("shared_fields") or [])},
+                    {str(k): list(v) for k, v in (doc.get("product_hints") or {}).items()})
+
+
+def product_hint(fields: Sequence[str], syn: Synonyms) -> Optional[str]:
+    """The product whose marker fields (product_hints in the synonyms file) are all in `fields`."""
+    have = {f.lower() for f in fields}
+    for name, marks in syn.product_hints.items():
+        if marks and all(m.lower() in have for m in marks):
+            return name
+    return None
 
 
 # ── matching ────────────────────────────────────────────────────────────────
@@ -191,6 +202,22 @@ SEVERITY_WORDS = {
     "high": 4, "severe": 4, "alert": 4,
     "critical": 5, "crit": 5, "emergency": 5, "fatal": 5, "very-high": 5, "veryhigh": 5,
 }
+
+
+# Vendor confidence words -> 0-1 (SentinelOne confidenceLevel, Defender/Sentinel text levels).
+CONFIDENCE_WORDS = {"malicious": 0.9, "high": 0.9, "suspicious": 0.6, "medium": 0.6, "moderate": 0.6,
+                    "low": 0.3, "informational": 0.2, "n/a": None}
+
+
+def confidence_value(v: Optional[str]) -> Optional[str]:
+    """A confidence value as number text: words through CONFIDENCE_WORDS, numbers unchanged."""
+    if v is None:
+        return None
+    t = v.strip().lower()
+    if t in CONFIDENCE_WORDS:
+        x = CONFIDENCE_WORDS[t]
+        return None if x is None else str(x)
+    return v
 
 
 def severity_scale(values: Iterable[Optional[str]]) -> Optional[str]:

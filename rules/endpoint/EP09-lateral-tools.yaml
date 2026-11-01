@@ -1,0 +1,20 @@
+id: EP09-lateral-tools
+title: Remote execution tool used (PsExec, WMI, WinRM)
+status: test
+tuning: "psexec / paexec / PSEXESVC, wmic /node:, Invoke-Command -ComputerName, Enter-PSSession, winrs,
+  Invoke-WmiMethod -ComputerName; admins use these, so severity 3; firex-10G: 0 (R09 covers SMB/RDP traffic)"
+attack:
+  technique: T1021.002
+  alt_techniques: [T1047, T1021.006, T1569.002]
+  tactic: lateral-movement
+severity: 3
+confidence: 0.7
+kind: match
+requires_any: [[command_line], [process_name]]
+where: |-
+  regexp_matches(coalesce(process_name, '') || ' ' || coalesce(command_line, ''),
+    '(?i)(\bpsexec(64)?(\.exe)?\b|\bpaexec(\.exe)?\b|\bpsexesvc\b|wmic(\.exe)?["]?\s.*/node:|invoke-command\s.*-computername|enter-pssession|\bwinrs(\.exe)?["]?\s|invoke-wmimethod\s.*-computername)')
+group_by: ["coalesce(host, host_ip) AS machine"]
+split_gap: 1h
+entities: {host: host, user: user, src_ip: "coalesce(src_ip, host_ip)", dst_ip: dst_ip}
+action_text: "{machine} ran a remote execution tool as {user} ({event_count} times)"

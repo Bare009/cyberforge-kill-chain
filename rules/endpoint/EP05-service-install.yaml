@@ -1,0 +1,20 @@
+id: EP05-service-install
+title: New Windows service installed
+status: test
+tuning: "sc create / New-Service, or Windows events 7045 / 4697; software installs add services too, so severity 3;
+  firex-10G: 0"
+attack:
+  technique: T1543.003
+  alt_techniques: [T1569.002]
+  tactic: persistence
+severity: 3
+confidence: 0.6
+kind: match
+requires_any: [[command_line], [event_id]]
+where: |-
+  regexp_matches(command_line, '(?i)(\bsc(\.exe)?["]?\s+(\\\\\S+\s+)?create\s|new-service\s)')
+  OR event_id IN ('7045', '4697')
+group_by: ["coalesce(host, host_ip) AS machine"]
+split_gap: 1h
+entities: {host: host, user: user, src_ip: "coalesce(src_ip, host_ip)"}
+action_text: "a new service was installed on {machine} by {user}"

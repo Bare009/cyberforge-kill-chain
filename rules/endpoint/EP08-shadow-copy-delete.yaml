@@ -1,0 +1,19 @@
+id: EP08-shadow-copy-delete
+title: Shadow copies or backups deleted
+status: test
+tuning: "vssadmin delete shadows / resize shadowstorage, wmic shadowcopy delete, Win32_ShadowCopy Delete, wbadmin
+  delete catalog, bcdedit recoveryenabled no; a ransomware precursor, one hit is enough; firex-10G: 0"
+attack:
+  technique: T1490
+  alt_techniques: [T1486]
+  tactic: impact
+severity: 5
+confidence: 0.9
+promote: true
+kind: match
+where: |-
+  regexp_matches(command_line, '(?i)(vssadmin(\.exe)?["]?\s+(delete\s+shadows|resize\s+shadowstorage)|wmic(\.exe)?["]?\s+shadowcopy\s+delete|win32_shadowcopy.*(delete|remove)|wbadmin(\.exe)?["]?\s+delete\s+(catalog|systemstatebackup|backup)|bcdedit(\.exe)?["]?\s.*recoveryenabled\s+no)')
+group_by: ["coalesce(host, host_ip) AS machine"]
+split_gap: 1h
+entities: {host: host, user: user, src_ip: "coalesce(src_ip, host_ip)"}
+action_text: "shadow copies or backups were deleted on {machine} by {user}"

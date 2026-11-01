@@ -1,0 +1,19 @@
+id: EP12-mass-file-encryption
+title: Many files renamed to a ransomware extension
+status: test
+tuning: "50 file events with a ransomware extension (.locked, .encrypted, .crypt, .lockbit, .ryk, .wncry ...) on one
+  host in 5 min; needs file create/rename events (Sysmon 11, EDR file events); normal work writes none; firex-10G: 0"
+attack:
+  technique: T1486
+  alt_techniques: [T1490]
+  tactic: impact
+severity: 5
+confidence: 0.85
+kind: count
+where: |-
+  regexp_matches(file_path, '(?i)\.(locked|encrypted|enc|crypt|crypted|cry|lockbit|ryk|wncry|wnry|locky|cerber|djvu|conti|akira)$')
+group_by: ["coalesce(host, host_ip) AS machine"]
+window: 5m
+having: {gte: 50}
+entities: {host: host, user: user, src_ip: "coalesce(src_ip, host_ip)"}
+action_text: "{event_count} files were renamed to a ransomware extension on {machine} in {minutes} minutes"

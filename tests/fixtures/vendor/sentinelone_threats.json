@@ -1,0 +1,18 @@
+{"data": [
+  {"id": "t-1", "threatInfo": {"threatName": "PowerShell.Empire.Stager", "confidenceLevel": "malicious",
+   "mitigationStatus": "not_mitigated", "classification": "Trojan", "createdAt": "2026-10-28T01:04:00.000Z",
+   "originatorProcess": "winword.exe", "processUser": "CORP\\pmehta", "filePath": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"},
+   "agentRealtimeInfo": {"agentComputerName": "WS-ENG-011"}, "agentDetectionInfo": {"agentIpV4": "10.10.3.11"},
+   "indicators": [{"category": "Execution", "description": "Encoded PowerShell", "tactics": [{"name": "Execution",
+     "source": "MITRE", "techniques": [{"name": "T1059.001", "link": "https://attack.mitre.org/techniques/T1059/001/"}]}]}]},
+  {"id": "t-2", "threatInfo": {"threatName": "Mimikatz credential theft", "confidenceLevel": "malicious",
+   "mitigationStatus": "mitigated", "classification": "Infostealer", "createdAt": "2026-10-28T01:41:00.000Z",
+   "originatorProcess": "powershell.exe", "processUser": "CORP\\pmehta", "filePath": "C:\\Users\\Public\\m64.exe"},
+   "agentRealtimeInfo": {"agentComputerName": "WS-ENG-011"}, "agentDetectionInfo": {"agentIpV4": "10.10.3.11"},
+   "indicators": []},
+  {"id": "t-3", "threatInfo": {"threatName": "Heur.Behavior.Q19", "confidenceLevel": "suspicious",
+   "mitigationStatus": "mitigated", "classification": "Malware", "createdAt": "2026-10-30T03:00:00.000Z",
+   "originatorProcess": "explorer.exe", "processUser": "CORP\\kiyer", "filePath": "C:\\Users\\Public\\q.exe"},
+   "agentRealtimeInfo": {"agentComputerName": "WS-ENG-014"}, "agentDetectionInfo": {"agentIpV4": "10.10.3.14"},
+   "indicators": []}
+]}

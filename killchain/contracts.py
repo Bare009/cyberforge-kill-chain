@@ -12,6 +12,9 @@ a step may carry `supporting` (a list of SUPPORT entries: anomaly alerts attache
 to that rule step), a graph edge may carry `supporting` (bool), and a risk part
 may carry `detail` (string: why it has its value). Bundles without these keys,
 such as examples/sample-run/, stay valid.
+
+Change (any security product, backward-compatible): layer may also be `vendor`, an alert another product
+raised (TRUSTED_LAYERS). A vendor alert may carry `technique_source` (vendor | keyword | llm | unknown).
 """
 
 from __future__ import annotations
@@ -28,7 +31,11 @@ KILL_CHAIN_STAGES = (
     "Reconnaissance", "Weaponization", "Delivery", "Exploitation", "Installation",
     "Command and Control", "Actions on Objectives",
 )
-LAYERS = ("rule", "anomaly")
+LAYERS = ("rule", "anomaly", "vendor")
+# Layers whose alerts are trusted detections: they start incidents and become numbered chain steps.
+# "vendor" = a detection another product already raised (Sentinel, SentinelOne, Wazuh ...), see
+# killchain/detect/vendor.py. Anomaly alerts only support them.
+TRUSTED_LAYERS = ("rule", "vendor")
 ZONES = ("internet", "dmz", "server", "desktop", "iot", "lan", "mgmt", "public", "unknown")
 NODE_KINDS = ("external_ip", "internal_host", "server", "firewall", "account", "domain")
 EDGE_KINDS = ("step", "reach_observed", "reach_inferred")

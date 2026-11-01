@@ -301,8 +301,18 @@ def test_rule_report_lists_missing_columns(tmp_path):
     assert "R02-port-scan" in can
     assert skipped["R01-admin-bruteforce"] == ["log_desc"]
     _, _, pan = _prep(tmp_path, "pan.csv")
-    assert {r["id"]: r["missing"] for r in pan["rules"]["skipped"]} == {"A01-rare-event": ["log_id"]}
-    assert pan["rules"]["counts"]["can_run"] == len(rule_requirements()) - 1
+    assert {r["id"]: r["missing"] for r in pan["rules"]["skipped"]
+            if not _host_rule(r["id"])} == {"A01-rare-event": ["log_id"]}
+    fw = [r for r in rule_requirements() if not _host_rule(r["id"])]
+    assert len([r for r in pan["rules"]["can_run"] if not _host_rule(r["id"])]) == len(fw) - 1
+    # endpoint rules need process columns; auth rules with a `requires_any` group PAN has (status + user) can run
+    assert "EP01-encoded-powershell" in {r["id"] for r in pan["rules"]["skipped"]}
+    assert skipped["EP03-credential-dumping"] == ["command_line"]
+
+
+def _host_rule(rule_id: str) -> bool:
+    """rules/endpoint and rules/auth (stage 2): they read host columns firewall logs do not have."""
+    return rule_id.startswith(("EP", "AU"))
 
 
 # ── generic parse round trips ────────────────────────────────────────────────
@@ -420,7 +430,9 @@ def test_fortigate_input_uses_the_existing_parser(tmp_path):
     fmt, mapping, rep = _prep(tmp_path, "fortigate.txt")
     assert fmt == "fortigate" and mapping["format"] == "fortigate" and rep["parser"] == "fortigate"
     assert _col(rep, "src_ip")["method"] == "fortigate" and _col(rep, "src_ip")["coverage"] == 1.0
-    assert rep["rules"]["counts"]["skipped"] == 0
+    # every firewall and anomaly rule can run; the endpoint/auth rules need host columns a firewall lacks
+    assert [r["id"] for r in rep["rules"]["skipped"] if not _host_rule(r["id"])] == []
+    assert {r["id"] for r in rep["rules"]["skipped"] if _host_rule(r["id"])} >= {"EP01-encoded-powershell"}
     st = parse(FX / "fortigate.txt", tmp_path / "parsed", mapping, workers=1)
     assert st["lines_by_class"] == {"firewall": 6}
     from killchain.parser.fortigate import SCHEMA as FG

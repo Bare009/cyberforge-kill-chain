@@ -1,7 +1,7 @@
 """Numbered attack chains (docs/build-plan.md P7).
 
-What gets a number: when an incident has at least one rule-layer alert, only its rule alerts become
-numbered steps; every anomaly alert is attached to exactly one rule step as `supporting` evidence. An
+What gets a number: when an incident has at least one rule-layer alert (layer rule or vendor, a detection
+another product raised; contracts.TRUSTED_LAYERS), only those alerts become numbered steps; every anomaly alert is attached to exactly one rule step as `supporting` evidence. An
 incident made only of anomaly alerts numbers those alerts, and every step has `supporting: []`.
 
 Attachment rule (anomaly X, rule steps R): X goes to the R with the smallest key
@@ -30,6 +30,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import polars as pl
 
 from .. import attack
+from ..contracts import TRUSTED_LAYERS
 
 IST = timedelta(hours=5, minutes=30)
 SAMPLE_LINES = 20
@@ -136,6 +137,11 @@ def _layer(a: Dict[str, Any]) -> str:
     return a.get("layer") or "rule"
 
 
+def _trusted(a: Dict[str, Any]) -> bool:
+    """Rule and vendor alerts are numbered steps; anomaly alerts support them."""
+    return _layer(a) in TRUSTED_LAYERS
+
+
 def shares_entity(a: Dict[str, Any], b: Dict[str, Any]) -> bool:
     """True when any non-null value among src_ip, dst_ip, user, host, domain of a equals one of b's."""
     va = {str(a[k]).strip().lower() for k in ENTITY_KEYS if a.get(k)}
@@ -202,10 +208,10 @@ def build_steps(alerts: Iterable[Dict[str, Any]], evidence: Optional[pl.DataFram
     """Contract-C steps (contracts.STEP plus `supporting`) numbered 1..N in chain order (module docstring)."""
     hubs = hub_domains(net)
     alerts = list(alerts)
-    rules = [a for a in alerts if _layer(a) == "rule"]
+    rules = [a for a in alerts if _trusted(a)]
     if rules:
         ordered = order_steps(rules)
-        attached = attach_supporting(ordered, [a for a in alerts if _layer(a) != "rule"])
+        attached = attach_supporting(ordered, [a for a in alerts if not _trusted(a)])
     else:
         ordered = order_steps(alerts)
         attached = {}

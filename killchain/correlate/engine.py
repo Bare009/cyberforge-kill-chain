@@ -1,5 +1,8 @@
 """Group alerts into incidents (docs/build-plan.md P6).
 
+"Rule" below means a trusted detection: layer rule or vendor (contracts.TRUSTED_LAYERS); "anomaly" is the
+anomaly layer.
+
 Steps:
   1. Link rule-layer alerts that share non-hub entities (summed weight >= link_min) and pass the time rule;
      union-find gives the rule components.
@@ -26,7 +29,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import polars as pl
 
 from .. import attack
-from ..contracts import INCIDENT, _check, _ts
+from ..contracts import INCIDENT, TRUSTED_LAYERS, _check, _ts
 from .entities import entity_rows, find_hubs
 
 DT = pl.Datetime("us", "UTC")
@@ -164,8 +167,8 @@ def correlate(alerts: pl.DataFrame, evidence: pl.DataFrame, net: Dict[str, Any],
     rows = entity_rows(alerts, net)
     hubs = find_hubs(rows, net, settings)
     pw = pair_weights(rows, hubs, settings)
-    rule_ids = sorted(a for a, r in A.items() if r["layer"] == "rule")
-    anom_ids = sorted(a for a, r in A.items() if r["layer"] != "rule")
+    rule_ids = sorted(a for a, r in A.items() if r["layer"] in TRUSTED_LAYERS)
+    anom_ids = sorted(a for a, r in A.items() if r["layer"] not in TRUSTED_LAYERS)
 
     def linked(a: str, b: str, bar: float) -> Optional[Dict[str, Any]]:
         p = pw.get((min(a, b), max(a, b)))
@@ -177,7 +180,8 @@ def correlate(alerts: pl.DataFrame, evidence: pl.DataFrame, net: Dict[str, Any],
     uf = UnionFind(rule_ids)
     links = 0
     for (a, b), p in pw.items():
-        if A[a]["layer"] == "rule" and A[b]["layer"] == "rule" and linked(a, b, settings["link_min"]):
+        if (A[a]["layer"] in TRUSTED_LAYERS and A[b]["layer"] in TRUSTED_LAYERS
+                and linked(a, b, settings["link_min"])):
             uf.union(a, b)
             links += 1
     comps = uf.groups()
@@ -230,7 +234,8 @@ def correlate(alerts: pl.DataFrame, evidence: pl.DataFrame, net: Dict[str, Any],
                              "reason": "single anomaly detector"} for x in g]
 
     inc_df, mem_df = _frames(incidents, A, rows, hubs, evidence)
-    stats = {"alerts": len(A), "rule_alerts": len(rule_ids), "anomaly_alerts": len(anom_ids), "links": links,
+    stats = {"alerts": len(A), "rule_alerts": len(rule_ids), "anomaly_alerts": len(anom_ids),
+             "vendor_alerts": sum(A[a]["layer"] == "vendor" for a in rule_ids), "links": links,
              "rule_components": len(comps), "below_bar": below, "incidents": inc_df.height,
              "anomaly_only_incidents": anomaly_only,
              "anomaly_joined": sum(len(i["extra"]) for i in incidents), "unexplained": len(unexplained),
@@ -286,7 +291,7 @@ def _frames(incidents: List[Dict[str, Any]], A: Dict[str, Dict[str, Any]], rows:
         ids = inc["members"] + inc["extra"]
         order = sorted(ids, key=lambda x: (A[x]["ts_start"], A[x]["stage_no"], A[x]["rule_id"], x))
         steps = [A[x] for x in order]
-        rule_steps = [s for s in steps if s["layer"] == "rule"] or steps
+        rule_steps = [s for s in steps if s["layer"] in TRUSTED_LAYERS] or steps
         iid = short_hash(ids)
         main, role = _main_entity(ids, rows, hubs)
         rids = _unique(s["rule_id"] for s in steps)

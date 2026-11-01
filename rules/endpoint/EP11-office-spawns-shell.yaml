@@ -1,0 +1,21 @@
+id: EP11-office-spawns-shell
+title: Office application started a shell or script host
+status: test
+tuning: "parent Word, Excel, PowerPoint, Outlook, OneNote, Publisher, Access or Visio; child cmd, PowerShell, wscript,
+  cscript, mshta, rundll32, regsvr32, certutil, bitsadmin or schtasks; synthetic EDR background Office processes have
+  explorer.exe as parent and no children; firex-10G: 0"
+attack:
+  technique: T1204.002
+  alt_techniques: [T1566.001, T1059]
+  tactic: execution
+severity: 4
+confidence: 0.8
+kind: match
+where: |-
+  regexp_matches(parent_process, '(?i)(^|\\)(winword|excel|powerpnt|outlook|onenote|mspub|msaccess|visio)(\.exe)?$')
+  AND regexp_matches(coalesce(process_name, '') || ' ' || coalesce(command_line, ''),
+    '(?i)\b(cmd|powershell|pwsh|wscript|cscript|mshta|rundll32|regsvr32|certutil|bitsadmin|schtasks)(\.exe)?\b')
+group_by: ["coalesce(host, host_ip) AS machine"]
+split_gap: 1h
+entities: {host: host, user: user, src_ip: "coalesce(src_ip, host_ip)"}
+action_text: "an Office application on {machine} started a shell as {user}, the usual sign of a malicious document"

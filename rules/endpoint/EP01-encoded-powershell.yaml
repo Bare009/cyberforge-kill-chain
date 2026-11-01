@@ -1,0 +1,19 @@
+id: EP01-encoded-powershell
+title: Encoded or obfuscated PowerShell
+status: test
+tuning: "PowerShell with -enc/-e/-ec, FromBase64String, IEX/Invoke-Expression, DownloadString or a hidden window;
+  benign admin scripts in the synthetic EDR data use none of these; firex-10G: 0 (no process records)"
+attack:
+  technique: T1059.001
+  alt_techniques: [T1027, T1059]
+  tactic: execution
+severity: 4
+confidence: 0.8
+kind: match
+where: |-
+  regexp_matches(coalesce(process_name, '') || ' ' || coalesce(command_line, ''), '(?i)(powershell|pwsh)')
+  AND regexp_matches(command_line, '(?i)(\s[-/]e(c|n[a-z]*)?\s|frombase64string|\biex\b|invoke-expression|downloadstring|\s-w(indowstyle)?\s+hidden)')
+group_by: ["coalesce(host, host_ip) AS machine"]
+split_gap: 1h
+entities: {host: host, user: user, src_ip: "coalesce(src_ip, host_ip)"}
+action_text: "encoded or obfuscated PowerShell ran on {machine} as {user} ({event_count} times)"

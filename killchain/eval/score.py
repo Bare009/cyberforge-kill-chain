@@ -22,6 +22,10 @@ from typing import Any, Dict, List, Optional, Union
 import polars as pl
 import yaml
 
+from ..contracts import TRUSTED_LAYERS
+
+TRUSTED = list(TRUSTED_LAYERS)    # rule and vendor alerts: the "rule layer" figures below count both
+
 TARGETS = {  # metric: (good, great, higher_is_better)
     "detection_recall": (0.70, 0.90, True),
     "label_accuracy": (0.60, 0.85, True),
@@ -121,14 +125,15 @@ def score(truth: pl.DataFrame, run: Dict[str, Any], reviewed: Optional[Dict[str,
                .with_columns((pl.col("found") / pl.col("lines")).alias("recall")).sort("incident_id"))
     per_class = (per_inc.group_by("class").agg(pl.col("lines").sum(), pl.col("found").sum())
                  .with_columns((pl.col("found") / pl.col("lines")).alias("recall")).sort("class"))
-    rule_lines = hit.filter(pl.col("layer") == "rule").select("source", "line").unique().height
+    rule_lines = hit.filter(pl.col("layer").is_in(TRUSTED)).select("source", "line").unique().height
+    no_trusted = ~pl.col("layers").list.eval(pl.element().is_in(TRUSTED)).list.any()
     anomaly_only = (hit.group_by("source", "line").agg(pl.col("layer").unique().alias("layers"))
-                    .filter(pl.col("layers").list.contains("anomaly") & ~pl.col("layers").list.contains("rule")).height)
+                    .filter(pl.col("layers").list.contains("anomaly") & no_trusted).height)
 
     label = _labels(hit, n_cov)
-    rule_label = _labels(hit.filter(pl.col("layer") == "rule"), rule_lines)
+    rule_label = _labels(hit.filter(pl.col("layer").is_in(TRUSTED)), rule_lines)
     ao = (hit.group_by("source", "line").agg(pl.col("layer").unique().alias("layers"))
-          .filter(pl.col("layers").list.contains("anomaly") & ~pl.col("layers").list.contains("rule"))
+          .filter(pl.col("layers").list.contains("anomaly") & no_trusted)
           .join(truth.select("source", "line", "incident_id", "incident_name"), on=["source", "line"])
           .group_by("incident_id", "incident_name").agg(pl.len().alias("lines")).sort("incident_id"))
 
@@ -152,7 +157,7 @@ def score(truth: pl.DataFrame, run: Dict[str, Any], reviewed: Optional[Dict[str,
             # lines, ties to the rule layer, then the lowest our_step
             dom = (t.select("step_n", "source", "line", "alert_id", "our_step", "layer").unique()
                    .group_by("step_n", "alert_id", "our_step", "layer").agg(pl.len().alias("c"))
-                   .with_columns((pl.col("layer") != "rule").alias("_not_rule"))
+                   .with_columns((~pl.col("layer").is_in(TRUSTED)).alias("_not_rule"))
                    .sort(["step_n", "c", "_not_rule", "our_step"], descending=[False, True, False, False])
                    .unique("step_n", keep="first", maintain_order=True)
                    .select("step_n", pl.col("our_step").alias("first_our")))

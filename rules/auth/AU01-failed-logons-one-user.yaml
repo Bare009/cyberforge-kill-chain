@@ -1,0 +1,23 @@
+id: AU01-failed-logons-one-user
+title: Many failed logons for one account
+status: test
+tuning: "20 failures in 10 min per account (Windows 4625/4771 or auth records with status failed); synthetic
+  Sentinel/EDR background: at most 6 per account in 10 min; machine accounts (ending in $) left out; firex-10G: 0
+  (no auth records)"
+attack:
+  technique: T1110
+  alt_techniques: [T1110.001, T1110.003]
+  tactic: credential-access
+severity: 3
+confidence: 0.7
+kind: count
+requires_any: [[event_id, user], [category, status, user]]
+where: |-
+  (event_id IN ('4625', '4771') OR (category = 'auth' AND status = 'failed'))
+  AND user IS NOT NULL AND user NOT LIKE '%$'
+group_by: ["lower(user) AS account"]
+window: 10m
+having: {gte: 20}
+success: "FALSE"
+entities: {user: user, src_ip: src_ip, host: host, dst_ip: "coalesce(dst_ip, host_ip)"}
+action_text: "{event_count} failed logons for account {account} in {minutes} minutes ({src_count} sources)"

@@ -18,7 +18,7 @@ import ipaddress
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from . import canonical as C
-from .mapping import detect_time_format, map_value, severity_scale
+from .mapping import CONFIDENCE_WORDS, detect_time_format, map_value, severity_scale
 
 MIN_SHARE = 0.9
 _INT_MAX = 2**63
@@ -67,6 +67,8 @@ def check(col: str, values: Sequence[Optional[str]], value_maps: Dict[str, Dict[
         return res
     if col == "alert_confidence":
         def conf(v: str) -> bool:
+            if v.strip().lower() in CONFIDENCE_WORDS:
+                return True
             try:
                 x = float(v)
             except ValueError:

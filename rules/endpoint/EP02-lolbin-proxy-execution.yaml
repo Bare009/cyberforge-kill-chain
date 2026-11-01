@@ -1,0 +1,18 @@
+id: EP02-lolbin-proxy-execution
+title: Windows binary used to download or run code (LOLBin)
+status: test
+tuning: "certutil -urlcache/-decode/-split, mshta with a URL or script, rundll32 javascript:, regsvr32 /i:http or
+  scrobj.dll, bitsadmin /transfer; plain use of these tools does not match; firex-10G: 0"
+attack:
+  technique: T1218
+  alt_techniques: [T1105, T1197, T1218.005, T1218.010, T1218.011]
+  tactic: defense-evasion
+severity: 3
+confidence: 0.75
+kind: match
+where: |-
+  regexp_matches(command_line, '(?i)(certutil(\.exe)?["]?\s.*(-urlcache|-decode|-split|\s-f\s+https?:)|mshta(\.exe)?["]?\s+["'']?(https?:|javascript:|vbscript:)|rundll32(\.exe)?["]?\s.*javascript:|regsvr32(\.exe)?["]?\s.*(/i:\s*https?|scrobj\.dll)|bitsadmin(\.exe)?["]?\s.*/(transfer|addfile))')
+group_by: ["coalesce(host, host_ip) AS machine"]
+split_gap: 1h
+entities: {host: host, user: user, src_ip: "coalesce(src_ip, host_ip)"}
+action_text: "a Windows binary fetched or ran code on {machine} as {user} ({event_count} times)"

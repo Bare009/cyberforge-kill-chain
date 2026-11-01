@@ -2,8 +2,12 @@
 
 One YAML file per rule; the file name is the rule's `id`. `firewall/` holds
 rules over the FortiGate table, `anomaly/` the generic detectors (lower trust),
-`windows/` rules for a Windows log if one arrives. Adding a rule means adding a
-file here; no code changes (PRD bonus B-4).
+`endpoint/` and `auth/` rules over host columns of other products' logs (below),
+`windows/` rules for a Windows log if one arrives. Every folder under `rules/` is
+loaded. Adding a rule means adding a file here; no code changes (PRD bonus B-4).
+
+Rules never read records of category `vendor_alert` (another product's detection):
+`python -m killchain detect` turns those into `vendor` alerts itself.
 
 ```powershell
 python -m killchain detect --validate --run data\runs\firex-10G     # check every file and its SQL
@@ -53,6 +57,7 @@ action_text: "{src_ip} tried {event_count} admin passwords against the firewall 
 | `entities` | contract fields `src_ip`, `dst_ip`, `host`, `user`, `domain`, `url` → SQL; the alert takes the most common value |
 | `success` | which evidence lines count as "got through" (default: not denied, dropped or blocked, and not failed) |
 | `time_quality` | `valid` (default: only `ts_valid` rows) or `any` |
+| `requires_any` | optional, for the schema coverage report only: column groups, e.g. `[[event_id, user], [category, status, user]]`; the rule counts as runnable when every column of one group is available (a `where` with alternatives) |
 | `action_text` | sentence; placeholders: entity names, group_by names, `{event_count}`, `{minutes}`, `{hours}`, `{days}`, `{distinct_count}`, `{passed}`, `{blocked}`, `{src_count}`, `{dst_count}` |
 
 ## Kinds
@@ -89,3 +94,31 @@ floor; sources need 24 active hours for a baseline.
 | `A11-too-regular` | ≥ 30 accepted sessions, mean gap ≥ 10 s, gap CV ≤ 0.1 | T1071 | 2 |
 
 On firex-10G all 25 alerts overlap planted lines (0 background), and the 32 rule alerts are unchanged.
+
+## Endpoint and auth rules
+
+Rules over the optional canonical columns of other products' logs (docs/schema.md): `command_line`,
+`process_name`, `parent_process`, `file_path`, `event_id`, `logon_type`, `host`, `host_ip`, `category`,
+`status`. Matching is case-insensitive (`regexp_matches(..., '(?i)...')`). On a FortiGate run these
+columns are NULL, so every rule here binds and finds nothing (firex-10G: 0 alerts). Grouped per machine
+(`coalesce(host, host_ip) AS machine`) or per account / source.
+
+| Id | Flags | Label |
+|---|---|---|
+| `EP01-encoded-powershell` | PowerShell with `-enc`, FromBase64String, IEX, DownloadString, hidden window | T1059.001 |
+| `EP02-lolbin-proxy-execution` | certutil -urlcache/-decode, mshta URL, rundll32 javascript:, regsvr32 /i:http, bitsadmin /transfer | T1218 (alt T1105) |
+| `EP03-credential-dumping` | mimikatz, sekurlsa, procdump of lsass, comsvcs MiniDump, lsass .dmp | T1003.001, promote |
+| `EP04-scheduled-task` | schtasks /create, Register-ScheduledTask, event 4698 | T1053.005 |
+| `EP05-service-install` | sc create, New-Service, events 7045 / 4697 | T1543.003 |
+| `EP06-run-key` | reg add / Set-ItemProperty on ...\CurrentVersion\Run, or a registry event on that key | T1547.001 |
+| `EP07-log-cleared` | wevtutil cl, Clear-EventLog, event 1102 | T1070.001 |
+| `EP08-shadow-copy-delete` | vssadmin delete shadows, wmic shadowcopy delete, wbadmin delete, bcdedit recoveryenabled no | T1490, promote |
+| `EP09-lateral-tools` | psexec / PSEXESVC, wmic /node:, Invoke-Command -ComputerName, Enter-PSSession, winrs | T1021.002 (alt T1047) |
+| `EP10-discovery-burst` | 4 different discovery commands on one host in 10 min | T1087 (alt T1082) |
+| `EP11-office-spawns-shell` | Word/Excel/Outlook... parent, shell or script host child | T1204.002 (alt T1566.001) |
+| `EP12-mass-file-encryption` | 50 files with a ransomware extension on one host in 5 min | T1486 |
+| `AU01-failed-logons-one-user` | 20 failed logons (4625/4771 or auth status failed) for one account in 10 min | T1110 |
+| `AU02-password-spray` | one source failing for 10 accounts in 30 min | T1110.003 |
+| `AU03-logon-after-failures` | 10 failures then a success for one account within 30 min | T1078 |
+| `AU04-new-country-logon` | anomaly layer: account logs on from a country first seen after day 1 | T1078 |
+| `AU05-external-remote-logon` | logon type 10 / 9 or event 4648 from an outside address | T1021.001 |
