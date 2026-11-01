@@ -23,8 +23,14 @@ class TiCache:
         if str(path) != ":memory:":
             self.path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
-        self._db = sqlite3.connect(str(path), check_same_thread=False)
-        self._db.execute("PRAGMA journal_mode=WAL") if str(path) != ":memory:" else None
+        # No WAL: its shared-memory file fails on Docker's Windows bind mounts ("unable to open database
+        # file"), and the API opens a second connection on every run switch ("database is locked").
+        self._db = sqlite3.connect(str(path), check_same_thread=False, timeout=15)
+        if str(path) != ":memory:":
+            try:
+                self._db.execute("PRAGMA journal_mode=DELETE")
+            except sqlite3.OperationalError:
+                pass                      # another connection holds the file; keep its journal mode
         self._db.executescript(
             """
             CREATE TABLE IF NOT EXISTS answers (
