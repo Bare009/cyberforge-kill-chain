@@ -5,13 +5,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn, exactTimeParts, timeTooltip } from '@/lib/utils'
 import type { Alert } from '@/types/incident'
 
-export function PageTitle({ icon, title, subtitle, children }: { icon: ReactNode; title: string; subtitle: string; children?: ReactNode }) {
+export function PageTitle({ icon, title, subtitle, children }: { icon: ReactNode; title: string; subtitle?: string; children?: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">{icon}</div>
       <div className="min-w-0 flex-1">
         <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
-        <p className="text-sm text-slate-500">{subtitle}</p>
+        {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
       </div>
       {children}
     </div>

@@ -28,7 +28,6 @@ export function StatusBar() {
           <span>{data.counts.alerts} alerts</span>
         </>
       )}
-      <span className="ml-auto">Times in IST</span>
     </footer>
   )
 }

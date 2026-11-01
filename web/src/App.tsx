@@ -13,7 +13,6 @@ import { Alerts } from '@/pages/Alerts'
 import { Rules } from '@/pages/Rules'
 import { Live } from '@/pages/Live'
 import { Connections } from '@/pages/Connections'
-import { Evaluation } from '@/pages/Evaluation'
 import { System } from '@/pages/System'
 import { NotFound } from '@/pages/Placeholder'
 import { LiveListener } from '@/components/live/LiveListener'
@@ -43,7 +42,6 @@ export default function App() {
               <Route path="rules" element={<Rules />} />
               <Route path="live" element={<Live />} />
               <Route path="connections" element={<Connections />} />
-              <Route path="evaluation" element={<Evaluation />} />
               <Route path="system" element={<System />} />
               <Route path="*" element={<NotFound />} />
             </Route>

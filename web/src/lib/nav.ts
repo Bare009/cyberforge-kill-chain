@@ -6,7 +6,6 @@ import {
   Globe,
   FileCode2,
   Radio,
-  Gauge,
   Activity,
   Plug,
   type LucideIcon,
@@ -31,7 +30,6 @@ export const PRIMARY_NAV: NavItem[] = [
 ]
 
 export const SECONDARY_NAV: NavItem[] = [
-  { to: '/evaluation', label: 'Evaluation', icon: Gauge },
   { to: '/system', label: 'System', icon: Activity },
 ]
 

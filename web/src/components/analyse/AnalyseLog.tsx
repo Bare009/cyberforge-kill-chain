@@ -375,7 +375,7 @@ export function AnalyseLog() {
           {file ? (
             <span className="font-medium text-slate-900">{file.name} <span className="font-normal text-slate-500">({formatBytes(file.size)})</span></span>
           ) : (
-            <span className="text-slate-600">Drop a FortiGate log here or <span className="text-blue-700 underline">choose a file</span>. Files of many GB are fine.</span>
+            <span className="text-slate-600">Drop a FortiGate log here or <span className="text-blue-700 underline">choose a file</span>.</span>
           )}
           <input ref={inputRef} type="file" className="hidden" data-testid="log-file" onChange={(e) => choose(e.target.files?.[0] ?? null)} />
         </div>

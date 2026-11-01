@@ -28,7 +28,6 @@ export function Topbar() {
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <Shield className="h-6 w-6 text-blue-600" />
           <span className="font-mono font-bold text-slate-900">KillChain</span>
-          <span className="hidden md:inline text-xs text-slate-500">Attack path analysis</span>
         </Link>
 
         <div className="flex-1 flex justify-center max-w-xl mx-auto">

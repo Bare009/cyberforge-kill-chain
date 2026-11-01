@@ -1,5 +1,4 @@
 import { NavLink } from 'react-router-dom'
-import { Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAppStore } from '@/store/useAppStore'
 import { PRIMARY_NAV, SECONDARY_NAV, type NavItem } from '@/lib/nav'
@@ -42,12 +41,6 @@ export function Sidebar() {
       )}
     >
       <div className="flex flex-col gap-1 p-2">
-        {!sidebarCollapsed && (
-          <div className="mb-2 flex items-center gap-2 px-2 py-1">
-            <Shield className="h-5 w-5 text-blue-600 shrink-0" />
-            <span className="font-mono font-bold text-slate-900 text-sm">KillChain</span>
-          </div>
-        )}
         <NavList items={PRIMARY_NAV} collapsed={sidebarCollapsed} />
         <div className="my-2 border-t border-slate-100" />
         <NavList items={SECONDARY_NAV} collapsed={sidebarCollapsed} />

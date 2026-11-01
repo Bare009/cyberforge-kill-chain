@@ -3,12 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderPage } from '@/test/render'
-import metrics from '@/test/fixtures/metrics.json'
 import system from '@/test/fixtures/system.json'
 import liveStatus from '@/test/fixtures/live-status.json'
 import { LiveListener } from '@/components/live/LiveListener'
 import { useLiveStore } from '@/store/useLiveStore'
-import { Evaluation } from './Evaluation'
 import { Live } from './Live'
 import { System } from './System'
 
@@ -21,7 +19,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
 const health = { status: 'ok', run: 'firex-10G', sample: false, counts: { incidents: 25, alerts: 57 }, llm: system.llm }
 
 function fakeGet(url: string) {
-  const data = { '/metrics': metrics, '/system': system, '/live/status': liveStatus, '/health': health }[url]
+  const data = { '/system': system, '/live/status': liveStatus, '/health': health }[url]
   return data ? Promise.resolve({ data }) : Promise.reject(new Error(url))
 }
 
@@ -58,52 +56,6 @@ beforeEach(() => {
   FakeES.last = null
 })
 afterEach(() => vi.unstubAllGlobals())
-
-describe('Evaluation page', () => {
-  it('shows the seven metrics with grade and targets, and says the truth is silver', async () => {
-    renderPage(<Evaluation />, { url: '/evaluation' })
-    const recall = await screen.findByLabelText('Detection recall')
-    expect(within(recall).getByText('100%')).toBeInTheDocument()
-    expect(within(recall).getByText('Great')).toBeInTheDocument()
-    expect(within(recall).getByText('Good ≥ 70% · Great ≥ 90%')).toBeInTheDocument()
-    expect(within(screen.getByLabelText('False alarms')).getByText('Good ≤ 30% · Great ≤ 10%')).toBeInTheDocument()
-    expect(within(screen.getByLabelText('Investigation speed')).getByText('Good ≤ 2,000 ms · Great ≤ 500 ms')).toBeInTheDocument()
-    expect(document.querySelectorAll('[data-metric]')).toHaveLength(7)
-    expect(screen.getByText(/Scored against our silver truth/)).toBeInTheDocument()
-  })
-
-  it('lists planted incidents with recall, path order and our incident, and the per-rule table', async () => {
-    renderPage(<Evaluation />, { url: '/evaluation' })
-    const table = await screen.findByRole('table', { name: 'Per incident' })
-    const rows = within(table).getAllByRole('row').slice(1)
-    expect(rows).toHaveLength(25)
-    expect(within(rows[0]).getByText('brute-force-burst')).toBeInTheDocument()
-    expect(within(rows[0]).getByRole('link', { name: '#22' })).toHaveAttribute('href', '/incidents/22')
-    const rules = screen.getByRole('table', { name: 'Per rule' })
-    expect(within(rules).getByRole('link', { name: 'R12-large-lopsided-transfer' })).toHaveAttribute(
-      'href', '/rules?rule=R12-large-lopsided-transfer')
-  })
-
-  it('shows the scorer notes for a manifest', async () => {
-    get.mockImplementation((url: string) => url === '/metrics'
-      ? Promise.resolve({ data: { ...metrics, truth: 'firex-30G.log.manifest.json',
-          truth_notes: ['331 planted lines in 6 incident(s) are in the windows log, which was not given'] } })
-      : fakeGet(url))
-    renderPage(<Evaluation />, { url: '/evaluation' })
-    const notes = await screen.findByRole('list', { name: 'Truth notes' })
-    expect(notes).toHaveTextContent('windows log, which was not given')
-    expect(screen.queryByText(/Scored against our silver truth/)).not.toBeInTheDocument()
-  })
-
-  it('explains how to score a run that has no metrics', async () => {
-    get.mockImplementation((url: string) => url === '/metrics'
-      ? Promise.resolve({ data: { available: false, run: 'x', hint: 'Run `python -m killchain eval score --run x`' } })
-      : fakeGet(url))
-    renderPage(<Evaluation />, { url: '/evaluation' })
-    expect(await screen.findByText('This run has not been scored yet.')).toBeInTheDocument()
-    expect(screen.getByText(/eval score --run x/)).toBeInTheDocument()
-  })
-})
 
 describe('System page', () => {
   it('shows stages, run, data quality, threat intel and LLM status', async () => {

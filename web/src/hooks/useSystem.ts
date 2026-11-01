@@ -1,13 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { LiveStatus, MetricsResponse, SystemResponse } from '@/types/system'
-
-export function useMetrics() {
-  return useQuery({
-    queryKey: ['metrics'],
-    queryFn: async () => (await api.get<MetricsResponse>('/metrics')).data,
-  })
-}
+import type { LiveStatus, SystemResponse } from '@/types/system'
 
 export function useSystem() {
   return useQuery({

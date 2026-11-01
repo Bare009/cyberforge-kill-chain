@@ -22,13 +22,3 @@ export function formatSecs(s: number | null | undefined): string {
   const m = Math.floor(s / 60)
   return `${m} min ${Math.round(s - m * 60)} s`
 }
-
-/** One evaluation metric in its unit: share 0.993 -> "99.3%", seconds, MB, ms. */
-export function formatMetric(value: number | null | undefined, unit: string): string {
-  if (value == null) return '—'
-  if (unit === 'share') return `${value >= 0.995 && value < 1 ? '99.5+' : Number((value * 100).toFixed(1))}%`
-  if (unit === 'seconds') return formatSecs(value)
-  if (unit === 'MB') return value >= 1024 ? `${(value / 1024).toFixed(1)} GB` : `${Math.round(value).toLocaleString()} MB`
-  if (unit === 'ms') return `${value < 10 ? value.toFixed(1) : Math.round(value).toLocaleString()} ms`
-  return String(value)
-}

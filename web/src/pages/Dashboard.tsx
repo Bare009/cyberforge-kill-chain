@@ -211,7 +211,7 @@ export function Dashboard() {
   if (isError) {
     return (
       <div className="space-y-5">
-        <PageTitle icon={<LayoutDashboard className="h-5 w-5" />} title="Dashboard" subtitle="What this run found, at a glance." />
+        <PageTitle icon={<LayoutDashboard className="h-5 w-5" />} title="Dashboard" />
         <div role="alert" className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span className="flex-1">Could not load the dashboard: {apiErrorMessage(error)}</span>
@@ -240,7 +240,7 @@ export function Dashboard() {
       <PageTitle
         icon={<LayoutDashboard className="h-5 w-5" />}
         title="Dashboard"
-        subtitle={data ? `What run ${data.run} found, at a glance. Times in IST.` : 'What this run found, at a glance.'}
+
       >
         {data?.sample && (
           <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800">Sample run</span>
