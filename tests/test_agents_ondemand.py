@@ -160,6 +160,40 @@ def test_sandbox_blocks_file_access(env):
     assert body["ran"] is False and any("Permission" in e or "disabled" in e for e in body["errors"]), body
 
 
+def test_rule_test_on_a_run_prepared_before_the_optional_columns(env):
+    """events.duckdb from before `category` existed: the rule still compiles and runs (the column is
+    NULL through read-only views), and the sandbox still blocks file access and ATTACH."""
+    import duckdb
+
+    old = env["tmp"] / "old.duckdb"
+    con = duckdb.connect(str(old))
+    con.execute(f"ATTACH '{(env['run'] / db.PREPARED_NAME).as_posix()}' AS src (READ_ONLY)")
+    cols = [r[0] for r in con.execute("DESCRIBE src.main.firewall_events").fetchall()]
+    keep = ", ".join(c for c in cols if c not in {n for n, _ in db._optional_cols()})
+    con.execute(f"CREATE TABLE firewall_events AS SELECT {keep} FROM src.main.firewall_events")
+    con.execute("CREATE VIEW events AS SELECT * FROM firewall_events")
+    con.execute("DETACH src")
+    con.close()
+    shutil.copy(old, env["run"] / db.PREPARED_NAME)
+    c = app(env)
+    body = c.post("/rules/test", json={"yaml": rule_yaml()}).json()
+    assert body["valid"] and body["ran"] and body["alerts"] == 1, body
+    out = env["tmp"] / "x.csv"
+    for sql in (f"SELECT 'x' AS alert_key, 'f' AS source, 1 AS line FROM read_csv('{(env['run'] / 'index.json').as_posix()}')",
+                f"SELECT 'x' AS alert_key, 'f' AS source, 1 AS line FROM (SELECT 1) t, (COPY (SELECT 1) TO '{out.as_posix()}')"):
+        text = rule_yaml(kind="sql", sql=sql, window=None, having=None, group_by=None, where=None)
+        body = c.post("/rules/test", json={"yaml": text}).json()
+        assert body["ran"] is False, body
+    con = c.app.state.agents.sandbox.connect()
+    try:
+        for stmt in (f"COPY (SELECT 1) TO '{out.as_posix()}'", f"ATTACH '{(env['tmp'] / 'e.duckdb').as_posix()}' AS e"):
+            with pytest.raises(duckdb.Error):
+                con.execute(stmt)
+    finally:
+        con.close()
+    assert not out.exists() and not (env["tmp"] / "e.duckdb").exists()
+
+
 def test_sandbox_stops_a_slow_rule(env):
     c = app(env)
     c.app.state.agents.sandbox.timeout_s = 0.5

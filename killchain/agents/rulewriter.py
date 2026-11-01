@@ -76,7 +76,15 @@ class Sandbox:
         if not self.available:
             raise RuleWriterError(f"this run has no prepared {self.path.name}; run "
                                   "`python -m killchain db --parsed ... --run ... --prepare` to test rules on it")
+        from killchain import db
+
         con = duckdb.connect(str(self.path), read_only=True)
+        if db.lacks_optional(con):
+            # prepared before the optional canonical columns existed: every rule's WHERE now uses
+            # `category`, so serve the run through read-only views that add those columns as NULL.
+            # No temp_directory here: DuckDB would let rule SQL write files into it.
+            con.close()
+            con = db.attach_with_optional(duckdb.connect(":memory:"), self.path)
         con.execute("SET TimeZone = 'UTC'")
         con.execute(f"SET memory_limit = '{self.memory_limit}'")
         con.execute(f"SET threads = {int(self.threads)}")

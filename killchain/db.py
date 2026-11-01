@@ -278,10 +278,17 @@ def connect(parsed_dir: Optional[Union[str, Path]] = None, run_dir: Optional[Uni
         if not read_only or not _lacks_optional(con):
             return con
         con.close()
-        return _attach_with_optional(path)
+        con = duckdb.connect(":memory:")
+        configure(con)
+        return attach_with_optional(con, path)
     if parsed_dir is None:
         raise FileNotFoundError(f"no {PREPARED_NAME} in {run_dir} and no parsed folder given")
     return open_run(parsed_dir)
+
+
+def lacks_optional(con: duckdb.DuckDBPyConnection) -> bool:
+    """True for a prepared run made before the optional canonical columns existed (no `category` ...)."""
+    return _lacks_optional(con)
 
 
 def _lacks_optional(con: duckdb.DuckDBPyConnection) -> bool:
@@ -290,9 +297,9 @@ def _lacks_optional(con: duckdb.DuckDBPyConnection) -> bool:
     return bool(names) and any(c not in names for c, _ in _optional_cols())
 
 
-def _attach_with_optional(path: Path) -> duckdb.DuckDBPyConnection:
-    con = duckdb.connect(":memory:")
-    configure(con)
+def attach_with_optional(con: duckdb.DuckDBPyConnection, path: Path) -> duckdb.DuckDBPyConnection:
+    """On `con` (in memory), attach the prepared run read-only and add views with the optional
+    columns as NULL. The caller configures `con` (the rule sandbox does so without a temp folder)."""
     con.execute(f"ATTACH {_lit(path.as_posix())} AS prepared (READ_ONLY)")
     tables = [r[0] for r in con.execute("SELECT table_name FROM information_schema.tables "
                                         "WHERE table_catalog = 'prepared' AND table_type = 'BASE TABLE'").fetchall()]
