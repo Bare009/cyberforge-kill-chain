@@ -1,28 +1,184 @@
-# killchain
+# KillChain: kill chain and attack path analysis
 
-Kill chain and attack path analysis over large security log sets (CyberForge PRD
-"Kill Chain and Attack Path Analysis"). Built in stages; this README grows with
-each one.
+KillChain reads a large set of security logs and finds the attacks hidden in them.
+It tags every step with a MITRE ATT&CK technique and kill chain stage, links the
+steps into one incident across hosts, users, IPs and time, and shows each attack
+as a numbered timeline and a graph. It also shows what the attacker could reach
+next. Built for the CyberForge problem *Kill Chain and Attack Path Analysis*
+(PRD of 30 October 2026).
 
-| Stage | Status |
-|---|---|
-| 1. Streaming log parser (FR-1) | done: `killchain.parser` |
-| 1b. DuckDB event views, `python -m killchain`, explorer | done: `killchain.db`, `tools/explore.py` |
-| 1c. Evaluation: silver truth (25 incidents) and the PRD metrics | done: `killchain.eval` |
-| 2a. ATT&CK labels and the rule engine (5 kinds, validator) | done: `killchain.attack`, `killchain.detect`; rules format in `rules/README.md` |
-| 2b. Rules for every planted incident (FR-2, FR-3, B-4) | done: 24 rules in `rules/firewall/`; on firex-10G all 25 incidents found, 0 background alerts, 2 s |
-| 2c. Anomaly layer (11 detectors, `rules/anomaly/`) | done: generic `kind: sql` detectors, `layer: anomaly`, confidence 0.3-0.5, never promoted; on firex-10G 25 anomaly alerts (rare 6, first-seen pair 1, user-country 4, outlier sessions 3, destinations 3, ports 0, failed logins 0, bytes out 2, denied-then-allowed 1, lopsided 3, too regular 2), 0 background, 10,289 evidence lines; the 32 rule alerts unchanged; recall 100%, labels 100%, false alarms 0%; detection 6.1 s for all 35 rules |
-| 3a. Correlation (FR-4, B-3) | done: `killchain.correlate`, `python -m killchain correlate --run <run>`, settings in `config/correlate.yaml`; on firex-10G 57 alerts become 25 incidents (24 anomaly alerts joined as supporting evidence, 1 unexplained, 0 below the bar, largest 8 alerts), chain A (32.127.48.11, R02 > R16 > R20 > R12) and chain B (10.10.10.118, R24 > R11 > R12) each one incident; attack paths 25/25, multi-step 4/4, no incident spans two truth incidents; recall 100%, labels 100%, false alarms 0%; 0.1 s |
-| 3b. Attack chains, path graphs, reach-next (FR-5, FR-6) | chains and path graphs done (P7): `killchain.graph`, `python -m killchain chain --run <run> [N]`; only rule alerts are numbered, each anomaly alert is `supporting` evidence on the nearest rule step (shared entity, then time overlap, then same tactic, then nearest start) and is still drawn in the path graph; an anomaly-only incident numbers its anomaly alerts; on firex-10G 25 incidents, 32 numbered steps (2 ongoing), 24 supporting, 19 gaps, 44,622 evidence lines, 0 contract errors in 0.28 s; chain A reads `1. Discovery → 2. Initial Access → 3. Persistence → 4. Exfiltration` (R02 > R16 > R20 > R12), chain B `1. Execution → 2. Command and Control → 3. Exfiltration` (R24 > R11 > R12); writes provisional `incidents/<n>.json`, `index.json`, `alerts.json` (risk, threat intel and report are placeholders); recall 100%, labels 100%, attack paths 25/25 (multi-step 4/4), false alarms 0%. Access graph and reach next done (P8): `python -m killchain reach --run <run> [N] [--parsed DIR] [--force]`, settings in `config/reach.yaml`; on firex-10G the access graph has 3 `controls` edges (svc_backup30, parul.sinha, Deepika.Khan to the firewall 10.10.99.1) and 90 `admin_port` edges from 10.10.10.44 and 10.10.10.63 (2,580 sessions), 1,387 internal hosts, built in 0.7 s; 11 incidents get a reach list (83 hosts), 14 a stated reason; incidents #3, #6, #11 say the account controls the firewall; chain A (#1) lists inferred 10.10.20.x servers, chain B (#2) is empty with its reason; 0 contract errors, stage 1.2 s; metrics unchanged. Desktop reach (Track A item 2): `neighbour_zones` now includes `desktop`, so a desktop foothold gets its subnet neighbours (inferred, 0 reach points) and the servers they reach at hop 2 (inferred, half points); on firex-10G 15 incidents get a reach list, 10 a stated reason; chain B and the other desktop footholds (10.10.10.112, 10.10.10.88, 10.10.10.51) each list 10 inferred 10.10.20.x servers |
-| 3c. Risk score and template report (B-1, B-2) | done (P10): `killchain.score`, `killchain.report`; `python -m killchain score --run <run> [N]` (fixed weights severity 0.25, stage 0.20, breadth 0.10, success 0.15, asset 0.15, reach 0.10, threat intel 0.05; each part stored with a `detail`; incidents renumbered 1..N by risk) and `python -m killchain report --run <run> [N]` (Markdown: summary, risk table, numbered chain with IST times, gaps, reach next, entities, threat intel, 5 evidence lines per step, actions per tactic); breadth is full at 3 or more distinct tactics, else tactics / 6 (Track A item 2); on firex-10G 25 incidents: critical 3, high 17, medium 5; chain A #1 89.8, chain B #2 82.3, large one-way transfer #3 81.5, lone port scan #24 45.8; R24 step text names the malware (`JS/Nemucod.A!tr.dldr`); threat intel 0 for every incident (offline enrich: 58 indicators, all `unknown`); 25 template reports (73,066 characters); 0 contract errors; score 0.05 s, report 0.04 s; recall 100%, labels 100%, attack paths 25/25 (multi-step 4/4), false alarms 0% |
-| 3d. Logs from any security product | done: schema mapping and generic parser (`killchain.schema`, `docs/schema.md`); vendor alerts as layer `vendor` and 17 endpoint/auth rules; `python -m killchain run` and the Dashboard upload take any supported product's log, with network zones inferred per run when the addresses do not fit `config/network.yaml` ([Logs from other security products](#logs-from-other-security-products)); firex-10G unchanged: 57 alerts, 25 incidents, recall 100%, labels 100%, attack paths 25/25 |
-| 4. API and UI (FR-7) | in progress: `killchain.api` (health, incidents, path), `web/` scaffold |
-| 5. Scoring harness against the ground-truth manifest | done: `eval score --manifest` on firex-30G (37.2 M events, 29 planted incidents): recall 99.0%, labels 94.9%, attack paths 79.3% (23/29), false alarms 0%, 10 min 1 s, 2.4 GB, open p95 3 ms. Not found: the 4 Windows-only incidents (#24-27), and the 2 chains miss their Windows steps, because the Windows log (`firex-30G.win.jsonl`, 10.4 GB) was not supplied |
-| 6. One-command run (P13) | done: `python -m killchain run --input <log> [--name N] [--offline] [--no-llm] [--reuse-parsed] [--from STAGE]` (see [Full run](#full-run)); exit codes 0 done, 1 a required stage failed, 2 usage or input error, 3 no events in the input; on firex-10G with `--offline --no-llm`: 187 s end to end with a cold file cache (parse 88.6 s, prepare 58.7 s, detect 16.4 s, the other stages 1.6-4.6 s each), peak 6.2 GB (during prepare); 25 incidents, recall 100%, labels 100%, attack paths 25/25 (multi-step 4/4), false alarms 0%; the 50 GB tier run is still to do |
+The log file goes in from the Dashboard (upload) or the command line. Every stage
+then runs on it: parse, detect, correlate, attack chain, reach next, risk score,
+threat intel, report. The UI then shows the result.
+
+## Results
+
+### Against the PRD targets: Advanced tier (30 GB), scored with the organisers' manifest
+
+Input: `firex-30G.log`, 19.6 GB (18.3 GiB), 37,183,090 FortiGate lines.
+Truth: `firex-30G.log.manifest.json`, the organisers' answer key: 29 planted
+attacks, 32,530 planted lines. Run `firex-30G-latest`: one full
+`python -m killchain run` from the Dashboard, nothing reused, 10 parser
+processes, threat intel online, AI reports on. Scored with
+`python -m killchain eval score` (command below).
+
+| Metric | How it is measured | Good | Great | Result | Grade |
+|---|---|---|---|---|---|
+| Detection | planted lines found by an alert | > 70% | > 90% | **99.0%** (32,199 of 32,530) | Great |
+| Correct labels | found lines with the right ATT&CK technique | > 60% | > 85% | **94.9%** | Great |
+| Attack path | planted attacks rebuilt with the right steps in order | half | all | **79.3%** (23 of 29) | Good |
+| False alarms | our incidents that match no planted attack | < 30% | < 10% | **0%** (0 of 25) | Great |
+| Processing time | whole tier, parse to bundle, end to end | < 3 h | < 1 h | **12 min 19 s** (739 s) | Great |
+| Peak memory | all processes of the run together | < 16 GB | < 8 GB | **5.9 GB** (6,057 MB) | Great |
+| Investigation speed | open one incident's attack path (p95, `GET /incidents/{n}/path`) | < 2 s | < 500 ms | **4 ms** | Great |
+
+The 6 attacks that were not rebuilt all need the Windows log
+(`firex-30G.win.jsonl`, 10.4 GB), which the organisers have not shared:
+
+- #24 dcerpc-enumeration, #25 smb-password-spray, #26 kerberoasting and
+  #27 remote-service-execution are Windows-only, so they are not found at all.
+- The two multi-stage chains (#28 web-to-domain-admin, #29 ransomware precursor)
+  are found from their firewall steps, but their Windows steps are missing, so
+  they do not count as rebuilt.
+
+Those 331 Windows lines are counted as not found in the detection figure above.
+The parser reads Windows JSON lines, and the endpoint and login rules
+(`rules/endpoint/`, `rules/auth/`) look for related behaviour such as password
+spraying. We could not test them on these four attack types without the log.
+
+Time per stage (seconds): detect format 1.5, parse 426, load into DuckDB 244,
+detect 39, correlate 1.0, chains 2.1, reach next 3.6, risk score 1.6, reports
+1.9, threat intel 3.1, AI narrator 12, bundle 2.7. 25 incidents (3 critical,
+17 high, 5 medium), 127 alerts.
+
+Machine: AMD Ryzen 9 5900HS laptop (8 cores, 16 threads), 16 GB RAM, NVMe SSD,
+Windows 11 Home, Python 3.12.
+
+### Extreme tier (50 GB): processing only
+
+Input: `firex-50G.log`, 30.5 GiB, 61,970,767 FortiGate lines. One full run from
+the Dashboard (run `firex-50G-final`), 10 parser processes.
+
+| Metric | Good | Great | Result | Grade |
+|---|---|---|---|---|
+| Processing time | < 3 h | < 1 h | **8 min 37 s** | Great |
+| Peak memory | < 16 GB | < 8 GB | **5.9 GB** | Great |
+
+Time per stage: detect format 1.1 s, parse 5 min 53 s, load into DuckDB
+2 min 10 s, detect 13 s, correlate 1.0 s, chains 1.1 s, reach next 2.6 s, risk
+score 0.9 s, reports 0.9 s, threat intel 1.1 s, AI narrator 10 s, bundle 1.4 s.
+26 incidents (3 critical), 579 alerts (521 of them in no incident).
+
+Not measured on this tier:
+- **Accuracy:** we have no manifest for the 50 GB file, so detection, labels,
+  attack paths and false alarms are not scored. It found one incident more than
+  the 30 GB run; we have not checked whether that one is a planted attack.
+- **Machine:** this run was made on a different machine from the 30 GB run (the
+  bigger file finished faster), so the two times are not comparable.
+
+### Reproduce
+
+```powershell
+python -m killchain run --input logs\firex-30G.log --name firex-30G --workers 10
+python -m killchain serve --run firex-30G --raw-dir logs            # in a second window
+python -m killchain eval score --run data\runs\firex-30G --manifest logs\firex-30G.log.manifest.json `
+    --raw firewall=logs\firex-30G.log --api http://127.0.0.1:8000
+```
+
+`eval score` prints the table above and writes `data/runs/<run>/metrics.json`.
+The investigation-speed figure needs `--api`, pointing at an API serving that run.
+
+## Requirements covered
+
+| PRD item | How | Where |
+|---|---|---|
+| FR-1 Read the full data set without loading it into memory | parallel byte-range parser to Parquet, then one DuckDB table; peak 5.9 GB on both tiers | `killchain/parser`, `killchain/db.py` |
+| FR-2 Detect suspicious events | 25 firewall rules (one per planted attack type), 12 endpoint and 5 login rules, 11 anomaly detectors; every alert keeps the line number and byte offset of each raw event behind it | `rules/`, `killchain/detect` |
+| FR-3 MITRE ATT&CK technique and kill chain stage | each rule names its technique and tactic; checked against the bundled ATT&CK catalogue (14 tactics, 691 techniques) | `killchain/attack` |
+| FR-4 Link related events into one incident | alerts joined by shared hosts, users, IPs and time | `killchain/correlate`, `config/correlate.yaml` |
+| FR-5 Attack path as a timeline and a graph | numbered steps 1..N with times, plus a graph of hosts, accounts and domains in step order | `killchain/graph`; UI Incident page |
+| FR-6 What the attacker could reach next | access graph from the logs (admin ports, allowed flows, firewall control), 2 hops from each foothold, observed or inferred | `killchain/graph/reach.py` |
+| FR-7 Simple API or page, with a README | FastAPI (`GET /incidents/12/path`, docs at `/docs`) and a React UI | `killchain/api`, `web/` |
+| B-1 Risk score, worst on top | weighted score from 7 parts, each shown with its reason; incidents numbered by score | `killchain/score` |
+| B-2 Plain-English report | template report for every incident; AI rewrite (Groq) checked against the facts, else the template | `killchain/report`, `killchain/agents` |
+| B-3 Raw alerts merged per incident | merged alert and raw event counts on every incident | `killchain/correlate` |
+| B-4 New rule by editing a config file | one YAML file per rule, no code; an AI rule writer drafts and test-runs rules in a locked sandbox | `rules/README.md`, Rules page |
+| B-5 Live mode | tails a growing log; the API pushes changed incidents to the UI | `killchain/live`, Live page |
+
+Also built: threat intel (OTX and local context), incident Q&A, SIEM
+connections, and logs from other products (Sentinel, CEF, Palo Alto, Check
+Point, ECS and more).
+
+## Quick start
+
+### Run it natively (fastest, used for the results above)
+
+Python 3.11+ and Node.js 20+.
+
+```powershell
+pip install -r requirements.txt
+copy .env.example .env                  # optional: OTX and Groq keys; everything works without them
+cd web; npm install; cd ..
+
+python -m killchain serve --run none --raw-dir logs      # window 1: API on http://localhost:8000, starts empty
+cd web; npm run dev                                      # window 2: UI on http://localhost:5173
+```
+
+Uploaded logs are saved in `logs\`, and runs in `data\runs\`. To use another
+API port, put `VITE_API_URL=http://localhost:<port>` in `web\.env`.
+
+Then on the Dashboard, under **Analyse a new log**, drop the log file and press
+**Upload and analyse**. The card shows each stage as it runs. When it finishes,
+every page shows the new run, and **Showing run** switches between analysed runs.
+
+Or analyse from the command line and then serve the run:
+
+```powershell
+python -m killchain run --input logs\firex-30G.log --name firex-30G     # add --offline --no-llm to stay off the network
+python -m killchain serve --run firex-30G --raw-dir logs
+```
+
+### Run it with Docker
+
+```powershell
+docker compose up -d --build            # UI http://localhost:8080, API http://localhost:8000/docs
+```
+
+It starts with the bundled sample incident. Upload a log on the Dashboard as
+above. For large files on Windows, the native run is faster: Docker's mounted
+folders are much slower than the local disk.
+
+### What to look at
+
+1. **Dashboard**: incidents, alerts, events, run time, peak memory, kill chain coverage.
+2. **Incidents**: worst first, with risk band and tactics. Open #1.
+3. **Incident page**: the numbered chain, the attack path graph (press Play),
+   reach next, the raw log lines behind each step, the report, and Q&A.
+4. **ATT&CK Matrix**: every technique found, linked to its incidents.
+5. **Rules**: each rule's hits; describe a rule in words and the AI drafts and tests it.
+
+## Known limits
+
+- **Windows log not supplied.** It holds 4 of the 29 planted attacks and the
+  Windows steps of the 2 chains (see Results).
+- **AI reports on the free Groq tier.** The limit of 8K tokens a minute lets
+  about 10 reports through per run (10 of 25 on the 30 GB run). The rest keep
+  the template report, which has the same facts. To fill them in later, run
+  `python -m killchain run --input <log> --name <run> --from narrate`; reports
+  already written come from the cache.
+- **Unexplained alerts.** Alerts that join no incident are listed on the Alerts
+  page, not counted as incidents (69 on the 30 GB run, 521 on the 50 GB run).
+  Most come from the anomaly detectors.
+- **No login.** The API is meant for a local machine. Set `KILLCHAIN_UPLOADS=0`
+  to turn uploads off.
+
+## Documentation
 
 Requirements and targets: `docs/requirements.md`. Pipeline and stage
-contracts: `docs/architecture.md`. What the organisers' data looks like:
-`docs/data-notes.md`.
+contracts: `docs/architecture.md` and `docs/contracts.md`. What the organisers'
+data looks like: `docs/data-notes.md`. Logs from other products:
+`docs/schema.md`. Rule format: `rules/README.md`. The rest of this README is the
+reference for each part.
 
 ## Layout
 
@@ -91,11 +247,10 @@ docker compose down
 | `live` | same, profile `live` | `python -m killchain live` (P15); needs `--input <log>` or `KILLCHAIN_LIVE_INPUT`, and a run folder of its own (see [Live mode](#live-mode)) |
 | `live-ingest` | same, profile `live` | live mode over `data/ingest/live.log` into `data/runs/live-ingest` (see [SIEM connections](#siem-connections)) |
 
-Mounts: `./data` (the api reads it read-only, except `data/cache`,
-`data/connectors` and `data/ingest`), `./rules`
-(rules saved from the rule writer land here), and the logs folder at
-`/app/logs`, read-only (`LOGS_DIR`, default `./logs`). Without the logs the
-Evidence tab lists line numbers but no raw text. Other settings: `API_PORT`
+Mounts for `api`: `./data` read-write (runs made from the Dashboard, caches,
+SIEM connections), `./rules` (rules saved from the rule writer land here), and
+the logs folder at `/app/logs` read-write (`LOGS_DIR`, default `./logs`; uploads
+land here). Without the logs, the Evidence tab lists line numbers but no raw text. Other settings: `API_PORT`
 (8000; use another when Splunk holds 8000), `WEB_PORT` (8080),
 `PARSE_WORKERS` (4; more workers need more memory), `TI_OFFLINE=1`.
 The build context leaves out `data/`, `logs/` and every log file, so images stay

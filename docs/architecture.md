@@ -25,7 +25,7 @@ data/runs/<run>/incidents/<n>.json + index.json
   │ 8 API (FastAPI, files loaded at start)
   ▼
 9 React UI (from AI-SOC): Dashboard, Incidents, Incident page with attack path graph,
-  MITRE ATT&CK (ported as is), Alerts, Threat Intel, Rules, Live, Evaluation, System
+  MITRE ATT&CK (ported as is), Alerts, Threat Intel, Rules, Live, SIEM connections, System
 
 eval: silver truth (or an organisers' manifest) vs alerts and incidents → metrics.json
 live: tail a growing log, rerun stages 2-5 on recent windows, push changes to the UI
