@@ -117,6 +117,7 @@ function Running({ job, onCancel, cancelling }: { job: Job; onCancel: () => void
           </p>
           <p className="text-xs text-slate-500">
             Stage {Math.min(done + 1, job.stages.length)} of {job.stages.length}: {now} · {formatSecs(elapsed)} so far
+            {` · ${job.options.workers} parser processes`}
             {job.upload_secs != null && ` · upload took ${formatSecs(job.upload_secs)}`}
           </p>
         </div>
@@ -173,7 +174,8 @@ function Finished({ job, onDismiss, onAgain }: { job: Job; onDismiss: () => void
           <Stat label="Alerts" value={(r.alerts ?? 0).toLocaleString()} hint={r.unexplained != null ? `${r.unexplained} unexplained` : undefined} />
           <Stat label="Events" value={r.events != null ? r.events.toLocaleString() : '—'} hint={r.lines != null ? `${r.lines.toLocaleString()} lines` : undefined} />
           <Stat label="Upload" value={job.upload_secs != null ? formatSecs(job.upload_secs) : '—'} hint={job.upload_secs == null ? 'file was on the server' : undefined} />
-          <Stat label="Processing" value={formatSecs(processing)} hint={r.peak_rss_mb ? `peak ${(r.peak_rss_mb / 1024).toFixed(1)} GB memory` : undefined} />
+          <Stat label="Processing" value={formatSecs(processing)}
+            hint={`${job.options.workers} parser processes${r.peak_rss_mb ? `, peak ${(r.peak_rss_mb / 1024).toFixed(1)} GB memory` : ''}`} />
           <Stat label="Total" value={formatSecs((job.upload_secs ?? 0) + (processing ?? 0))} hint="upload + processing" />
         </div>
       )}
@@ -232,6 +234,8 @@ export function AnalyseLog() {
   const aiAvailable = !!health.data?.llm?.enabled && (health.data?.llm?.configured.length ?? 0) > 0
   const useAi = ai ?? aiAvailable
   const taken = (runs.data?.runs ?? []).map((r) => r.name)
+  // one per CPU thread at most: past that the processes only take turns on the same cores
+  const maxWorkers = Math.max(1, uploads.data?.defaults.cpus ?? 16)
 
   // When a job finishes and the API switched to its run, every page reloads its data.
   useEffect(() => {
@@ -404,8 +408,11 @@ export function AnalyseLog() {
             </label>
             <label className="space-y-1 text-xs text-slate-600">
               Parser processes
-              <Input type="number" min={1} max={64} value={workers ?? uploads.data?.defaults.workers ?? 4}
-                onChange={(e) => setWorkers(Math.max(1, Number(e.target.value) || 1))} aria-label="Parser processes" />
+              <Input type="number" min={1} max={maxWorkers} value={workers ?? uploads.data?.defaults.workers ?? 4}
+                onChange={(e) => setWorkers(Math.min(maxWorkers, Math.max(1, Number(e.target.value) || 1)))} aria-label="Parser processes" />
+              <span className="block text-slate-400">
+                Default {uploads.data?.defaults.workers ?? 8}; up to {maxWorkers} on this server. More than 8 gains little.
+              </span>
             </label>
             <div className="space-y-1.5 text-xs text-slate-600">
               <label className="flex items-center gap-2">

@@ -146,6 +146,7 @@ describe('AnalyseLog', () => {
     renderPage(<AnalyseLog />)
     expect(await screen.findByText(/Stage 1 of 11: Parse the log/)).toBeInTheDocument()
     expect(screen.getByText(/upload took 40 s/)).toBeInTheDocument()
+    expect(screen.getByText(/8 parser processes/)).toBeInTheDocument()
     expect(screen.getByText(/Parsed 3.00 of 12.00 GiB \(25%\)/)).toBeInTheDocument()
     expect(screen.getByText(/about 3 min 0 s left/)).toBeInTheDocument()
     const stages = within(screen.getByRole('list', { name: 'Pipeline stages' })).getAllByRole('listitem')
