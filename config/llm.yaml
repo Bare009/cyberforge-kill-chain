@@ -1,7 +1,9 @@
 # LLM agents (docs/build-plan.md P10b). Keys and model names come from .env.
 #
 # Free-tier limits per model. Groq's are from https://console.groq.com/docs/rate-limits
-# (check them when setting up; they change). NeevCloud's come from its dashboard:
+# (checked 2026-11-01; they change). Groq shut down llama-3.3-70b-versatile and
+# llama-3.1-8b-instant for free and developer keys on 2026-08-16; use openai/gpt-oss-120b
+# (large) and openai/gpt-oss-20b (small). NeevCloud's limits come from its dashboard:
 # put them under `models:` by model name. A model without an entry uses `default`.
 # The client keeps under these with a margin and never retries a 429 at once.
 
@@ -18,16 +20,25 @@ default:
   tokens_per_day: 100000
 
 models:
-  llama-3.3-70b-versatile:
+  openai/gpt-oss-120b:
     requests_per_minute: 30
     requests_per_day: 1000
-    tokens_per_minute: 12000
-    tokens_per_day: 100000
-  llama-3.1-8b-instant:
+    tokens_per_minute: 8000
+    tokens_per_day: 200000
+  openai/gpt-oss-20b:
     requests_per_minute: 30
-    requests_per_day: 14400
-    tokens_per_minute: 6000
-    tokens_per_day: 500000
+    requests_per_day: 1000
+    tokens_per_minute: 8000
+    tokens_per_day: 200000
+
+# Reasoning models think before they answer, and that hidden reasoning counts against
+# max_tokens. For a model whose name matches `match` (a regex, case-insensitive), each call
+# sends `reasoning_effort: <effort>` and gets `extra_tokens` more output tokens than the job's
+# max_tokens below. Low effort is enough for these jobs: the facts are all in the prompt.
+reasoning:
+  - match: gpt-oss
+    effort: low
+    extra_tokens: 1000
 
 narrator:
   max_tokens: 700           # output cap; the fact sheet is ~1,200 tokens in

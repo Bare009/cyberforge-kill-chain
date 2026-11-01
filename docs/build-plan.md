@@ -697,12 +697,16 @@ prompt, and copied into the run bundle so the UI works without a key.
 Prompts live in `killchain/agents/prompts/*.md`. Tests: mocked LLMs that add an
 IP, drop a step, or cite a foreign line must all be rejected.
 
-**Free-tier budget.** We run on free tiers of Groq and NeevCloud. Groq's free
-limits are per model (August 2026; check https://console.groq.com/docs/rate-limits
-when setting up): `llama-3.3-70b-versatile` 30 requests/min, 1,000/day, about
-12K tokens/min and **100K tokens/day**; `llama-3.1-8b-instant` 30/min,
-14,400/day, 500K tokens/day. NeevCloud's limits are read from its dashboard.
-The 70B daily token limit is the constraint, not requests.
+**Free-tier budget.** We run on free tiers of Groq and NeevCloud. Groq shut down
+`llama-3.3-70b-versatile` and `llama-3.1-8b-instant` for free keys on 16 Aug
+2026, so we use `openai/gpt-oss-120b` (large) and `openai/gpt-oss-20b` (small).
+Both have 30 requests/min, 1,000/day, **8K tokens/min** and 200K tokens/day
+(checked 1 Nov 2026 at https://console.groq.com/docs/rate-limits). They are
+reasoning models: each call sends `reasoning_effort: low` and gets 1,000 more
+output tokens for the hidden reasoning (`reasoning:` in `config/llm.yaml`).
+NeevCloud (Llama 3.3 70B, Llama 3.1 8B Instant) limits are read from its
+dashboard. The 8K tokens per minute is now the constraint: about 3 reports a
+minute, so the narrator adds several minutes to a run of 25 incidents.
 
 | Batch run, 35 incidents | Per incident | Total |
 |---|---|---|
@@ -723,10 +727,10 @@ How we stay within the limits:
    and per day, set from `config/llm.yaml`; reads Groq's `x-ratelimit-*`
    headers; on 429 waits for `retry-after` with backoff instead of retrying at
    once.
-6. **Fallback chain, each with its own quota:** Groq 70B → Groq 8B →
-   NeevCloud → template report. A report never fails; a template is labelled
+6. **Fallback chain, each with its own quota:** Groq gpt-oss-120b → Groq
+   gpt-oss-20b → NeevCloud → template report. A report never fails; a template is labelled
    as such (`report_source`).
-7. **Right model per job:** 70B for the narrator and rule writer; 8B for Q&A,
+7. **Right model per job:** the large model for the narrator and rule writer; the small one for Q&A,
    with evidence capped at about 60 lines and answers cached per question.
 8. **Limits on on-demand agents:** a small per-minute cap on Q&A and rule
    drafts from the UI, with a clear "limit reached, try again in N s" message.
@@ -740,8 +744,8 @@ How we stay within the limits:
 
 **Manual work (M10):** create Groq and NeevCloud keys; set
 `LLM_PRIMARY_BASE_URL=https://api.groq.com/openai/v1`, `LLM_PRIMARY_API_KEY`,
-`LLM_PRIMARY_MODEL_LARGE` (e.g. `llama-3.3-70b-versatile`),
-`LLM_PRIMARY_MODEL_SMALL` (e.g. `llama-3.1-8b-instant`), and the same four
+`LLM_PRIMARY_MODEL_LARGE=openai/gpt-oss-120b`,
+`LLM_PRIMARY_MODEL_SMALL=openai/gpt-oss-20b`, and the same four
 `LLM_FALLBACK_*` values from the NeevCloud dashboard; set
 `LLM_MAX_REQUESTS_PER_MINUTE` under the provider limit. Read 5 narrator
 reports beside their templates and fix the prompt, not the output.

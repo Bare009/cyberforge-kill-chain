@@ -249,14 +249,55 @@ def test_endpoints_from_env(monkeypatch):
             monkeypatch.setenv(f"LLM_{k}_{f}", "")
     monkeypatch.setenv("LLM_PRIMARY_BASE_URL", "https://api.groq.com/openai/v1")
     monkeypatch.setenv("LLM_PRIMARY_API_KEY", "k")
-    monkeypatch.setenv("LLM_PRIMARY_MODEL_LARGE", "llama-3.3-70b-versatile")
-    monkeypatch.setenv("LLM_PRIMARY_MODEL_SMALL", "llama-3.1-8b-instant")
+    monkeypatch.setenv("LLM_PRIMARY_MODEL_LARGE", "openai/gpt-oss-120b")
+    monkeypatch.setenv("LLM_PRIMARY_MODEL_SMALL", "openai/gpt-oss-20b")
     monkeypatch.setenv("LLM_MAX_REQUESTS_PER_MINUTE", "20")
+    monkeypatch.setenv("LLM_FALLBACK_BASE_URL", "https://neev.example/v1")
+    monkeypatch.setenv("LLM_FALLBACK_API_KEY", "n")
+    monkeypatch.setenv("LLM_FALLBACK_MODEL_LARGE", "meta-llama/Llama-3.3-70B-Instruct")
     chain = endpoints("large")
-    assert [e.name for e in chain] == ["primary:llama-3.3-70b-versatile", "primary:llama-3.1-8b-instant"]
-    assert chain[0].limits.tokens_per_day == 100000 and chain[0].limits.requests_per_minute == 20
+    assert [e.name for e in chain] == ["primary:openai/gpt-oss-120b", "primary:openai/gpt-oss-20b",
+                                       "fallback:meta-llama/Llama-3.3-70B-Instruct"]
+    assert chain[0].limits.tokens_per_day == 200000 and chain[0].limits.requests_per_minute == 20
+    assert chain[0].limits.tokens_per_minute == 8000
+    # gpt-oss reasons: low effort and room for it; a Llama does not
+    assert (chain[0].reasoning_effort, chain[0].reasoning_tokens) == ("low", 1000)
+    assert (chain[2].reasoning_effort, chain[2].reasoning_tokens) == (None, 0)
     assert "k" not in repr(chain[0])
-    assert [e.name for e in endpoints("small")] == ["primary:llama-3.1-8b-instant"]
+    assert [e.name for e in endpoints("small")] == ["primary:openai/gpt-oss-20b"]
+
+
+def test_reasoning_model_gets_effort_and_room_and_a_cut_off_answer_is_not_cached(inc, tmp_path):
+    reasoner = Endpoint("primary", "https://primary.example/v1", "test-key", "openai/gpt-oss-120b", "large",
+                        Limits(30, 1000, 100000, 1000000), "low", 1000)
+    plain = ep("fallback", "llama")
+    good = json.dumps(good_answer(inc))
+
+    class Cut(FakeLLM):
+        """The first answer from the reasoning model stops at max_tokens."""
+        def __call__(self, request):
+            res = super().__call__(request)
+            if request.url.host.startswith("primary") and len(self.calls) == 1:
+                body = json.loads(res.content)
+                body["choices"][0]["finish_reason"] = "length"
+                body["choices"][0]["message"]["content"] = good[:40]
+                return httpx.Response(200, json=body)
+            return res
+
+    fake = Cut({"primary": [good], "fallback": [good]})
+    client = LLMClient([reasoner, plain], LLMStore(tmp_path / "llm.sqlite"), cfg=CFG, http_client=fake.http(),
+                       sleep=lambda s: None)
+    msgs = [{"role": "user", "content": "hi"}]
+    r1 = client.chat(msgs, max_tokens=700)
+    body = fake.calls[0][1]
+    assert body["reasoning_effort"] == "low" and body["max_tokens"] == 1700
+    assert r1.content == good[:40] and "answer cut off at max_tokens" in " ".join(r1.notes)
+    r2 = client.chat(msgs, max_tokens=700)              # not served from the cache: asked again
+    assert not r2.cached and r2.content == good and len(fake.calls) == 2
+    assert client.chat(msgs, max_tokens=700).cached      # a full answer is cached
+    # a model that does not reason gets neither the parameter nor extra tokens
+    LLMClient([plain], LLMStore(tmp_path / "b.sqlite"), cfg=CFG, http_client=fake.http()).chat(msgs, max_tokens=700)
+    assert "reasoning_effort" not in fake.calls[-1][1] and fake.calls[-1][1]["max_tokens"] == 700
 
 
 # ---------------------------------------------------------------- CLI and bundle

@@ -1,7 +1,10 @@
 """OpenAI-compatible LLM client for the agents (docs/build-plan.md P10b).
 
-- Fallback chain: Groq 70B -> Groq 8B -> NeevCloud large -> NeevCloud small (from .env);
-  the caller falls back to the template report when every model fails.
+- Fallback chain: primary large -> primary small -> fallback large -> fallback small (from .env;
+  Groq gpt-oss-120b / gpt-oss-20b, then NeevCloud); the caller falls back to the template
+  report when every model fails.
+- Reasoning models (config/llm.yaml `reasoning:`) get `reasoning_effort` and extra output tokens,
+  since their hidden reasoning counts against max_tokens.
 - Every answer is cached in data/cache/llm.sqlite by hash of model + prompt + settings,
   so a rerun only calls the LLM for prompts that changed.
 - Per-model budget: requests and tokens per minute and per day (config/llm.yaml, with a
@@ -212,10 +215,12 @@ class LLMClient:
         return c
 
     def cache_key(self, ep: Endpoint, messages: Messages, max_tokens: int, json_mode: bool) -> str:
-        blob = json.dumps({"model": ep.model, "provider": ep.provider, "messages": list(messages),
-                           "max_tokens": max_tokens, "json": json_mode,
-                           "temperature": self.cfg.get("temperature", 0)}, sort_keys=True)
-        return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+        d: Dict[str, Any] = {"model": ep.model, "provider": ep.provider, "messages": list(messages),
+                             "max_tokens": max_tokens, "json": json_mode,
+                             "temperature": self.cfg.get("temperature", 0)}
+        if ep.reasoning_effort or ep.reasoning_tokens:      # only then, so other models keep their keys
+            d["reasoning"] = [ep.reasoning_effort, ep.reasoning_tokens]
+        return hashlib.sha256(json.dumps(d, sort_keys=True).encode("utf-8")).hexdigest()
 
     def cached(self, messages: Messages, max_tokens: int, json_mode: bool = True) -> Optional[LLMResult]:
         for ep in self.chain:
@@ -237,12 +242,13 @@ class LLMClient:
         if not self.chain:
             raise LLMError("no LLM endpoint configured (LLM_PRIMARY_* / LLM_FALLBACK_* in .env)")
         max_wait = float(self.cfg.get("max_wait_s", 20))
-        est = estimate_tokens(messages) + max_tokens
         notes: List[str] = []
         for ep in self.chain:
             if self._cooldown.get(ep.provider, 0) > self.clock():
                 notes.append(f"{ep.name}: skipped, key was refused recently")
                 continue
+            ep_max = max_tokens + ep.reasoning_tokens       # room for a reasoning model's hidden reasoning
+            est = estimate_tokens(messages) + ep_max
             for attempt in range(2):
                 wait = self.limiter.wait_needed(ep, est)
                 if wait is None:
@@ -254,22 +260,32 @@ class LLMClient:
                 if wait > 0:
                     self.sleep(wait)
                 try:
-                    kwargs: Dict[str, Any] = {"model": ep.model, "messages": list(messages), "max_tokens": max_tokens,
+                    kwargs: Dict[str, Any] = {"model": ep.model, "messages": list(messages), "max_tokens": ep_max,
                                               "temperature": self.cfg.get("temperature", 0)}
                     if json_mode:
                         kwargs["response_format"] = {"type": "json_object"}
+                    if ep.reasoning_effort:
+                        kwargs["reasoning_effort"] = ep.reasoning_effort
                     raw = self._client(ep).chat.completions.with_raw_response.create(**kwargs)
                     self.limiter.apply_headers(ep, raw.headers)
                     resp = raw.parse()
-                    content = (resp.choices[0].message.content or "").strip()
+                    choice = resp.choices[0]
+                    content = (choice.message.content or "").strip()
                     u = getattr(resp, "usage", None)
                     pt = int(getattr(u, "prompt_tokens", 0) or 0)
                     ct = int(getattr(u, "completion_tokens", 0) or 0)
                     self.limiter.record(ep, pt + ct or est)
                     if not content:
-                        notes.append(f"{ep.name}: empty answer")
+                        why = (" (hit max_tokens; raise extra_tokens for this model in config/llm.yaml)"
+                               if getattr(choice, "finish_reason", None) == "length" else "")
+                        notes.append(f"{ep.name}: empty answer{why}")
                         break
-                    self.store.put(self.cache_key(ep, messages, max_tokens, json_mode), ep.name, content, pt, ct)
+                    if getattr(choice, "finish_reason", None) == "length":
+                        # cut off at max_tokens: not cached, so a retry asks again instead of getting this back;
+                        # the callers' checks reject a half answer
+                        notes.append(f"{ep.name}: answer cut off at max_tokens")
+                    else:
+                        self.store.put(self.cache_key(ep, messages, max_tokens, json_mode), ep.name, content, pt, ct)
                     return LLMResult(content, ep.name, ep.model, ep.provider, False, pt, ct, notes)
                 except (openai.AuthenticationError, openai.PermissionDeniedError):
                     self._cooldown[ep.provider] = self.clock() + float(self.cfg.get("auth_cooldown_s", 600))

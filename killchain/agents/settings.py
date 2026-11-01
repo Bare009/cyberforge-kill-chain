@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
@@ -35,6 +36,10 @@ class Endpoint:
     model: str
     size: str                # large | small
     limits: Limits
+    # reasoning models (gpt-oss, ...): the effort sent with each call, and the output tokens added
+    # to every job's max_tokens for the hidden reasoning, which counts against max_tokens
+    reasoning_effort: Optional[str] = None
+    reasoning_tokens: int = 0
 
     @property
     def name(self) -> str:
@@ -60,6 +65,16 @@ def limits_for(model: str, cfg: Dict[str, Any]) -> Limits:
                   int(d.get("tokens_per_day", 100000)))
 
 
+def reasoning_for(model: str, cfg: Dict[str, Any]) -> Tuple[Optional[str], int]:
+    """(effort, extra output tokens) from the first `reasoning:` entry whose `match` regex is found
+    in the model name (case-insensitive); (None, 0) for a model that does not reason."""
+    for r in cfg.get("reasoning") or []:
+        if re.search(str(r.get("match") or "^$"), model, re.IGNORECASE):
+            effort = r.get("effort")
+            return (str(effort) if effort else None), int(r.get("extra_tokens") or 0)
+    return None, 0
+
+
 def endpoints(size: str = "large", cfg: Dict[str, Any] | None = None) -> List[Endpoint]:
     """The fallback chain for a job, from .env. Large jobs: primary large, primary small, fallback
     large, fallback small. Small jobs: primary small, fallback small. Endpoints without a key or
@@ -79,7 +94,8 @@ def endpoints(size: str = "large", cfg: Dict[str, Any] | None = None) -> List[En
         if not (url and key and model) or (provider, model) in seen:
             continue
         seen.add((provider, model))
-        out.append(Endpoint(provider, url, key, model, tier.lower(), limits_for(model, cfg)))
+        effort, extra = reasoning_for(model, cfg)
+        out.append(Endpoint(provider, url, key, model, tier.lower(), limits_for(model, cfg), effort, extra))
     return out
 
 
