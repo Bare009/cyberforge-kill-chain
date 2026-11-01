@@ -342,9 +342,13 @@ the full pipeline on it and then shows the new run on every page.
    Dashboard switches between analysed runs.
 
 ```powershell
-python -m killchain serve --run firex-30G --raw-dir logs      # uploads land in logs\
+python -m killchain serve --run none --raw-dir logs           # start empty; uploads land in logs\
 cd web; npm run dev                                           # http://localhost:5173
 ```
+
+With `--run none` (or `KILLCHAIN_RUN=none`), the API starts with no run. The
+Dashboard shows only the upload card, and every other page is empty until a
+log has been analysed. `POST /runs/select {"run": "none"}` empties it again.
 
 Measured on the 16-core, 16 GB development machine, with a fresh 6.1 GiB copy
 of firex-10G uploaded through the browser: the upload took 43 s (about

@@ -14,7 +14,8 @@ from typing import List, Optional
 
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m killchain.api", description="Serve a run bundle over HTTP.")
-    ap.add_argument("--run", help="run folder or run name (data/runs/<name> or examples/<name>)")
+    ap.add_argument("--run", help="run folder or run name (data/runs/<name> or examples/<name>); "
+                                  "'none' starts with no run, ready to analyse a new log from the Dashboard")
     ap.add_argument("--raw-dir", help="folder with the raw logs named in the evidence (default KILLCHAIN_RAW_DIR, else data/raw)")
     ap.add_argument("--host", default="127.0.0.1", help="use 0.0.0.0 inside Docker")
     ap.add_argument("--port", type=int, default=8000)

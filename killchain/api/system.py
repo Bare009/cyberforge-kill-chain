@@ -75,7 +75,9 @@ def _versions() -> Dict[str, str]:
 
 
 def run_files(run_dir: Path) -> List[Dict[str, Any]]:
-    rows = []
+    rows: List[Dict[str, Any]] = []
+    if not run_dir.is_dir():              # no run loaded (--run none)
+        return rows
     for p in sorted(run_dir.iterdir()):
         if p.name.endswith(".tmp"):
             continue
@@ -102,8 +104,9 @@ def get_system(request: Request) -> Dict[str, Any]:
     live = st.live
     return {
         "run": b.run,
-        "run_dir": str(b.run_dir),
+        "run_dir": None if b.empty else str(b.run_dir),
         "sample": b.sample,
+        "empty": b.empty,
         "bundled_at": rs.get("bundled_at"),
         "stages": rs.get("stages") or {},
         "totals": rs.get("totals") or {},

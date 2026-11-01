@@ -178,3 +178,30 @@ def test_cancel_stops_the_job(env):
     assert job["state"] == "cancelled" and job["switched"] is False
     assert client.get("/health").json()["run"] == "first"
     assert not any(s["status"] in ("running", "pending") for s in job["stages"])
+
+
+def test_start_with_no_run_then_select_and_go_back(tmp_path, monkeypatch):
+    """--run none: every page answers with nothing until a log is analysed or a run is picked."""
+    data = tmp_path / "data"
+    shutil.copytree(SAMPLE, data / "runs" / "first")
+    monkeypatch.setenv("KILLCHAIN_DATA_DIR", str(data))
+    client = TestClient(create_app("none", raw_dir=tmp_path / "raw", ti_cache=tmp_path / "ti.sqlite", ti_offline=True,
+                                   llm_cache=tmp_path / "llm.sqlite"))
+    h = client.get("/health").json()
+    assert h["empty"] is True and h["run"] == "none" and h["counts"] == {"incidents": 0, "alerts": 0, "events": 0}
+    d = client.get("/dashboard/summary").json()
+    assert d["empty"] is True and d["kpis"]["incidents"] == 0 and d["kpis"]["processing_secs"] is None
+    assert d["worst_incidents"] == [] and d["alerts_per_hour"] == [] and d["stages"] == {}
+    for path in ("/incidents", "/alerts", "/unexplained", "/rules", "/mitre/matrix", "/ti/status", "/ti/indicators",
+                 "/system", "/metrics", "/live/status", "/uploads", "/jobs/current"):
+        assert client.get(path).status_code == 200, path
+    assert client.get("/incidents").json()["incidents"] == [] and client.get("/system").json()["files"] == []
+    assert client.get("/incidents/1").status_code == 404
+    runs = client.get("/runs").json()
+    assert runs["active"] == "none" and not any(r["active"] for r in runs["runs"])
+    assert not (data / "runs" / ".none").exists()
+    assert client.post("/jobs", json={"file": "x.log", "run": "none"}).status_code in (400, 404)
+    assert client.post("/runs/select", json={"run": "first"}).json()["active"] == "sample-run"
+    assert client.get("/health").json()["empty"] is False
+    assert client.post("/runs/select", json={"run": "none"}).json()["active"] == "none"
+    assert client.get("/health").json()["empty"] is True

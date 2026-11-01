@@ -135,6 +135,7 @@ def dashboard_summary(b: RunBundle, ti_status: Dict[str, Any]) -> Dict[str, Any]
     return {
         "run": b.run,
         "sample": b.sample,
+        "empty": b.empty,
         "kpis": {
             "events_parsed": dq.get("events"),
             "log_lines": dq.get("lines"),

@@ -9,6 +9,8 @@ export interface HealthResponse {
   status: 'ok' | 'degraded'
   run: string
   sample: boolean
+  /** No run loaded yet (API started with --run none). */
+  empty?: boolean
   counts: {
     incidents: number
     alerts: number

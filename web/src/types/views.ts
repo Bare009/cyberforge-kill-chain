@@ -59,6 +59,8 @@ export interface LlmStatus {
 export interface DashboardSummary {
   run: string
   sample: boolean
+  /** No run loaded yet (API started with --run none). */
+  empty?: boolean
   kpis: {
     events_parsed: number | null
     log_lines: number | null

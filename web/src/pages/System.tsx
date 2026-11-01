@@ -109,7 +109,7 @@ export function System() {
             <Panel title="Run">
               <dl>
                 <Row k="Run" v={<span className="font-mono">{s.run}{s.sample ? ' (sample)' : ''}</span>} />
-                <Row k="Folder" v={<span className="break-all font-mono">{s.run_dir}</span>} />
+                <Row k="Folder" v={<span className="break-all font-mono">{s.run_dir ?? 'none (no run loaded)'}</span>} />
                 <Row k="Bundled" v={formatFullTime(s.bundled_at)} />
                 <Row k="Loaded by the API" v={`${formatFullTime(s.api.loaded_at)}${s.api.reloads ? ` (${s.api.reloads} reloads)` : ''}`} />
                 <Row k="Watching for changes" v={<Yes ok={s.api.watching} text={s.api.watching ? 'yes' : 'no'} />} />
@@ -160,6 +160,9 @@ export function System() {
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Panel title="Run files">
+              {s.files.length === 0 && (
+                <p className="text-sm text-slate-400">{s.empty ? 'No run loaded yet.' : 'No files in the run folder.'}</p>
+              )}
               <table className="w-full text-left text-xs" aria-label="Run file list">
                 <tbody>
                   {s.files.map((f) => (

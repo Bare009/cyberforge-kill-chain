@@ -19,7 +19,7 @@ export function StatusBar() {
         <>
           <span>|</span>
           <span>
-            Run: {data.run}
+            {data.empty ? 'No run loaded' : `Run: ${data.run}`}
             {data.sample ? ' (sample)' : ''}
           </span>
           <span>|</span>

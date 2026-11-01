@@ -10,7 +10,8 @@ export function RunPicker() {
   const select = useSelectRun()
   const notify = useAppStore((s) => s.addNotification)
   const rows = runs.data?.runs ?? []
-  if (rows.length < 2) return null
+  // nothing loaded (--run none): no run list either, so the Dashboard is clean before the first upload
+  if (rows.length < 2 || !rows.some((r) => r.active)) return null
   const active = rows.find((r) => r.active)?.name ?? runs.data?.active ?? ''
   return (
     <label className="flex items-center gap-2 text-xs text-slate-600">

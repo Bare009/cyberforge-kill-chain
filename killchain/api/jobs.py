@@ -47,7 +47,7 @@ from pydantic import BaseModel, Field
 
 from killchain.run.pipeline import STAGES
 
-from .bundle import REPO_ROOT
+from .bundle import EMPTY_RUN, REPO_ROOT, empty_bundle
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -550,7 +550,7 @@ def start_job(body: JobRequest, request: Request) -> Dict[str, Any]:
     if not path.is_file():
         raise HTTPException(status_code=404, detail=f"{name} is not in the raw folder {up.raw_dir}; upload it first")
     run = body.run or Path(name).stem
-    if not RUN_RE.match(run):
+    if not RUN_RE.match(run) or run == EMPTY_RUN:
         raise HTTPException(status_code=400, detail=f"bad run name {run!r}: use letters, digits, '.', '_' and '-'")
     data_dir: Path = request.app.state.data_dir
     run_dir = data_dir / "runs" / run
@@ -611,6 +611,10 @@ class SelectRequest(BaseModel):
 @router.post("/runs/select", tags=["analyse"])
 def select_run(body: SelectRequest, request: Request) -> Dict[str, Any]:
     """Serve another run: every endpoint answers from it from now on."""
+    if body.run == EMPTY_RUN:                 # back to no run: an empty Dashboard, ready for a new log
+        e = empty_bundle()
+        b = request.app.state.activate(e.run_dir, e)
+        return {"active": b.run, "incidents": 0, "alerts": 0}
     run_dir = find_run(body.run, request.app.state.data_dir)
     if run_dir is None:
         raise HTTPException(status_code=404, detail=f"no run named {body.run!r}")

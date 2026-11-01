@@ -221,6 +221,19 @@ export function Dashboard() {
     )
   }
 
+  if (data?.empty) {
+    return (
+      <div className="space-y-5">
+        <PageTitle icon={<LayoutDashboard className="h-5 w-5" />} title="Dashboard" subtitle="No log analysed yet." />
+        <AnalyseLog />
+        <div className="rounded-xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500">
+          Nothing to show yet. Upload a log above; when it has been analysed, its incidents, alerts and timings appear
+          here and on every page.
+        </div>
+      </div>
+    )
+  }
+
   const k = data?.kpis
   return (
     <div className="space-y-5">

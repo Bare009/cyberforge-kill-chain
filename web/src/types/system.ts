@@ -51,8 +51,9 @@ export interface MetricsResponse {
 /** GET /system */
 export interface SystemResponse {
   run: string
-  run_dir: string
+  run_dir: string | null
   sample: boolean
+  empty?: boolean
   bundled_at: string | null
   stages: Record<string, StageStats>
   totals: { processing_secs?: number; peak_rss_mb?: number }

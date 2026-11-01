@@ -7,6 +7,7 @@ import { runNameFor, safeFileName, uploadFile } from '@/lib/upload'
 import type { Job, RunList, UploadListing } from '@/types/jobs'
 import { AnalyseLog } from './AnalyseLog'
 import { RunPicker } from './RunPicker'
+import { Dashboard } from '@/pages/Dashboard'
 
 const get = vi.fn()
 const post = vi.fn()
@@ -171,6 +172,22 @@ describe('AnalyseLog', () => {
     expect(screen.getByText(/every page now show this run/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /Analyse another log/ }))
     expect(screen.getByRole('button', { name: 'Choose a log file' })).toBeInTheDocument()
+  })
+})
+
+describe('Dashboard with no run loaded', () => {
+  it('shows only the upload card, and no run list', async () => {
+    const empty = { ...runs, active: 'none', runs: runs.runs.map((r) => ({ ...r, active: false })) }
+    get.mockImplementation((url: string) => {
+      if (url === '/dashboard/summary') return Promise.resolve({ data: { run: 'none', sample: false, empty: true } })
+      if (url === '/runs') return Promise.resolve({ data: empty })
+      return fakeGet(url)
+    })
+    renderPage(<Dashboard />)
+    expect(await screen.findByText('No log analysed yet.')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Choose a log file' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Events parsed')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Run shown')).not.toBeInTheDocument()
   })
 })
 

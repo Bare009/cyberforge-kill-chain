@@ -22,7 +22,8 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from .bundle import RunBundle, default_data_dir, default_raw_dir, load_bundle, resolve_run_dir
+from .bundle import (RunBundle, default_data_dir, default_raw_dir, empty_bundle, load_bundle, resolve_run_dir,
+                     wants_empty)
 from .entities import entity_view
 from .evidence import EvidenceStore
 from .mitre import MitreStore
@@ -114,8 +115,12 @@ def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[s
     `watch` starts the live watcher: the bundle is reloaded when its files change
     (the CLI turns it on; tests call app.state.live.poll() instead).
     """
-    run_dir = Path(run) if isinstance(run, Path) else resolve_run_dir(run)
-    bundle = load_bundle(run_dir)
+    if wants_empty(run):
+        bundle = empty_bundle()
+        run_dir = bundle.run_dir
+    else:
+        run_dir = Path(run) if isinstance(run, Path) else resolve_run_dir(run)
+        bundle = load_bundle(run_dir)
 
     app = FastAPI(
         title="KillChain API",
@@ -195,6 +200,7 @@ def create_app(run: Optional[Union[str, Path]] = None, raw_dir: Optional[Union[s
             "status": "degraded" if b.errors else "ok",
             "run": b.run,
             "sample": b.sample,
+            "empty": b.empty,
             "counts": {
                 "incidents": len(b.incidents),
                 "alerts": len(b.alerts),

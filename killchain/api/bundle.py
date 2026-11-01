@@ -51,6 +51,8 @@ class RunBundle:
     unexplained: List[Dict[str, Any]] = field(default_factory=list)
     # metrics.json from `eval score`; None until it has run
     metrics: Optional[Dict[str, Any]] = None
+    # no run loaded (`--run none`): every endpoint answers with nothing until a log is analysed
+    empty: bool = False
 
     def resolve(self, ident: str) -> Optional[int]:
         """An incident's number from its number ("12") or its stable hash."""
@@ -73,6 +75,23 @@ def default_raw_dir() -> Path:
         p = Path(raw)
         return p if p.is_absolute() else REPO_ROOT / p
     return default_data_dir() / "raw"
+
+
+EMPTY_RUN = "none"
+
+
+def wants_empty(run: Optional[Any] = None) -> bool:
+    """`--run none` (or KILLCHAIN_RUN=none): start with no run, for analysing a new log from the UI."""
+    if isinstance(run, Path):
+        return False
+    return (run or os.environ.get("KILLCHAIN_RUN") or "") == EMPTY_RUN
+
+
+def empty_bundle() -> RunBundle:
+    """A bundle with no incidents, alerts or run summary. Its folder (data/runs/.none) is never
+    created; run names cannot start with a dot, so no job can write there."""
+    return RunBundle(run_dir=default_data_dir() / "runs" / ".none", run=EMPTY_RUN, sample=False, index_rows=[],
+                     incidents={}, alerts=[], run_summary={}, empty=True)
 
 
 def resolve_run_dir(run: Optional[str] = None) -> Path:
