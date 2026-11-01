@@ -1,0 +1,6 @@
+Generate Time,Source address,Destination address,Destination Port,Action
+2026/10/29 01:51:23,web01.corp.local,10.10.20.20,443,allow
+2026/10/29 01:51:24,web02.corp.local,10.10.20.21,443,allow
+2026/10/29 01:51:25,web03.corp.local,10.10.20.22,80,deny
+2026/10/29 01:51:26,web04.corp.local,10.10.20.23,eighty,deny
+2026/10/29 01:51:27,10.10.40.43,10.10.20.24,22,allow

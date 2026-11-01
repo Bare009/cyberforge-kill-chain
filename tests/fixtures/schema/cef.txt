@@ -1,0 +1,5 @@
+<134>Oct 29 01:51:23 fw01 CEF:0|Check Point|VPN-1 & FireWall-1|R81|Drop|Drop|5|rt=1793238683000 src=32.127.48.11 spt=43164 dst=10.10.20.20 dpt=1 proto=TCP act=Drop deviceDirection=0 in=60 out=0
+<134>Oct 29 01:51:24 fw01 CEF:0|Check Point|VPN-1 & FireWall-1|R81|Accept|Accept|3|rt=1793238684000 src=10.10.40.43 spt=46533 dst=171.8.137.238 dpt=443 proto=TCP act=Accept in=5827 out=40789 suser=alice
+<134>Oct 29 01:51:25 fw01 CEF:0|Check Point|VPN-1 & FireWall-1|R81|Accept|Accept|3|rt=1793238685000 src=10.10.40.44 spt=46534 dst=171.8.137.239 dpt=80 proto=TCP act=Accept in=100 out=2000 request=/index.html
+<134>Oct 29 01:51:26 fw01 CEF:0|Check Point|SmartDefense|R81|SQLi|SQL Injection attempt|8|rt=1793238686000 src=32.127.48.11 spt=43170 dst=10.10.20.20 dpt=443 proto=TCP act=Prevent request=/login.php?id=1 OR 1=1
+<134>Oct 29 01:51:27 fw01 CEF:0|Check Point|VPN-1 & FireWall-1|R81|Reject|Reject|5|rt=1793238687000 src=45.74.28.245 spt=50000 dst=10.10.99.1 dpt=22 proto=TCP act=Reject in=40 out=0

@@ -23,6 +23,12 @@ def cmd_parse(rest: List[str]) -> int:
     return 0
 
 
+def cmd_schema(rest: List[str]) -> int:
+    from .schema.cli import main as schema_main
+
+    return schema_main(rest)
+
+
 def cmd_db(rest: List[str]) -> int:
     ap = argparse.ArgumentParser(prog="python -m killchain db",
                                  description="Open the DuckDB views over a parsed run and print a summary or run SQL.")
@@ -132,7 +138,8 @@ def cmd_live(rest: List[str]) -> int:
     return live_main(rest)
 
 
-COMMANDS: Dict[str, Callable[[List[str]], int]] = {"parse": cmd_parse, "db": cmd_db, "eval": cmd_eval,
+COMMANDS: Dict[str, Callable[[List[str]], int]] = {"parse": cmd_parse, "schema": cmd_schema, "db": cmd_db,
+                                                   "eval": cmd_eval,
                                                    "detect": cmd_detect, "correlate": cmd_correlate,
                                                    "chain": cmd_chain, "reach": cmd_reach,
                                                    "score": cmd_score, "report": cmd_report,

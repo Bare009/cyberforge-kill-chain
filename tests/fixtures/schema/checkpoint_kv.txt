@@ -1,0 +1,5 @@
+time=1793238683 action="Drop" orig=203.0.113.5 src=32.127.48.11 s_port=43164 dst=10.10.20.20 service=1 proto=6 product="VPN-1 & FireWall-1" rule_name="Stealth" src_user_name=""
+time=1793238684 action="Accept" orig=203.0.113.5 src=10.10.40.43 s_port=46533 dst=171.8.137.238 service=443 proto=6 product="VPN-1 & FireWall-1" rule_name="Outbound" client_outbound_bytes=5827 server_outbound_bytes=40789 src_user_name="alice"
+time=1793238685 action="Accept" orig=203.0.113.5 src=10.10.40.44 s_port=46534 dst=171.8.137.239 service=80 proto=6 product="VPN-1 & FireWall-1" rule_name="Outbound" client_outbound_bytes=100 server_outbound_bytes=2000 src_user_name="bob"
+time=1793238686 action="Reject" orig=203.0.113.5 src=45.74.28.245 s_port=50000 dst=10.10.99.1 service=22 proto=6 product="VPN-1 & FireWall-1" rule_name="Mgmt"
+time=1793238687 action="Drop" orig=203.0.113.5 src=32.127.48.11 s_port=43165 dst=10.10.20.20 service=2 proto=6 product="VPN-1 & FireWall-1" rule_name="Stealth"

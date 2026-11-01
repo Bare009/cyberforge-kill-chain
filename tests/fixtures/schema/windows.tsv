@@ -1,0 +1,6 @@
+TimeCreated	EventID	Computer	TargetUserName	IpAddress	IpPort	LogonType	WorkstationName	Keywords
+2026-10-29 01:51:23	4625	DC01.corp.local	administrator	45.74.28.245	50000	3	KALI	Audit Failure
+2026-10-29 01:51:24	4625	DC01.corp.local	administrator	45.74.28.245	50001	3	KALI	Audit Failure
+2026-10-29 01:51:25	4625	DC01.corp.local	admin	45.74.28.245	50002	3	KALI	Audit Failure
+2026-10-29 01:51:26	4624	DC01.corp.local	svc_backup30	10.10.20.20	0	10	WEB01	Audit Success
+2026-10-29 01:51:27	4634	DC01.corp.local	svc_backup30	-	-	10	WEB01	Audit Success

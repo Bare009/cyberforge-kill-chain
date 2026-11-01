@@ -1,0 +1,43 @@
+# Vendor alerts (alerts another product already raised, e.g. Sentinel, SentinelOne, CrowdStrike,
+# Defender, an EDR, Wazuh) become killchain alerts with layer "vendor" (killchain/schema/vendor.py).
+#
+# Their ATT&CK label comes from, in order: the record's own MITRE field (validated against the
+# catalogue), this keyword table (regex on the alert name, case-insensitive, first match wins),
+# an LLM label of the distinct alert names (one call, cached; skipped with --no-llm), else
+# technique "unknown".
+
+group_gap: 1h            # same alert name + entity within this gap -> one alert (avoids floods)
+default_confidence: 0.7  # when the vendor gives none
+default_severity: 3      # when the vendor gives none (1-5)
+promote_severity: 4      # a vendor alert at or above this severity is an incident on its own
+
+keywords:
+  - {pattern: 'brute.?force|password spray|credential stuffing|many failed (log ?ins|logons|sign.?ins)|account lockout', technique: T1110, tactic: credential-access}
+  - {pattern: 'kerberoast', technique: T1558.003, tactic: credential-access}
+  - {pattern: 'mimikatz|credential dump|lsass|sekurlsa|procdump.*lsass|comsvcs', technique: T1003.001, tactic: credential-access}
+  - {pattern: 'credential (theft|access)|password dump|sam hive|ntds', technique: T1003, tactic: credential-access}
+  - {pattern: 'phish', technique: T1566, tactic: initial-access}
+  - {pattern: 'ransom|mass file (rename|encrypt)|files? encrypted|\.locked', technique: T1486, tactic: impact}
+  - {pattern: 'shadow cop(y|ies)|vssadmin|wbadmin.*delete', technique: T1490, tactic: impact}
+  - {pattern: 'powershell|encoded command|-enc ', technique: T1059.001, tactic: execution}
+  - {pattern: 'cmd\.exe|command shell|windows command', technique: T1059.003, tactic: execution}
+  - {pattern: 'psexec|lateral movement|remote service|admin share|smb.*lateral', technique: T1021.002, tactic: lateral-movement}
+  - {pattern: '\brdp\b|remote desktop', technique: T1021.001, tactic: lateral-movement}
+  - {pattern: 'port ?scan|network scan|host discovery|service discovery', technique: T1046, tactic: discovery}
+  - {pattern: 'exfiltrat|data transfer to|large upload|data theft', technique: T1048, tactic: exfiltration}
+  - {pattern: 'beacon|command.and.control|\bc2\b|c&c|cobalt ?strike', technique: T1071, tactic: command-and-control}
+  - {pattern: 'dns tunnel', technique: T1071.004, tactic: command-and-control}
+  - {pattern: 'web ?shell', technique: T1505.003, tactic: persistence}
+  - {pattern: 'sql injection|sqli\b|exploit(ation)? of (a )?public|web exploit', technique: T1190, tactic: initial-access}
+  - {pattern: 'scheduled task|schtasks', technique: T1053.005, tactic: persistence}
+  - {pattern: 'registry run key|run key|autorun', technique: T1547.001, tactic: persistence}
+  - {pattern: 'new service|service install|service created', technique: T1543.003, tactic: persistence}
+  - {pattern: 'new (local )?admin|added to (the )?(domain )?admins|privileged group', technique: T1098, tactic: persistence}
+  - {pattern: 'account created|new user account', technique: T1136, tactic: persistence}
+  - {pattern: 'log(s)? (were )?cleared|event log clear|audit log', technique: T1070.001, tactic: defense-evasion}
+  - {pattern: 'defender (disabled|turned off)|tamper|disable(d)? (security|antivirus|av)', technique: T1562.001, tactic: defense-evasion}
+  - {pattern: 'impossible travel|unfamiliar sign.?in|anomalous (sign.?in|login)|suspicious (sign.?in|login)|atypical travel', technique: T1078, tactic: initial-access}
+  - {pattern: 'privilege escalation|uac bypass|token manipulation', technique: T1548, tactic: privilege-escalation}
+  - {pattern: 'process injection|injected', technique: T1055, tactic: defense-evasion}
+  - {pattern: 'denial of service|\bddos\b|\bdos\b|flood', technique: T1498, tactic: impact}
+  - {pattern: 'malware|trojan|virus|malicious (file|executable)|worm|backdoor', technique: T1204, tactic: execution}

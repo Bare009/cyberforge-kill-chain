@@ -1,0 +1,370 @@
+# Field names of other security products -> killchain's canonical columns (killchain/schema, docs/schema.md).
+#
+# Matching ignores case and every character that is not a letter or digit, so "Source address",
+# "source_address", "sourceAddress" and "source.address" are the same name. A nested JSON field is
+# matched on its full dotted path first ("source.ip", "winlog.event_data.TargetUserName"); a field
+# no full name matches is also tried on its last one or two path parts when they have 5 or more
+# characters ("data.srcip" -> "srcip"), only against names without a dot here, so "x.src" never
+# matches "src" and "Entities.HostName" never matches "host.name".
+#
+# Order matters: for each column the names found in the log are taken in list order and up to
+# three are kept (first non-empty value per record wins), so mixed record types can fill one
+# column from different fields. A field feeds only the first column that names it (see
+# shared_fields). An entry may be limited to some input formats: {name: hostname, formats: [kv]},
+# or to its exact spelling (case-insensitive, separators kept): {name: rule.name, exact: true}, so
+# ECS rule.name (a signature) is not taken for Check Point rule_name (a policy rule).
+#
+# Products covered: FortiGate, Palo Alto (CSV export headers), Check Point, Cisco ASA (syslog
+# patterns below), Sophos, Elastic ECS, OCSF, CEF / LEEF, Microsoft Sentinel and Defender,
+# SentinelOne, CrowdStrike, Windows Security and Sysmon events, Okta, Wazuh, Splunk exports.
+
+wrappers: ["_source.", "result.", "fields."]     # Elastic / Splunk export envelopes, stripped
+
+columns:
+  ts: ["@timestamp", timestamp, TimeGenerated, TimeCreated.SystemTime, TimeCreated, Event.System.TimeCreated.SystemTime,
+       System.TimeCreated.SystemTime, EventTime, event_time, eventTimestamp, Generate Time, Receive Time, receive_time,
+       time_generated, _time, createdAt, created_at, threatInfo.createdAt, threatInfo.identifiedAt, detectedAt,
+       published, UtcTime, event.created, timestamp_utc, StartTime, start_time, cef.extensions.rt, syslog.timestamp,
+       _syslog.timestamp, Date and Time, datetime, date_time, logtime, log_time, occurred, EventReceivedTime,
+       FirstActivity, creationTime, ContextTimeStamp, time, ts]
+  tz: [tz, timezone, time_zone]
+  date: [date, Date]
+  time_of_day: [{name: time, formats: [kv, csv]}, Time]
+  src_ip: [srcip, src_ip, source.ip, src_endpoint.ip, Source address, Source IP, SourceIP, SourceIp, SourceAddress,
+           cef.extensions.src, leef.attributes.src, data.srcip, data.src_ip, client.ip, client.ipAddress, ClientIP,
+           client_ip, IpAddress, winlog.event_data.IpAddress, EventData.IpAddress, LocalAddressIP4, aip, src_addr,
+           SrcAddr, sourceIPAddress, CallerIPAddress, c-ip, src]
+  src_port: [srcport, src_port, source.port, src_endpoint.port, Source Port, SourcePort, cef.extensions.spt,
+             leef.attributes.srcPort, data.srcport, client.port, IpPort, winlog.event_data.IpPort, LocalPort, spt, sport,
+             s_port]
+  dst_ip: [dstip, dst_ip, destination.ip, dst_endpoint.ip, Destination address, Destination IP, DestinationIP,
+           DestinationIp, DestinationAddress, cef.extensions.dst, leef.attributes.dst, data.dstip, data.dst_ip, server.ip,
+           dest_ip, DstAddr, dst_addr, RemoteAddressIP4, RemoteIP, RemoteIp, s-ip, dst, dest]
+  dst_port: [dstport, dst_port, destination.port, dst_endpoint.port, Destination Port, DestinationPort,
+             cef.extensions.dpt, leef.attributes.dstPort, data.dstport, server.port, dest_port, RemotePort, dpt, dport]
+  proto: [proto, IP Protocol, network.iana_number, network.transport, connection_info.protocol_num, protocol,
+          transport, ip_proto, data.protocol, cef.extensions.proto, leef.attributes.proto]
+  action: [action, Action, act, cef.extensions.act, leef.attributes.action, data.action, fw_action, DeviceAction,
+           SimplifiedDeviceAction, disposition, activity_name, event.action]
+  log_type: [type, Type, log_type, logtype, Log Type, event.dataset, event.category, category_name, class_name]
+  log_subtype: [subtype, Threat/Content Type, log_subtype, Subtype, Threat Type, event.dataset, event.category]
+  status: [status, event.outcome, outcome.result, outcome, result, Result, cef.extensions.outcome, data.status,
+           Keywords, EventResult, ResultType]
+  reason: [reason, Reason, event.reason, outcome.reason, FailureReason, Session End Reason]
+  src_intf: [srcintf, Inbound Interface, observer.ingress.interface.name, src_interface, ingress_interface]
+  dst_intf: [dstintf, Outbound Interface, observer.egress.interface.name, dst_interface, egress_interface]
+  src_intf_role: [srcintfrole, Source Zone, observer.ingress.zone, src_zone, from_zone, inzone]
+  dst_intf_role: [dstintfrole, Destination Zone, observer.egress.zone, dst_zone, to_zone, outzone]
+  src_country: [srccountry, Source Country, source.geo.country_name, src_endpoint.location.country,
+                client.geographicalContext.country, source.geo.country_iso_code, src_country]
+  dst_country: [dstcountry, Destination Country, destination.geo.country_name, dst_endpoint.location.country,
+                destination.geo.country_iso_code, dst_country]
+  service: [service, Service, network.protocol, app_protocol]
+  policy_id: [policyid, policy_id, rule_number, fw_rule_id]
+  session_id: [sessionid, session_id, Session ID, SessionID, sessid]
+  app: [app, Application, network.application, app_name, appi_name]
+  app_cat: [appcat, app_category, Category of app]
+  app_risk: [apprisk, app_risk, Risk of app]
+  duration: [duration, Elapsed Time (sec), elapsed_time, session_duration]
+  sent_bytes: [sentbyte, sent_bytes, Bytes Sent, source.bytes, bytes_out, BytesSent, traffic.bytes_out, client.bytes,
+               out_bytes, sentBytes, cs-bytes, bytes_sent, SentBytes, client_outbound_bytes, data.sentbyte,
+               cef.extensions.in]
+  rcvd_bytes: [rcvdbyte, rcvd_bytes, Bytes Received, destination.bytes, bytes_in, BytesReceived, traffic.bytes_in,
+               server.bytes, in_bytes, receivedBytes, sc-bytes, bytes_received, ReceivedBytes, received_bytes,
+               server_outbound_bytes, data.rcvdbyte, cef.extensions.out]
+  sent_pkts: [sentpkt, sent_pkts, Packets Sent, source.packets, packets_out]
+  rcvd_pkts: [rcvdpkt, rcvd_pkts, Packets Received, destination.packets, packets_in]
+  hostname: [{name: hostname, formats: [kv]}, URL Domain, url.domain, destination.domain, http.request.host, QueryName,
+             qname, dns_query, cs-host, cef.extensions.dhost, request.host, server_name, sni, fqdn]
+  dns_query: [dns.question.name, QueryName, query_name, dns_query, qname]
+  url: [url, URL/Filename, url.original, url.path, url.full, http.request.url, Request URL, RequestURL, request,
+        cef.extensions.request, leef.attributes.url, data.url, uri, cs-uri-stem, URL]
+  cat_desc: [catdesc, Category, url.category, url_category, urlcategory]
+  attack: [attack, Threat/Content Name, signature, alert.signature, ips.signature, {name: rule.name, exact: true}, signature_name,
+           attack_name, sig_name, cef.name]
+  attack_id: [attackid, Threat ID, alert.signature_id, signature_id, sig_id, {name: rule.id, exact: true}]
+  severity: [severity, Severity, SeverityName, cef.severity, event.severity_name]
+  virus: [virus, virus_name, malware.name]
+  user: [user, user.name, actor.user.name, Source User, srcuser, TargetUserName, winlog.event_data.TargetUserName,
+         EventData.TargetUserName, cef.extensions.suser, cef.extensions.duser, leef.attributes.usrName, data.srcuser,
+         data.dstuser, suser, duser, usrName, actor.alternateId, UserPrincipalName, UserName, username, user_name,
+         src_user_name, AccountName, Account, Admin, agentRealtimeInfo.agentLastLoggedInUserName, threatInfo.processUser,
+         SubjectUserName, winlog.event_data.SubjectUserName, EventData.SubjectUserName, User]
+  ui: [ui, admin_interface]
+  method: [method, http.request.method, requestMethod, cef.extensions.requestMethod, cs-method, HTTP Method]
+  log_desc: [logdesc, log_desc]
+  msg: [msg, message, Message, Description, displayMessage, description, full_log, cef.extensions.msg]
+  dev_name: [devname, Device Name, observer.name, observer.hostname, dvchost, cef.extensions.dvchost, device_name,
+             syslog.hostname, _syslog.hostname, {name: hostname, formats: [syslog]}]
+  dev_id: [devid, "Serial #", Serial Number, observer.serial_number]
+  vd: [vd, Virtual System, vsys]
+  log_id: [logid, log_id, event.code, Log ID]
+  level: [level, Level, log.level]
+  host: [host.name, host.hostname, Computer, Event.System.Computer, System.Computer, computer_name, ComputerName,
+         agent.name, agentRealtimeInfo.agentComputerName, agentDetectionInfo.agentComputerName, device.hostname,
+         DeviceName, {name: hostname, formats: [ndjson, json, csv, xml]}, CompromisedEntity, host]
+  host_ip: [host.ip, agent.ip, device.local_ip, LocalIP, agentRealtimeInfo.agentIpV4, agentDetectionInfo.agentIpV4,
+            host_ip]
+  src_host: [WorkstationName, winlog.event_data.WorkstationName, EventData.WorkstationName, cef.extensions.shost, shost,
+             source.domain, src_host, client.hostname]
+  process_name: [process.name, Image, NewProcessName, winlog.event_data.NewProcessName, EventData.Image, ProcessName,
+                 process_name, actor.process.name, ImageFileName, threatInfo.originatorProcess, FileName, process.executable,
+                 dproc, cef.extensions.dproc]
+  command_line: [process.command_line, CommandLine, winlog.event_data.CommandLine, EventData.CommandLine,
+                 ProcessCommandLine, command_line, cmdline, actor.process.cmd_line, process.cmd_line, threatInfo.commandLine]
+  parent_process: [process.parent.name, ParentImage, ParentProcessName, winlog.event_data.ParentProcessName,
+                   parent_process, InitiatingProcessFileName, ParentBaseFileName, ParentImageFileName,
+                   actor.process.parent_process.name, process.parent.executable]
+  file_path: [file.path, TargetFilename, winlog.event_data.TargetFilename, FilePath, file_path, FolderPath,
+              threatInfo.filePath, filePath, cef.extensions.filePath, ObjectName, file.name, cef.extensions.fname, fname]
+  file_hash: [file.hash.sha256, process.hash.sha256, SHA256, sha256, SHA256String, threatInfo.sha256,
+              InitiatingProcessSHA256, file.hash.sha1, process.hash.sha1, SHA1, threatInfo.sha1, file.hash.md5,
+              process.hash.md5, MD5, MD5String, md5, Hashes, cef.extensions.fileHash, fileHash, file_hash]
+  event_id: [winlog.event_id, EventID, Event.System.EventID, System.EventID, event.code, EventCode, Event ID,
+             eventType, event_type, EventName, ActionType, event_id, eventid]
+  logon_type: [LogonType, winlog.event_data.LogonType, EventData.LogonType, winlog.logon.type, logon_type]
+  alert_name: [AlertName, AlertDisplayName, alertDisplayName, alert_name, threatInfo.threatName, threatName, DetectName,
+               detect_name, detection_name, detectionName, finding_info.title, finding.title, rule.description,
+               AlertTitle, Title, title, ThreatName]
+  vendor_severity: [AlertSeverity, alert_severity, vendor_severity, rule.level, threatInfo.severity, severity_id,
+                    finding_info.severity, event.severity]
+  alert_confidence: [ConfidenceScore, Confidence, confidence, confidence_score, threatInfo.confidenceLevel,
+                     ConfidenceLevel]
+  mitre_technique: [Techniques, threat.technique.id, threat.technique.subtechnique.id, rule.mitre.id, mitre_technique,
+                    MitreTechniques, TechniqueId, technique_id, Technique, technique, techniques, attack.technique,
+                    finding_info.attacks, indicators, mitre]
+  mitre_tactic: [Tactics, threat.tactic.name, threat.tactic.id, rule.mitre.tactic, mitre_tactic, Tactic, tactic, tactics]
+  alert_entities: [Entities, entities, Evidence]
+  product: [ProviderName, ProductName, observer.product, cef.device_product, leef.product, metadata.product.name,
+            DeviceProduct, product, VendorName, observer.vendor, vendor]
+
+# A field feeds only the first column (in the order above) that names it, except for these pairs,
+# which may read the same field (ECS event.category gives both log_type and log_subtype ...).
+shared_fields: [[log_type, log_subtype], [log_id, event_id], [hostname, dns_query], [ts, time_of_day],
+                [date, ts]]
+
+# Fields that tell record kinds apart. The first one found groups the sample for the category
+# (network | endpoint | auth | vendor_alert | other) and the report.
+event_type_fields: [type, Type, event.dataset, event.category, event.kind, class_name, category_name, EventID,
+                    winlog.event_id, event.code, eventType, Log Type, log_type, logtype, ActionType, rule.groups]
+
+# Value maps: raw value (any case, surrounding spaces ignored) -> canonical value. A value that is
+# not listed keeps its text in lower case (action, status, log_type, log_subtype). For log_type
+# and log_subtype a dotted value ("firewall.traffic") is also tried on its last part ("traffic").
+value_maps:
+  action:
+    allow: accept
+    allowed: accept
+    accept: accept
+    accepted: accept
+    permit: accept
+    permitted: accept
+    built: accept
+    connection_accepted: accept
+    connection-accepted: accept
+    pass: pass
+    passthrough: passthrough
+    pass-through: passthrough
+    close: close
+    timeout: timeout
+    server-rst: server-rst
+    client-rst: client-rst
+    deny: deny
+    denied: deny
+    drop: deny
+    drop-icmp: deny
+    reject: deny
+    rejected: deny
+    dropped: dropped
+    block: blocked
+    blocked: blocked
+    block-url: blocked
+    block-continue: blocked
+    sinkhole: blocked
+    prevented: blocked
+    prevent: blocked
+    quarantine: blocked
+    quarantined: blocked
+    reset-both: reset
+    reset-client: reset
+    reset-server: reset
+    reset: reset
+    alert: detected
+    detected: detected
+    detect: detected
+    monitor: detected
+    continue: passthrough
+    override: passthrough
+    tunnel-up: tunnel-up
+    tunnel-down: tunnel-down
+    login: login
+    logon: login
+    logged-in: login
+    user-login: login
+    user_login: login
+    authentication: login
+    logout: logout
+    logoff: logout
+  status:
+    success: success
+    succeeded: success
+    successful: success
+    ok: success
+    "true": success
+    audit success: success
+    auth-success: success
+    "0x0": success
+    failure: failed
+    failed: failed
+    fail: failed
+    "false": failed
+    rejected: failed
+    invalid: failed
+    audit failure: failed
+    auth-fail: failed
+    error: failed
+  proto: {tcp: 6, udp: 17, icmp: 1, icmpv6: 58, ipv6-icmp: 58, gre: 47, esp: 50, ah: 51, sctp: 132, igmp: 2}
+  log_type:
+    traffic: traffic
+    utm: utm
+    event: event
+    threat: utm
+    url: utm
+    system: event
+    config: event
+    globalprotect: event
+    auth: event
+    network: traffic
+    network activity: traffic
+    network_activity: traffic
+    firewall: traffic
+    forward: traffic
+    intrusion_detection: utm
+    ips: utm
+    idp: utm
+    virus: utm
+    anti-virus: utm
+    malware: utm
+    web: utm
+    webfilter: utm
+    content filtering: utm
+    dns: utm
+    app-ctrl: utm
+    app_control: utm
+    vpn: event
+    ha: event
+    sdwan: event
+    dhcp: event
+    connector: event
+    authentication: event
+    configuration: event
+    iam: event
+    session: event
+  log_subtype:
+    traffic: forward
+    network: forward
+    firewall: forward
+    forward: forward
+    end: forward
+    start: forward
+    drop: forward
+    deny: forward
+    allowed: forward
+    denied: forward
+    vulnerability: ips
+    spyware: ips
+    flood: ips
+    scan: ips
+    intrusion_detection: ips
+    ips: ips
+    idp: ips
+    virus: virus
+    anti-virus: virus
+    wildfire-virus: virus
+    wildfire: virus
+    malware: virus
+    url: webfilter
+    web: webfilter
+    webfilter: webfilter
+    content filtering: webfilter
+    dns: dns
+    app-ctrl: app-ctrl
+    app_control: app-ctrl
+    globalprotect: vpn
+    vpn: vpn
+    auth: auth
+    authentication: auth
+    system: system
+    config: system
+    configuration: system
+
+# Contextual value maps, applied after value_maps: FortiGate uses different words for the same
+# outcome in different log subtypes (an allowed web request is "passthrough", a blocked IPS hit
+# is "dropped"). Only the listed words change.
+value_maps_by:
+  action:
+    by: log_subtype
+    maps:
+      forward: {dropped: deny, blocked: deny, reset: deny}
+      ips: {deny: dropped, blocked: dropped, reset: dropped, accept: detected}
+      virus: {deny: blocked, dropped: blocked, reset: blocked, accept: detected}
+      webfilter: {accept: passthrough, detected: passthrough, deny: blocked, dropped: blocked, reset: blocked}
+      dns: {accept: pass, detected: pass}
+      app-ctrl: {accept: pass, detected: pass}
+
+# Derived values, applied in order after the value maps. `when` lists allowed values per column
+# (lower case, already mapped); `set` fills columns that are still empty; `copy` copies one column
+# into another that is empty.
+derive:
+  - name: PAN-style admin authentication events
+    when: {event_id: [auth-fail, admin-auth-fail, login-failed, auth-failure]}
+    set: {action: login, status: failed}
+  - name: PAN-style admin authentication events
+    when: {event_id: [auth-success, admin-auth-success, login-succeeded, login-success]}
+    set: {action: login, status: success}
+  - name: admin login failed (a login to the device itself, logged by the device)
+    when: {log_type: [event], action: [login], status: [failed]}
+    set: {log_desc: Admin login failed}
+  - name: admin login successful
+    when: {log_type: [event], action: [login], status: [success]}
+    set: {log_desc: Admin login successful}
+  - name: VPN tunnel up
+    when: {log_subtype: [vpn], action: [tunnel-up]}
+    set: {log_desc: SSL VPN tunnel up}
+  - name: malware name from the threat name
+    when: {log_subtype: [virus]}
+    copy: {virus: attack}
+
+# Free-text syslog messages: a regex with named groups. A group named after a canonical column
+# fills it; `set` adds fixed values. Tried in order on the message text; the first match wins.
+message_patterns:
+  - name: cisco-asa-302013 built
+    regex: '%ASA-\d-30201[35]: Built (?P<direction>inbound|outbound) (?P<proto>TCP|UDP) connection (?P<session_id>\d+) for (?P<src_intf>[^:\s]+):(?P<src_ip>[\d.]+)/(?P<src_port>\d+) .*?to (?P<dst_intf>[^:\s]+):(?P<dst_ip>[\d.]+)/(?P<dst_port>\d+)'
+    set: {action: accept, log_type: traffic}
+  - name: cisco-asa-302014 teardown
+    regex: '%ASA-\d-30201[46]: Teardown (?P<proto>TCP|UDP) connection (?P<session_id>\d+) for (?P<src_intf>[^:\s]+):(?P<src_ip>[\d.]+)/(?P<src_port>\d+) .*?to (?P<dst_intf>[^:\s]+):(?P<dst_ip>[\d.]+)/(?P<dst_port>\d+)(?: duration (?P<duration_hms>[\d:]+))?(?: bytes (?P<sent_bytes>\d+))?'
+    set: {action: close, log_type: traffic}
+  - name: cisco-asa-106023 deny
+    regex: '%ASA-\d-10602[13]: Deny (?P<proto>tcp|udp|icmp) src (?P<src_intf>[^:\s]+):(?P<src_ip>[\d.]+)(?:/(?P<src_port>\d+))? dst (?P<dst_intf>[^:\s]+):(?P<dst_ip>[\d.]+)(?:/(?P<dst_port>\d+))?'
+    set: {action: deny, log_type: traffic}
+  - name: cisco-asa-106001 deny
+    regex: '%ASA-\d-10600[16]: (?:Inbound )?(?P<proto>TCP|UDP) (?:access )?denied (?:from|by) (?P<src_ip>[\d.]+)/(?P<src_port>\d+) to (?P<dst_ip>[\d.]+)/(?P<dst_port>\d+)'
+    set: {action: deny, log_type: traffic}
+  - name: cisco-asa-106100 acl
+    regex: '%ASA-\d-106100: access-list \S+ (?P<action>permitted|denied) (?P<proto>tcp|udp|icmp) (?P<src_intf>[^/\s]+)/(?P<src_ip>[\d.]+)\((?P<src_port>\d+)\) -> (?P<dst_intf>[^/\s]+)/(?P<dst_ip>[\d.]+)\((?P<dst_port>\d+)\)'
+    set: {log_type: traffic}
+  - name: cisco-asa-605004 login denied
+    regex: '%ASA-\d-605004: Login denied from (?P<src_ip>[\d.]+)/(?P<src_port>\d+) to (?P<dst_intf>[^:\s]+):(?P<dst_ip>[\d.]+)/(?P<service>\S+) for user "(?P<user>[^"]*)"'
+    set: {log_desc: Admin login failed, status: failed, action: login, log_type: event, log_subtype: system}
+  - name: cisco-asa-605005 login permitted
+    regex: '%ASA-\d-605005: Login permitted from (?P<src_ip>[\d.]+)/(?P<src_port>\d+) to (?P<dst_intf>[^:\s]+):(?P<dst_ip>[\d.]+)/(?P<service>\S+) for user "(?P<user>[^"]*)"'
+    set: {log_desc: Admin login successful, status: success, action: login, log_type: event, log_subtype: system}
+  - name: cisco-asa-113015 aaa rejected
+    regex: '%ASA-\d-113015: AAA user authentication Rejected.*?user = (?P<user>[^\s:]+)(?: : user IP = (?P<src_ip>[\d.]+))?'
+    set: {status: failed, log_type: event, log_subtype: auth}
+  - name: sshd failed password
+    regex: 'sshd\[\d+\]: Failed (?:password|publickey) for (?:invalid user )?(?P<user>\S+) from (?P<src_ip>[\d.]+) port (?P<src_port>\d+)'
+    set: {status: failed, dst_port: "22", log_subtype: auth}
+  - name: sshd accepted
+    regex: 'sshd\[\d+\]: Accepted (?:password|publickey) for (?P<user>\S+) from (?P<src_ip>[\d.]+) port (?P<src_port>\d+)'
+    set: {status: success, dst_port: "22", log_subtype: auth}

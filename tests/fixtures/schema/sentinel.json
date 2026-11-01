@@ -1,0 +1,51 @@
+[
+  {
+    "TimeGenerated": "2026-10-29T02:07:10.123Z",
+    "AlertName": "Possible SQL injection against portal.corp.local",
+    "AlertSeverity": "High",
+    "ProviderName": "ASI Scheduled Alerts",
+    "ProductName": "Azure Sentinel",
+    "Tactics": "InitialAccess",
+    "Techniques": ["T1190"],
+    "ConfidenceScore": 0.8,
+    "Computer": "web01.corp.local",
+    "Account": "svc_web",
+    "IpAddress": "32.127.48.11",
+    "Entities": [
+      {"Type": "ip", "Address": "32.127.48.11"},
+      {"Type": "host", "HostName": "web01", "Address": "10.10.20.20"},
+      {"Type": "account", "Name": "svc_web"}
+    ],
+    "Description": "60 requests with SQL injection payloads"
+  },
+  {
+    "TimeGenerated": "2026-10-29T02:45:00Z",
+    "AlertName": "Web shell request pattern",
+    "AlertSeverity": "Medium",
+    "ProviderName": "ASI Scheduled Alerts",
+    "ProductName": "Azure Sentinel",
+    "Tactics": "Persistence",
+    "Techniques": ["T1505.003"],
+    "ConfidenceScore": 0.7,
+    "Computer": "web01.corp.local",
+    "Account": "svc_web",
+    "IpAddress": "32.127.48.11",
+    "Entities": [{"Type": "ip", "Address": "32.127.48.11"}],
+    "Description": "Requests to rarely used server paths"
+  },
+  {
+    "TimeGenerated": "2026-10-29T10:09:09Z",
+    "AlertName": "Large data transfer to an internal server",
+    "AlertSeverity": "Low",
+    "ProviderName": "ASI Scheduled Alerts",
+    "ProductName": "Azure Sentinel",
+    "Tactics": "Exfiltration",
+    "Techniques": ["T1048"],
+    "ConfidenceScore": 0.6,
+    "Computer": "web01.corp.local",
+    "Account": "svc_web",
+    "IpAddress": "32.127.48.11",
+    "Entities": [],
+    "Description": "12.3 MB in 600 sessions"
+  }
+]
