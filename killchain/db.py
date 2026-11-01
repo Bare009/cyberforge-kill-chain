@@ -200,7 +200,7 @@ def prepare_run(parsed_dir: Union[str, Path], run_dir: Union[str, Path],
                 network: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Store the views as tables in run_dir/events.duckdb (derived columns computed once).
 
-    On firex-10G.log this takes about 80 s and 1.5 GB of disk; afterwards a
+    On firex-10G.log this takes about 40 s and 0.8 GB of disk (firex-30G: 188 s, 3.1 GB); afterwards a
     filter on a zone column takes milliseconds instead of 10-35 s through the view.
     """
     import time
